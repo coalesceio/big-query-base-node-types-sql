@@ -4,6 +4,6 @@ SELECT
      `N_NATIONKEY` AS `N_NATIONKEY` @notNull @defaultValue("0"),
      `N_NAME` AS `N_NAME` @description("Name") @notNull @defaultValue("NA"),
      `N_REGIONKEY` AS `N_REGIONKEY` @notNull,
-     `N_COMMENT` AS `N_COMMENT`,
+     `N_COMMENT` AS `N_COMMENT` @notNull,
      `last_modified` AS `last_modified` @description("TimeStamp")
 FROM {{ ref('SRC', 'nation') }} `nation`
