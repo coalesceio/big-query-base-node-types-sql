@@ -1,0 +1,207 @@
+fileVersion: 1
+id: "1"
+macroString: |-
+  {# ========================================================================
+  Purpose          : Executes data quality tests associated with the node
+                      and its columns, based on the configured run order.
+                      Supports running tests either before or after data
+                      insertion, and respects the test continuation
+                      behavior on failure.
+  Input Parameters : runOrder (String)
+                      - Determines when the tests should be executed.
+                          Expected values: 'Before' or 'After'
+  Returns          : Rendered SQL statements for executing the applicable
+                      node-level and column-level data quality tests.
+                      No output is generated if tests are disabled.
+  ========================================================================= #}
+  {%- macro run_tests(runOrder) -%}
+
+      {%- if get_boolean_config("testsEnabled") == "true" %}
+          {%- if runOrder == 'After' -%}
+              {%- for column in columns -%}
+                  {%- if column.tests is defined -%}
+                      {%- for test in column.tests | default([]) -%}
+                          {%- if test is mapping and test.parameters is defined -%}
+                              {%- if test.parameters[0] | trim | lower == "null" -%}
+                                  {%- set templateString = "SELECT 1 FROM " +  ref(node.location.name, node.name)  + " WHERE " + column.name + " IS NULL " -%}                      
+                                  {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0] | lower) }}
+                                  {{ templateString }}
+                              {%- endif -%}
+                              {%- if test.parameters[0] | trim | lower == "unique" -%}
+                                  {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " GROUP BY " + column.name +  " HAVING COUNT(*) > 1" -%}                      
+                                  {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0] | lower) }}
+                                  {{ templateString }}
+                              {%- endif -%}
+                          {%- endif -%}
+                      {%- endfor -%}
+                  {%- endif -%}
+              {%- endfor -%}
+          {%- endif -%}
+
+          {%- set ns = namespace(cnt=0) -%}
+          {%- for test in config.tests | default([]) -%}
+              {%- if test is mapping and test.parameters is defined -%}
+                  {%- if test.parameters[1] | default("Before") == runOrder -%}
+                      {%- set ns.cnt = ns.cnt + 1 -%}
+                      {{ test_stage(
+                          ('Pre Load Test ' if runOrder == 'Before' else 'Post Load Test ') ~ ns.cnt,
+                          test.parameters[2] | default(true)
+                      ) }}
+                      {{ test.parameters[0] }}
+                  {%- endif -%}
+              {%- endif -%}
+          {%- endfor -%}
+
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {# ========================================================================
+  Purpose:
+      Returns the SQL expression to be used for a column transformation.
+
+  Input:
+      col
+          - transform: Column transform expression.
+          - sourceColumns[0].node.name: Source table name.
+          - sourceColumns[0].column.name: Source column name.
+
+  Logic:
+      1. If transform is not empty and matches the source column name
+          (ignoring double quotes), return a fully qualified source
+          column reference:
+              "SOURCE_TABLE"."SOURCE_COLUMN"
+
+      2. If transform is not empty and does not match the source column
+          name, return the transform expression as-is.
+
+      3. If transform is empty, return NULL.
+
+  Examples:
+      transform = '"N_NAME"'      -> "NATION_TEST"."N_NAME"
+      transform = 'N_NAME'        -> "NATION_TEST"."N_NAME"
+      transform = 'UPPER(N_NAME)' -> UPPER(N_NAME)
+      transform = ''              -> NULL
+  ========================================================================#}
+  {%- macro get_source_transform_v2(col) -%}
+      {%- set transform = col.transform | trim -%}
+      {%- if transform != '' -%}
+          {%- if col.sourceColumns
+                  and col.sourceColumns[0].node
+                  and transform | replace('"', '')
+                      == col.sourceColumns[0].column.name -%}
+
+              `{{ col.sourceColumns[0].node.name }}`.`{{ col.sourceColumns[0].column.name }}`
+          {%- else -%}
+              {{ transform }}
+          {%- endif -%}
+      {%- else -%}
+          NULL
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===================================================================================================
+  Description:
+  Generates a deterministic hash value by combining and hashing all column values associated with the given `hash_name` using the `@inHash` annotation.
+
+  Input: `hash_name` (string) - The hash group identifier used in `@inHash("<hash_name>")` to group columns for hashing.
+
+  Output: - Returns a SQL expression of type `STRING`:
+          - A SHA1 hash of concatenated column values  
+          - Returns `NULL` if no columns are mapped to the given hash group
+  ====================================================================================================#}
+  {%- macro get_hash(hash_name, algo='SHA1', delimiter='||') -%}
+
+      {%- set cols = namespace(items=[]) -%}
+      {%- set algo_upper = algo | upper -%}
+
+      {# Collect columns participating in this hash #}
+      {%- for col in sources[0].columns -%}
+
+          {%- if col.inHash is defined -%}
+              {%- for p in col.inHash -%}
+                  {%- set parts = p.parameters[0] %}
+                  {%- set position = p.parameters[1] | int -%}
+                  {%- set hash = p.parameters[0] -%}
+
+                  {%- if hash == hash_name -%}
+                      {%- set cols.items = cols.items + [{
+                          "position": position,
+                          "column": get_source_transform_v2(col)
+                      }] -%}
+                  {%- endif -%}
+              {%- endfor -%}
+          {%- endif -%}
+      {%- endfor -%}
+
+      {%- if cols.items | length == 0 -%}
+          NULL
+      {%- else -%}
+          {%- set sorted_cols = cols.items | sort(attribute='position') -%}
+          {# Define algo wrappers #}
+          {%- set algo_start = algo_upper + '(' -%}
+          {%- set algo_end = ')' -%}
+
+          {%- if algo_upper == 'SHA256' -%}
+              {%- set algo_start = 'SHA2(' -%}
+              {%- set algo_end = ', 256)' -%}
+          {%- endif -%}
+
+          TO_HEX(
+              {{ algo_start }}
+                  {%- for c in sorted_cols -%}
+                      IFNULL(CAST({{ c.column }} AS STRING), 'null')
+                      {%- if not loop.last %}
+                          || {%- if delimiter != '' %} '{{ delimiter }}' || {% endif -%}
+                      {%- endif -%}
+                  {%- endfor -%}
+              {{ algo_end }}
+          )
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===================================================================================================
+  get_boolean_config(flag)
+
+  Description:
+      Extracts the boolean value of a configuration flag, supporting both
+      annotation formats:
+      - @flag
+      - @flag(true) / @flag(false)
+
+  Input:
+      flag: Name of the boolean configuration flag, e.g. "truncateBefore",
+          "testsEnabled", or "clusterDefined".
+
+  Examples:
+      @truncateBefore
+      -> config["truncateBefore"] = true
+      -> Output: true
+
+      @truncateBefore(true)
+      -> config["truncateBefore"] = { parameters: [true] }
+      -> Output: true
+
+      @truncateBefore(false)
+      -> config["truncateBefore"] = { parameters: [false] }
+      -> Output: false
+
+      No annotation
+      -> config["truncateBefore"] is not defined
+      -> Output: empty
+
+  Usage:
+      {% if get_boolean_config("truncateBefore") | trim | lower == "true" %}
+      ...
+      {% endif %}
+  ====================================================================================================#}
+  {%- macro get_boolean_config(flag) -%}
+      {%- if config[flag] is defined -%}
+          {%- if config[flag] is boolean -%}
+              {{- config[flag] | trim | lower -}}
+          {%- elif config[flag].parameters is defined and config[flag].parameters|length > 0 -%}
+              {{- config[flag].parameters[0] | trim | lower -}}
+          {%- endif -%}
+      {%- endif -%}
+  {%- endmacro -%}
+name: macro
+type: Macro

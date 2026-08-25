@@ -1,0 +1,11 @@
+fileVersion: 1
+id: "876"
+mappingDefinitions:
+  SRC:
+    database: cls-dev-bigquery
+    schema: DE_SRC
+  TARGET:
+    database: cls-dev-bigquery
+    schema: DE_QA
+name: SQLWork_NewVersion
+type: Environment
