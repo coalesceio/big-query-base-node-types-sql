@@ -40,9 +40,9 @@ WITH combined_data AS (
 )
 
 SELECT
-    nation @notNull,
-    region,
-    COUNT(DISTINCT customer_key) AS customer_count @defaultValue("0"),
+    nation,
+    region @description("regina name"),
+    COUNT(DISTINCT customer_key) AS customer_count,
     COUNT(DISTINCT order_key) AS order_count
 FROM combined_data
 GROUP BY nation, region

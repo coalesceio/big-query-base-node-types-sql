@@ -1,10 +1,11 @@
 @id("f4fca686-9faa-41f8-b194-1b9eb8e0840f")
 @nodeType("705")
+@materializationType("view")
 @testsEnabled
 @tests("SELECT 1 FROM {{ this }}")
 @tests("SELECT 2 FROM {{ this }}", "Before", true)
 @tests("SELECT 3 FROM {{ this }}", "After")
-@tests("SELECT 4 FROM {{ this }}", "After", false)
+@tests("SELECT 4 FROM {{ this }}", "After", true)
 SELECT
      `N_NATIONKEY` AS `N_NATIONKEY` @description("Nation'' Key") @tests("unique") @inHash("GH_COL1", 2),
      `N_NAME` AS `N_NAME` @description("Name") @inHash("GH_COL2", 1),
