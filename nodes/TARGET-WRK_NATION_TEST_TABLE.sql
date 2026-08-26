@@ -16,7 +16,7 @@ SELECT
      `N_NAME` AS `N_NAME` @description("Name")@inHash("GH_COL2", 1),
      `N_REGIONKEY` AS `N_REGIONKEY` @tests("null") @tests("unique") @inHash("GH_COL1", 1) @inHash("GH_COL2", 2),
      `N_COMMENT` AS `N_COMMENT` @description("'Nation Comment'") @defaultValue("'NA'") @notNull,
-     `last_modified` AS `last_modified` @tests("null") @defaultValue("current_timestamp()"),
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1" @defaultValue("NULL"),
-     CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2"
+     CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2",
+     1 AS "AREA"
 FROM {{ ref('SRC', 'nation') }} `nation`
