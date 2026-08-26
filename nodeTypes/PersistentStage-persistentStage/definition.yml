@@ -6,139 +6,85 @@ metadata:
   error: null
   nodeMetadataSpec: |
     capitalized: Persistent Stage
-    short: pstg
+    short: PSTG
     plural: Persistent Stages
     tagColor: '#29B2DB'
-
+        
     config:
     - groupName: Options
       items:
       - type: materializationSelector
+        isRequired: true
         default: table
         options:
         - table
-        isRequired: true
+        - view
+      
+      - type: businessKeyColumns
+        isRequired: false
 
       - type: multisourceToggle
         enableIf: "{% if node.materializationType == 'table' %} true {% else %} false {% endif %}"
 
-      - displayName: Multi Source Strategy
-        attributeName: insertStrategy
-        type: dropdownSelector
-        default: UNION ALL
-        options:
-        - "UNION DISTINCT"
-        - "UNION ALL"
-        isRequired: false
-        enableIf: "{% if node.materializationType == 'table' and node.isMultisource %} true {% else %} false {% endif %}"
-
-      - type: businessKeyColumns
-        isRequired: false
-
-      - type: changeTrackingColumns
-        isRequired: false
-
-      - displayName: Truncate Before
-        attributeName: truncateBefore
-        type: toggleButton
-        default: false
+      - type: overrideSQLToggle
+        enableIf: "{% if node.materializationType == 'view' %} true {% else %} false {% endif %}"
 
       - displayName: Enable Tests
         attributeName: testsEnabled
         type: toggleButton
         default: true
-
-      - displayName: Distinct
-        attributeName: selectDistinct
-        type: toggleButton
-        enableIf: "{% if config.groupByAll %} false {% else %} true {% endif %}"
-        default: false
-
-      - displayName: Group By All
-        attributeName: groupByAll
-        type: toggleButton
-        default: false
-        enableIf: "{% if config.selectDistinct %} false {% else %} true {% endif %}"
-
-      - displayName: Order By
-        attributeName: orderby
-        type: toggleButton
-        default: false
-
-      - type: tabular
-        displayName: 'Sort Column'
-        attributeName: orderbycolumn
-        columns:
-
-        - type: columnDropdownSelector
-          displayName: Column Name
-          attributeName: sortColName
-
-        - type: dropdownSelector
-          displayName: Sort Order
-          attributeName: sortOrder
-          default: desc
-          options:
-          - desc
-          - asc
-            
-        isRequired: false
-        enableIf: "{% if config.orderby %} true {% else %} false {% endif %}"
-
+        
       - displayName: Pre-SQL
         attributeName: preSQL
         type: textBox
         syntax: sql
         isRequired: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
 
       - displayName: Post-SQL
         attributeName: postSQL
         type: textBox
         syntax: sql
         isRequired: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
 
     systemColumns:
 
-    - displayName: '{{NODE_NAME}}_key'
+    - displayName: '{{NODE_NAME}}_KEY'
       transform: ''
-      dataType: STRING
-      defaultValue: GENERATE_UUID()
+      dataType: NUMBER
       placement: beginning
       attributeName: isSurrogateKey
 
-    - displayName: system_version
+    - displayName: SYSTEM_VERSION
       transform: ''
-      dataType: INT
+      dataType: NUMBER
       placement: end
       attributeName: isSystemVersion
 
-    - displayName: system_current_flag
+    - displayName: SYSTEM_CURRENT_FLAG
       transform: ''
-      dataType: STRING
+      dataType: VARCHAR
       placement: end
       attributeName: isSystemCurrentFlag
 
-    - displayName: system_start_date
+    - displayName: SYSTEM_START_DATE
       transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
       attributeName: isSystemStartDate
 
-    - displayName: system_end_date
+    - displayName: SYSTEM_END_DATE
       transform: CAST('2999-12-31 00:00:00' AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
       attributeName: isSystemEndDate
 
-    - displayName: system_create_date
+    - displayName: SYSTEM_CREATE_DATE
       transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
       attributeName: isSystemCreateDate
 
-    - displayName: system_update_date
+    - displayName: SYSTEM_UPDATE_DATE
       transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end

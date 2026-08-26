@@ -2,6 +2,7 @@
 @nodeType("705")
 @testsEnabled
 @truncateBefore
+@description("Nation Key ''dfhadj")
 @tests("SELECT 1 FROM {{ this }}")
 @tests("SELECT 2 FROM {{ this }}", "Before", true)
 @tests("SELECT 3 FROM {{ this }}", "After", true)
@@ -11,7 +12,7 @@
 @preSQL("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 3")
 @postSQL("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 4")
 SELECT
-     `N_NATIONKEY` AS `N_NATIONKEY` @tests("unique") @inHash("GH_COL1", 2),
+     `N_NATIONKEY` AS `N_NATIONKEY` @description("Nation'' Key") @tests("unique") @inHash("GH_COL1", 2) @defaultValue("0"),
      `N_NAME` AS `N_NAME` @description("Name")@inHash("GH_COL2", 1),
      `N_REGIONKEY` AS `N_REGIONKEY` @tests("null") @tests("unique") @inHash("GH_COL1", 1) @inHash("GH_COL2", 2),
      `N_COMMENT` AS `N_COMMENT` @description("'Nation Comment'") @defaultValue("'NA'") @notNull,

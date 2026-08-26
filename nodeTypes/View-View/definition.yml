@@ -6,59 +6,36 @@ metadata:
   error: null
   nodeMetadataSpec: |
     capitalized: View
-    short: v
+    short: V
     tagColor: '#C4C4C4'
     isDisabled: true
     plural: Views
 
     config:
-    - groupName: Options
-      items:
-      - displayName: OverrideCreateSQL
-        attributeName: OverrideSQLCreate
-        type: overrideSQLToggle
-        default: false
+      - groupName: Options
+        items: 
+        - type: materializationSelector
+          options:
+            - view
+          default: view
+          isRequired: true
 
-      - type: multisourceToggle 
-        enableIf: "{% if  node.override.create.enabled %} false {% else %} true {% endif %}"
-        default: false
+        - type: toggleButton
+          attributeName: selectDistinct
+          displayName: Distinct
 
-      - displayName: Multi Source Strategy
-        attributeName: insertStrategy
-        type: dropdownSelector
-        default: "UNION ALL"
-        options:
-        - "UNION DISTINCT"
-        - "UNION ALL" 
-        isRequired: false
-        enableIf: "{% if node.isMultisource %} true {% else %} false {% endif %}"
+        - type: multisourceToggle
 
-      - displayName: Secure
-        attributeName: secureoption
-        type: toggleButton
-        enableIf: "{% if  node.override.create.enabled %} false {% else %} true {% endif %}"
-        default: false
+        - type: overrideSQLToggle
 
-      - displayName: Distinct
-        attributeName: selectDistinct
-        type: toggleButton
-        enableIf: "{% if config.groupByAll or  node.override.create.enabled %} false {% else %} true {% endif %}"
-        default: false
-
-      - displayName: Group By All
-        attributeName: groupByAll
-        type: toggleButton
-        enableIf: "{% if config.selectDistinct or node.override.create.enabled %} false {% else %} true {% endif %}" 
-        default: false
-
-    - groupName: Hidden Config
-      enableIf: "false"
-      items:
-      - displayName: Type
-        type: materializationSelector
-        default:  view
-        options:
-        - view
-        isRequired: false
+        - displayName: Multi Source Strategy
+          attributeName: insertStrategy
+          type: dropdownSelector
+          default: UNION
+          options:
+          - "UNION"
+          - "UNION ALL" 
+          isRequired: true
+          enableIf: "{% if node.isMultisource %} true {% else %} false {% endif %}"
 name: View
 type: NodeType

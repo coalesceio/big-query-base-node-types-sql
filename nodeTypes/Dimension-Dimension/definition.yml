@@ -4,9 +4,9 @@ isDisabled: false
 metadata:
   defaultStorageLocation: null
   error: null
-  nodeMetadataSpec: |
-    capitalized: Dimension 
-    short: dim
+  nodeMetadataSpec: |-
+    capitalized: Dimension
+    short: DIM
     tagColor: '#1E339A'
     plural: Dimensions
 
@@ -20,132 +20,73 @@ metadata:
         - table
         - view
 
-      - type: overrideSQLToggle
-        enableIf: "{% if node.materializationType == 'view' %} true {% else %} false {% endif %}"
-        
       - type: multisourceToggle
-        enableIf: "{% if node.materializationType == 'view' and node.override.create.enabled %} false {% else %} true {% endif %}"
-
-      - displayName: Multi Source Strategy
-        attributeName: insertStrategy
-        type: dropdownSelector
-        default: "UNION DISTINCT"
-        options:
-        - "UNION DISTINCT"
-        - "UNION ALL"
-        isRequired: false
-        enableIf: "{% if not (node.materializationType == 'view' and node.override.create.enabled) and node.isMultisource %} true {% else %} false {% endif %}"
+        enableIf: "{% if node.materializationType == 'table' %} true {% else %} false {% endif %}"
 
       - type: businessKeyColumns
         isRequired: true
 
       - type: changeTrackingColumns
         isRequired: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
 
-      - displayName: Truncate Before
-        attributeName: truncateBefore
-        type: toggleButton
-        default: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
+      - type: overrideSQLToggle
+        enableIf: "{% if node.materializationType == 'view' %} true {% else %} false {% endif %}"
 
       - displayName: Enable Tests
         attributeName: testsEnabled
         type: toggleButton
         default: true
         
-      - displayName: Distinct
-        attributeName: selectDistinct
-        type: toggleButton
-        enableIf: "{% if config.groupByAll or (node.materializationType == 'view' and node.override.create.enabled) %} false {% else %} true {% endif %}"
-        default: false
-        
-
-      - displayName: Group By All
-        attributeName: groupByAll
-        type: toggleButton
-        default: false
-        enableIf: "{% if config.selectDistinct or (node.materializationType == 'view' and node.override.create.enabled) %} false {% else %} true {% endif %}"    
-
-      - displayName: Order By
-        attributeName: orderby
-        type: toggleButton
-        default: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
-
-      - type: tabular
-        displayName: 'Sort column'
-        attributeName: orderbycolumn
-        columns:
-
-        - type: columnDropdownSelector
-          displayName: Column Name
-          attributeName: sortColName
-
-        - type: dropdownSelector
-          displayName: Sort Order
-          attributeName: sortOrder
-          default: desc
-          options:
-          - desc
-          - asc
-            
-        isRequired: false
-        enableIf: "{% if config.orderby and node.materializationType == 'table'%} true {% else %} false {% endif %}"
-
       - displayName: Pre-SQL
         attributeName: preSQL
         type: textBox
         syntax: sql
         isRequired: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
 
       - displayName: Post-SQL
         attributeName: postSQL
         type: textBox
         syntax: sql
         isRequired: false
-        enableIf: "{% if node.materializationType == 'view' %} false {% else %} true {% endif %}"
 
     systemColumns:
-    - displayName: '{{NODE_NAME}}_key'
+    - displayName: '{{NODE_NAME}}_KEY'
       transform: ''
-      dataType: STRING
-      defaultValue: GENERATE_UUID()
+      dataType: NUMBER
       placement: beginning
       attributeName: isSurrogateKey
 
-    - displayName: system_version
+    - displayName: SYSTEM_VERSION
       transform: ''
-      dataType: INT
+      dataType: NUMBER
       placement: end
       attributeName: isSystemVersion
 
-    - displayName: system_current_flag
+    - displayName: SYSTEM_CURRENT_FLAG
       transform: ''
-      dataType: STRING
+      dataType: VARCHAR
       placement: end
       attributeName: isSystemCurrentFlag
 
-    - displayName: system_start_date
+    - displayName: SYSTEM_START_DATE
       transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
       attributeName: isSystemStartDate
 
-    - displayName: system_end_date
+    - displayName: SYSTEM_END_DATE
       transform: CAST('2999-12-31 00:00:00' AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
       attributeName: isSystemEndDate
 
-    - displayName: system_create_date
+    - displayName: SYSTEM_CREATE_DATE
       transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
       attributeName: isSystemCreateDate
 
-    - displayName: system_update_date
+    - displayName: SYSTEM_UPDATE_DATE
       transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
       dataType: TIMESTAMP
       placement: end
