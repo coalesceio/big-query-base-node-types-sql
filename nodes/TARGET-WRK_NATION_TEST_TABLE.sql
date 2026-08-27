@@ -12,11 +12,11 @@
 @preSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 3")
 @postSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 4")
 SELECT
-     `N_NATIONKEY` AS `N_NATIONKEY` @tests("unique") @inHash("GH_COL1", 2) @defaultValue("0"),
-     `N_NAME` AS `N_NAME` @description("Name cHANGED")@inHash("GH_COL2", 1),
+     `N_NATIONKEY` AS `N_NATIONKEY` @tests("unique") @inHash("GH_COL1", 2) @defaultValue("0") @notNull,
+     `N_NAME` AS `N_NAME` @description("Name") @inHash("GH_COL2", 1) @deafultValue("'NA'"),
      `N_REGIONKEY` AS `N_REGIONKEY` @tests("null") @tests("unique") @inHash("GH_COL1", 1) @inHash("GH_COL2", 2),
      `N_COMMENT` AS `N_COMMENT` @description("'Nation Comment'"),
-     CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1",
+     CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1" @description("Hash Column"),
      CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2",
      CAST(1.11 AS FLOAT64) AS "AREA",
      CAST(CONCAT(N_NAME, '_TEST') AS STRING) AS N_NAME_CAPS  @tests("unique>") @description("Adde COl")
