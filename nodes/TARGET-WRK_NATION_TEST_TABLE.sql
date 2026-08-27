@@ -7,10 +7,10 @@
 @tests("SELECT 2 FROM {{ this }}", "Before", true)
 @tests("SELECT 3 FROM {{ this }}", "After", true)
 @tests("SELECT 4 FROM {{ this }}", "After", true)
-@preSQL("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 1")
-@postSQL("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 2")
-@preSQL("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 3")
-@postSQL("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 4")
+@preSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 1")
+@postSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 2")
+@preSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 3")
+@postSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 4")
 SELECT
      `N_NATIONKEY` AS `N_NATIONKEY` @description("Nation'' Key") @tests("unique") @inHash("GH_COL1", 2) @defaultValue("0"),
      `N_NAME` AS `N_NAME` @description("Name cHANGED")@inHash("GH_COL2", 1),
@@ -18,5 +18,5 @@ SELECT
      `N_COMMENT` AS `N_COMMENT_REnamed` @description("'Nation Comment'") @defaultValue("'NA'") @notNull,
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1" @defaultValue("NULL"),
      CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2",
-     1 AS "AREA"
+     CAST(1.11 AS FLOAT64) AS "AREA"
 FROM {{ ref('SRC', 'nation') }} `nation`
