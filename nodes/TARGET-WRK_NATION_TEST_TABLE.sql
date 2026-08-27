@@ -18,6 +18,5 @@ SELECT
      `N_COMMENT` AS `N_COMMENT_REnamed` @description("'Nation Comment'") @defaultValue("'NA'") @notNull,
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1" @defaultValue("NULL"),
      CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2",
-     CAST(1.11 AS FLOAT64) AS "AREA",
-     CAST(CONCAT(N_NAME, '_TEST') AS STRING) AS N_NAME_Caps
+     CAST(1.11 AS FLOAT64) AS "AREA"
 FROM {{ ref('SRC', 'nation') }} `nation`
