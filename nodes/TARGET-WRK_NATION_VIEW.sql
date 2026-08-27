@@ -1,6 +1,5 @@
 @id("08310d50-0bac-4738-9bd7-5df6b7a40048")
 @nodeType("705")
-@materializationType("view")
 @testsEnabled
 @tests("SELECT 1 FROM {{ this }}")
 @tests("SELECT 2 FROM {{ this }}", "Before", true)
