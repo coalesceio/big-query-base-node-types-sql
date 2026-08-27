@@ -15,7 +15,7 @@ SELECT
      `N_NATIONKEY` AS `N_NATIONKEY` @description("Nation'' Key") @tests("unique") @inHash("GH_COL1", 2) @defaultValue("0"),
      `N_NAME` AS `N_NAME` @description("Name cHANGED")@inHash("GH_COL2", 1),
      `N_REGIONKEY` AS `N_REGIONKEY` @tests("null") @tests("unique") @inHash("GH_COL1", 1) @inHash("GH_COL2", 2) @notNull,
-     `N_COMMENT` AS `N_COMMENT` @description("'Nation Comment'") @defaultValue("'NA'") @notNull,
+     `N_COMMENT` AS `N_COMMENT` @description("'Nation Comment'") @notNull,
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1" @defaultValue("NULL"),
      CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2",
      CAST(1.11 AS FLOAT64) AS "AREA",
