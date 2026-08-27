@@ -19,5 +19,5 @@ SELECT
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS "GH_COL1" @defaultValue("NULL"),
      CAST({{ get_hash('GH_COL2') }}AS STRING) AS "GH_COL2",
      CAST(1.11 AS FLOAT64) AS "AREA",
-     CAST(CONCAT(N_NAME, '_TEST') AS STRING) AS "N_NAME_CAPS"  @tests("unique") @defaultValue("'NA'") @description("Adde COl")
+     CAST(CONCAT(N_NAME, '_TEST') AS STRING) AS "N_NAME_CAPS"  @tests("unique") @description("Adde COl")
 FROM {{ ref('SRC', 'nation') }} `nation`
