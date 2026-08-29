@@ -23,8 +23,15 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- endif %}
     {%- endfor %}
 
+	{# == Determine write mode: truncateInsert (default) or append == #}
+    {%- if config.writeMode is defined and config.writeMode.parameters is defined and config.writeMode.parameters | length > 0 %}
+        {%- set writeMode = config.writeMode.parameters[0] | trim %}
+    {%- else %}
+        {%- set writeMode = 'truncateInsert' %}
+    {%- endif %}
+
 	{# == Truncate data before data insertion  == #}
-    {%- if get_boolean_config("truncateBefore") == "true" %}
+    {%- if writeMode == "truncateInsert" %}
         {{ stage('Truncate ' + node.materializationType) }}
         TRUNCATE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- endif %}

@@ -22,88 +22,104 @@ macroString: |-
         {%- set columnRunOrder = config.columnRunOrder.parameters[0] -%}
     {%- endif -%}
 
-    {%- set columnContinueOnFailure = true if get_boolean_config("continueOnFailure") != false else false -%}
+    {%- set columnContinueOnFailure = false if get_boolean_config("columnContinueOnFailure") == "false" else true -%}
 
-    {%- if  != "false" %}
-
-    {%- if get_boolean_config("testsEnabled") != "false" %}
+    {%- if get_boolean_config("disableTests") != "true" -%}
         {%- if runOrder == columnRunOrder | default("After") -%}
-            {%- for column in columns -%}
-                {%- if column.tests is defined -%}
-                    {%- for test in column.tests | default([]) -%}
-                        {%- if test is mapping and test.parameters is defined -%}
-                            {%- if test.parameters[0] | trim | lower == "null" -%}
-                                {%- set templateString = "SELECT 1 FROM " +  ref(node.location.name, node.name)  + " WHERE " + column.name + " IS NULL " -%}                      
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[1] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "unique" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " GROUP BY " + column.name +  " HAVING COUNT(*) > 1" -%}                      
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[1] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "empty" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND TRIM(CAST( " + column.name + " AS STRING)) = ''" -%}                      
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[1] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "acceptedvalues" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND " + column.name + " NOT IN (" -%}
-                                {%- set accepted = test.parameters[1] if test.parameters[1] is sequence and test.parameters[1] is not mapping else [] %}
-                                {%- set templateString = templateString + test.parameters[1] + ")" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[2] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "rejectedvalues" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND " + column.name + " IN (" -%}
-                                {%- set accepted = test.parameters[1] if test.parameters[1] is sequence and test.parameters[1] is not mapping else [] %}
-                                {%- set templateString = templateString + test.parameters[1] + ")" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[2] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "valuerange" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND (" + column.name + " < " + test.parameters[1] | string + " OR " + column.name + " > " + test.parameters[2] | string + ")" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[3] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "minvalue" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND " + column.name + " < " + test.parameters[1] | string -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[2] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "maxvalue" -%}
-                                {%- set templateString = "SELECT 1 FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND " + column.name + " > " + test.parameters[1] | string -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[2] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "freshness" -%}
-                                {%- set templateString = "SELECT MAX(" + column.name + ") AS LATEST_VALUE FROM " + ref(node.location.name, node.name) + " HAVING MAX(" + column.name + ") IS NULL OR MAX(" + column.name + ") < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL " + test.parameters[1] | string + " " + (test.parameters[2] | default("DAY", true)) + ")" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[3] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "relativetime" -%}
-                                {%- set templateString = "SELECT " + column.name + ", " + test.parameters[2] + " FROM " + ref(node.location.name, node.name) + " WHERE " + column.name + " IS NOT NULL AND " + test.parameters[2] + " IS NOT NULL AND NOT (" + column.name + " " + test.parameters[1] + " " + test.parameters[2] + ")" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + test.parameters[0], test.parameters[3] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "rules" -%}
-                                {%- set templateString = "SELECT * FROM " + ref(node.location.name, node.name) + " WHERE NOT (" + test.parameters[1] + ")" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + (test.parameters[2] | default(test.parameters[0], true)), test.parameters[3] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "query" -%}
-                                {%- set templateString = test.parameters[1] -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + (test.parameters[2] | default(test.parameters[0], true)), test.parameters[3] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                            {%- if test.parameters[0] | trim | lower == "relationship" -%}
-                                {%- set templateString = "SELECT `CHILD`." + column.name + " FROM " + ref(node.location.name, node.name) + " `CHILD` LEFT JOIN " + ref_no_link(test.parameters[1], test.parameters[2]) + " `PARENT` ON `CHILD`." + column.name + " = `PARENT`." + test.parameters[3] + " WHERE `CHILD`." + column.name + " IS NOT NULL AND `PARENT`." + test.parameters[3] + " IS NULL" -%}
-                                {{ test_stage("Column Test: " + column.name + " - " + (test.parameters[4] | default(test.parameters[0], true)), test.parameters[5] | default(true)) }}
-                                {{ templateString }}
-                            {%- endif -%}
-                        {%- endif -%}
-                    {%- endfor -%}
+            {%- for col in columns -%}
+                {%- set colName = '`' + col.name + '`' -%}
+                {%- set accepted = col.accepted_values if (col.accepted_values is sequence and col.accepted_values is not mapping) else [] -%}
+                {%- set rejected = col.rejected_values if (col.rejected_values is sequence and col.rejected_values is not mapping) else [] -%}
+                {%- set rules = col.business_rule if (col.business_rule is sequence and col.business_rule is not mapping) else [] -%}
+                {%- set queries = col.business_query if (col.business_query is sequence and col.business_query is not mapping) else [] -%}
+                {%- set relationships = col.relationship if (col.relationship is sequence and col.relationship is not mapping) else [] -%}
+                {%- set target = ref(node.location.name, node.name) -%}
+                {%- if col.not_null is defined -%}
+                    {{ test_stage(col.name + ': not_null', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NULL
                 {%- endif -%}
+                {%- if col.unique is defined -%}
+                    {{ test_stage(col.name + ': unique', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    GROUP BY {{ colName }}
+                    HAVING COUNT(*) > 1
+                {%- endif -%}
+                {%- if col.empty is defined -%}
+                    {{ test_stage(col.name + ': empty', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NOT NULL AND TRIM({{ colName }}) = ''
+                {%- endif -%}
+                {%- if accepted | length > 0 -%}
+                    {{ test_stage(col.name + ': accepted_values', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NOT NULL
+                    AND {{ colName }} NOT IN ({%- for v in accepted -%} {{ v.parameters[0] }} {%- if not loop.last -%}, {%- endif -%}{%- endfor -%})
+                {%- endif -%}
+                {%- if rejected | length > 0 -%}
+                    {{ test_stage(col.name + ': rejected_values', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IN ({%- for v in rejected -%} {{ v.parameters[0] }} {%- if not loop.last -%}, {%- endif -%}{%- endfor -%})
+                {%- endif -%}
+                {%- if col.min_max is defined and col.min_max.parameters is defined -%}
+                    {{ test_stage(col.name + ': min_max', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NOT NULL
+                    AND ({{ colName }} < {{ col.min_max.parameters[0] }} OR {{ colName }} > {{ col.min_max.parameters[1] }})
+                {%- endif -%}
+                {%- if col.min_value is defined and col.min_value.parameters is defined -%}
+                    {{ test_stage(col.name + ': min_value', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NOT NULL AND {{ colName }} < {{ col.min_value.parameters[0] }}
+                {%- endif -%}
+                {%- if col.max_value is defined and col.max_value.parameters is defined -%}
+                    {{ test_stage(col.name + ': max_value', columnContinueOnFailure) }}
+                    SELECT {{ colName }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NOT NULL AND {{ colName }} > {{ col.max_value.parameters[0] }}
+                {%- endif -%}
+                {%- if col.freshness is defined and col.freshness.parameters is defined -%}
+                    {{ test_stage(col.name + ': freshness', columnContinueOnFailure) }}
+                    SELECT MAX({{ colName }}) AS "LATEST_VALUE"
+                    FROM {{ target }}
+                    HAVING MAX({{ colName }}) IS NULL
+                        OR MAX({{ colName }}) < DATEADD({{ col.freshness.parameters[1] | default('DAY', true) }}, -{{ col.freshness.parameters[0] }}, CURRENT_TIMESTAMP())
+                {%- endif -%}
+                {%- if col.relative_time is defined and col.relative_time.parameters is defined -%}
+                    {%- set other = '"' + col.relative_time.parameters[1] + '"' -%}
+                    {{ test_stage(col.name + ': relative_time', columnContinueOnFailure) }}
+                    SELECT {{ colName }}, {{ other }}
+                    FROM {{ target }}
+                    WHERE {{ colName }} IS NOT NULL AND {{ other }} IS NOT NULL
+                    AND NOT ({{ colName }} {{ col.relative_time.parameters[0] }} {{ other }})
+                {%- endif -%}
+                {%- for rule in rules -%}
+                    {{ test_stage(col.name + ': ' + (rule.parameters[1] | default('business_rule', true)), columnContinueOnFailure) }}
+                    SELECT *
+                    FROM {{ target }}
+                    WHERE NOT ({{ rule.parameters[0] }})
+                {%- endfor -%}
+                {%- for query in queries -%}
+                    {{ test_stage(col.name + ': ' + (query.parameters[1] | default('business_query', true)), columnContinueOnFailure) }}
+                    {{ query.parameters[0] }}
+                {%- endfor -%}
+                {%- for rel in relationships -%}
+                    {%- set parent_column = '"' + rel.parameters[2] + '"' -%}
+                    {{ test_stage(col.name + ': relationship ' + rel.parameters[0] + '.' + rel.parameters[1] + '.' + rel.parameters[2], columnContinueOnFailure) }}
+                    SELECT "CHILD".{{ colName }}
+                    FROM {{ target }} "CHILD"
+                    LEFT JOIN {{ ref_no_link(rel.parameters[0], rel.parameters[1]) }} "PARENT"
+                        ON "CHILD".{{ colName }} = "PARENT".{{ parent_column }}
+                    WHERE "CHILD".{{ colName }} IS NOT NULL
+                    AND "PARENT".{{ parent_column }} IS NULL
+                {%- endfor -%}
             {%- endfor -%}
         {%- endif -%}
 
@@ -120,7 +136,6 @@ macroString: |-
                   {%- endif -%}
               {%- endif -%}
           {%- endfor -%}
-
       {%- endif -%}
   {%- endmacro -%}
 
@@ -188,7 +203,7 @@ macroString: |-
 
           {%- if col.inHash is defined -%}
               {%- for p in col.inHash -%}
-                  {%- set parts = p.parameters[0] %}
+                  {%- set parts = p.parameters[0] -%}
                   {%- set position = p.parameters[1] | int -%}
                   {%- set hash = p.parameters[0] -%}
 
@@ -219,8 +234,8 @@ macroString: |-
               {{ algo_start }}
                   {%- for c in sorted_cols -%}
                       IFNULL(CAST({{ c.column }} AS STRING), 'null')
-                      {%- if not loop.last %}
-                          || {%- if delimiter != '' %} '{{ delimiter }}' || {% endif -%}
+                      {%- if not loop.last -%}
+                          || {%- if delimiter != '' -%} '{{ delimiter }}' || {%- endif -%}
                       {%- endif -%}
                   {%- endfor -%}
               {{ algo_end }}
@@ -259,9 +274,9 @@ macroString: |-
       -> Output: empty
 
   Usage:
-      {% if get_boolean_config("truncateBefore") | trim | lower == "true" %}
+      {%- if get_boolean_config("truncateBefore") | trim | lower == "true" -%}
       ...
-      {% endif %}
+      {%- endif -%}
   ====================================================================================================#}
   {%- macro get_boolean_config(flag) -%}
       {%- if config[flag] is defined -%}
