@@ -152,7 +152,7 @@ metadata:
         - name: not_null
           description: >-
             Column-level data quality test.
-            Fails on rows where the column is NULL.
+            Fails on rows where the column is 𝗡𝗨𝗟𝗟.
             Presence enables the test — remove the annotation to turn it off.
             Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and  either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
 
@@ -166,7 +166,7 @@ metadata:
           description: >-
             Column-level data quality test.
             Fails on rows where the column trims to the empty string;
-            NULL values pass this test and are instead caught by not_null.
+            𝗡𝗨𝗟𝗟 values pass this test and are instead caught by not_null.
             Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
 
         - name: accepted_values
@@ -257,71 +257,92 @@ metadata:
         - name: relative_time
           description: >-
             Column-level data quality test.
-            Fails on rows where this column does not hold the given relationship to another column of the same node, e.g. @relative_time("<=", "END_DATE").
-            Rows where either side is NULL pass.
+            Compares this column against another date/time column on the same node using the
+            given operator.
+            E.g. @relative_time("<=", "END_DATE") fails any row where this column's value is not less than or equal to END_DATE.
+            A row with either side 𝗡𝗨𝗟𝗟 is left out of the check and passes.
             Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           parameters:
             - name: operator
               type: string
               isRequired: true
               options: ["<", "<=", ">", ">=", "=", "<>"]
+              example: "="
+
             - name: column
               type: string
               isRequired: true
-              example: "<OTHER_COLUMN>"
+              example: "<other_column>"
 
         - name: business_rule
           description: >-
-            Column-level data quality test. Fails on rows where the boolean expression is not true. The
-            expression is pasted into a WHERE NOT (...) against the target table. Repeatable. Runs
-            𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on
-            failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
+            Column-level data quality test.
+            Runs a custom SQL boolean expression against every row and fails whichever ones don't
+            satisfy it.
+            The expression is pasted verbatim into a WHERE NOT (...) clause against
+            the target table.
+            Repeat the annotation to add multiple independent rules.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: expression
               type: string
               isRequired: true
-              example: "LENGTH(C_PHONE) = 15"
+              example: "TOTAL_AMOUNT = QUANTITY * UNIT_PRICE"
+
             - name: label
               type: string
+              isRequired: false
               description: Stage name for this rule. Defaults to business_rule.
-              example: "<phone is fully qualified>"
+              example: "<total amount test>"
 
         - name: business_query
           description: >-
-            Column-level data quality test. A complete query, run as written, that returns rows only when the
-            check fails. Repeatable. Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either
-            halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
+            Column-level data quality test.
+            Runs a complete SQL query, pasted into the SQL verbatim — write it to select only the rows that fail check.
+            Repeat the annotation to add multiple independent checks.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: query
               type: string
               isRequired: true
-              example: "SELECT 1 FROM {{ this }} WHERE FALSE"
+              example: "SELECT ORDER_ID FROM {{ this }} GROUP BY ORDER_ID HAVING COUNT(*) > 1"
+
             - name: label
               type: string
+              isRequired: false
               description: Stage name for this query. Defaults to business_query.
-              example: "<what this proves>"
+              example: "<duplicate order ID test>"
 
         - name: relationship
           description: >-
-            Column-level data quality test. Referential integrity — fails on rows whose non-NULL value has no
-            match in the parent column, e.g. @relationship("SRC", "CUSTOMER", "C_CUSTKEY").
-            Repeatable. Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or
-            continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
+            Column-level data quality test.
+            Referential integrity — fails on rows whose 𝗻𝗼𝗻-𝗡𝗨𝗟𝗟 value has no
+            match in the parent column.
+            E.g. @relationship("SRC", "CUSTOMER", "C_CUSTKEY").
+            Repeat the annotation to add multiple independent checks.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: location
               type: string
+              description: >-
+                Name of the Storage Location the parent node lives in, as shown under
+                Annotations > General > Storage Location in the node editor (e.g. SRC, TARGET).
               isRequired: true
-              example: "<STORAGE_LOCATION>"
+              example: "<storage_loc>"
+  
             - name: node
               type: string
+              description: Name of the parent node/table to check against, within the given 𝗹𝗼𝗰𝗮𝘁𝗶𝗼𝗻.
               isRequired: true
-              example: "<PARENT_NODE>"
+              example: "<parent_node>"
+
             - name: column
               type: string
+              description: Name of the column in the parent 𝗻𝗼𝗱𝗲 that this column's value must match.
               isRequired: true
-              example: "<PARENT_COLUMN>"
+              example: "<parent_column>"
 name: SQL Work
 type: NodeType

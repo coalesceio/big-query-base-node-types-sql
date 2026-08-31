@@ -93,7 +93,7 @@ macroString: |-
                         OR MAX(CAST({{ colName }} AS DATETIME)) < DATETIME_SUB(CURRENT_DATETIME(), INTERVAL {{ col.freshness.parameters[0] }} {{ col.freshness.parameters[1] | default('DAY', true) }})
                 {%- endif -%}
                 {%- if col.relative_time is defined and col.relative_time.parameters is defined -%}
-                    {%- set other = '"' + col.relative_time.parameters[1] + '"' -%}
+                    {%- set other = '`' + col.relative_time.parameters[1] + '`' -%}
                     {{ test_stage(col.name + ': relative_time', columnContinueOnFailure) }}
                     SELECT {{ colName }}, {{ other }}
                     FROM {{ target }}
@@ -111,14 +111,14 @@ macroString: |-
                     {{ query.parameters[0] }}
                 {%- endfor -%}
                 {%- for rel in relationships -%}
-                    {%- set parent_column = '"' + rel.parameters[2] + '"' -%}
-                    {{ test_stage(col.name + ': relationship ' + rel.parameters[0] + '.' + rel.parameters[1] + '.' + rel.parameters[2], columnContinueOnFailure) }}
-                    SELECT "CHILD".{{ colName }}
-                    FROM {{ target }} "CHILD"
-                    LEFT JOIN {{ ref_no_link(rel.parameters[0], rel.parameters[1]) }} "PARENT"
-                        ON "CHILD".{{ colName }} = "PARENT".{{ parent_column }}
-                    WHERE "CHILD".{{ colName }} IS NOT NULL
-                    AND "PARENT".{{ parent_column }} IS NULL
+                    {%- set parent_column = '`' + rel.parameters[2] + '`' -%}
+                    {{ test_stage(col.name + ': relationship - ' + rel.parameters[0] + '.' + rel.parameters[1] + '.' + rel.parameters[2], columnContinueOnFailure) }}
+                    SELECT `CHILD`.{{ colName }}
+                    FROM {{ target }} `CHILD`
+                    LEFT JOIN {{ ref_no_link(rel.parameters[0], rel.parameters[1]) }} `PARENT`
+                        ON `CHILD`.{{ colName }} = `PARENT`.{{ parent_column }}
+                    WHERE `CHILD`.{{ colName }} IS NOT NULL
+                    AND `PARENT`.{{ parent_column }} IS NULL
                 {%- endfor -%}
             {%- endfor -%}
         {%- endif -%}
