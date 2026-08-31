@@ -332,7 +332,7 @@ metadata:
                 Annotations > General > Storage Location in the node editor (e.g. SRC, TARGET).
               isRequired: true
               example: "<storage_loc>"
-  
+
             - name: node
               type: string
               description: Name of the parent node/table to check against, within the given 𝗹𝗼𝗰𝗮𝘁𝗶𝗼𝗻.

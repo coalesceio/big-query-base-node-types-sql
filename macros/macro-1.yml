@@ -171,7 +171,7 @@ macroString: |-
       {%- if transform != '' -%}
           {%- if col.sourceColumns
                   and col.sourceColumns[0].node
-                  and transform | replace('"', '')
+                  and transform | replace('`', '')
                       == col.sourceColumns[0].column.name -%}
 
               `{{ col.sourceColumns[0].node.name }}`.`{{ col.sourceColumns[0].column.name }}`
