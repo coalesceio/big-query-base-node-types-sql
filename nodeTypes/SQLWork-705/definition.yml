@@ -16,7 +16,12 @@ metadata:
         node:
 
         - name: writeMode
-          description: Controls how data is written to the target table. If not specified in the SQL, defaults to 𝘁𝗿𝘂𝗻𝗰𝗮𝘁𝗲𝗜𝗻𝘀𝗲𝗿𝘁. 𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          description: >-
+            Controls how data is written to the target table. 
+            𝘁𝗿𝘂𝗻𝗰𝗮𝘁𝗲𝗜𝗻𝘀𝗲𝗿𝘁 clears the table before loading, replacing its contents entirely;
+            𝗮𝗽𝗽𝗲𝗻𝗱 inserts the new rows alongside whatever is already there.
+            If not specified in the SQL, defaults to 𝘁𝗿𝘂𝗻𝗰𝗮𝘁𝗲𝗜𝗻𝘀𝗲𝗿𝘁. 
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
           isRequired: false
           parameters:
             - name: mode
@@ -31,12 +36,18 @@ metadata:
 
         - name: disableTests
           type: boolean
-          description: Controls whether configured tests are skipped.
+          description: >-
+            Controls whether configured tests are skipped.
+            Useful while developing a node — skip node-level and column-level tests without deleting them, so you can iterate on the SQL first and turn tests back on once the logic is settled.
           isRequired: false
           default: false
 
         - name: tests
-          description: The test fails if the query returns any records. Applicable only when 𝘁𝗲𝘀𝘁𝘀𝗘𝗻𝗮𝗯𝗹𝗲𝗱 is enabled.
+          description: >-
+            Node-level data quality test.
+            Runs the given 𝗾𝘂𝗲𝗿𝘆𝗦𝗤𝗟 against the target and fails the test if it returns any records — write the query so it selects only the rows that violate your condition.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗿𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
+            Skipped entirely when 𝗱𝗶𝘀𝗮𝗯𝗹𝗲𝗧𝗲𝘀𝘁𝘀 is set.
           allowsMultiple: true
           parameters:
             - name: querySQL
@@ -65,7 +76,10 @@ metadata:
                 - After
 
         - name: columnRunOrder
-          description: Determines whether the column test is executed before or after the load operation. When not specified in editor default to 𝗔𝗳𝘁𝗲𝗿. Applicable only when 𝘁𝗲𝘀𝘁𝘀𝗘𝗻𝗮𝗯𝗹𝗲𝗱 is enabled.
+          description: >-
+            Determines whether column-level tests (𝘂𝗻𝗶𝗾𝘂𝗲, 𝗻𝗼𝘁_𝗻𝘂𝗹𝗹, 𝗲𝗺𝗽𝘁𝘆, 𝗮𝗰𝗰𝗲𝗽𝘁𝗲𝗱_𝘃𝗮𝗹𝘂𝗲𝘀, etc.) run 𝗕𝗲𝗳𝗼𝗿𝗲 the load — checking existing/source data before it lands in the target — or 𝗔𝗳𝘁𝗲𝗿 the load, validating the freshly written rows.
+            Applies node-wide to every column test on this node;
+            When not specified in the SQL, defaults to 𝗔𝗳𝘁𝗲𝗿.
           parameters:
             - name: runOrder
               type: string
@@ -78,14 +92,21 @@ metadata:
                 - After
 
         - name: columnContinueOnFailure
-          description: Carry on with the remaining stages when a column test returns rows. On unless you write @continueOnFailure(false).
+          description: >-
+            Determines whether the run carries on with the remaining stages when a column test returns rows, or halts the run right there.
+            Applies node-wide to every column test on this node;
+            On (continues) unless you write @columnContinueOnFailure(false).
           parameters:
             - name: isEnabled
               type: boolean
               default: true
+              example: false
 
         - name: preSQL
-          description: SQL statement to execute before data load operation. 𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          description: >-
+            SQL statement to execute before the data load operation — e.g. staging setup, dropping temp tables, or capturing pre-load state.
+            Repeat the annotation to run multiple statements in the order they appear.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
           allowsMultiple: true
           parameters:
           - name: querySQL
@@ -95,7 +116,10 @@ metadata:
             example: 'SELECT 1'
 
         - name: postSQL
-          description: SQL statement to execute after data load operation. 𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          description: >-
+            SQL statement to execute after the data load operation — e.g. updating dependent tables, cleaning up temp objects, or logging load completion.
+            Repeat the annotation to run multiple statements in the order they appear.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
           allowsMultiple: true
           parameters:
           - name: querySQL
@@ -107,60 +131,78 @@ metadata:
         column:
 
         - name: inHash
-          description: Marks columns for hash key generation. Use the 𝐠𝐞𝐭_𝐡𝐚𝐬𝐡() macro to generate the hash column from the marked columns. 𝗦𝗲𝗲 𝗱𝗼𝗰𝘂𝗺𝗲𝗻𝘁𝗮𝘁𝗶𝗼𝗻 𝗳𝗼𝗿 𝗱𝗲𝘁𝗮𝗶𝗹𝘀.
+          description: >-
+            Marks a column as an input to a generated hash key, grouped by 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲 and ordered within that group by 𝗵𝗮𝘀𝗵𝗢𝗿𝗱𝗲𝗿.
+            Mark every column that should feed a given hash with the same 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲, then call the 𝐠𝐞𝐭_𝐡𝐚𝐬𝐡("<hashName>") macro elsewhere in the SELECT to produce the actual hash column from those marked columns.
+            𝗦𝗲𝗲 𝗱𝗼𝗰𝘂𝗺𝗲𝗻𝘁𝗮𝘁𝗶𝗼𝗻 𝗳𝗼𝗿 𝗱𝗲𝘁𝗮𝗶𝗹𝘀.
           allowsMultiple: true
           parameters:
             - name: hashName
               isRequired: true
               type: string
-              description: Common name assigned to the generated hash.
+              description: Group hash name shared by every column feeding the same hash.
               example: GH_COL
 
             - name: hashOrder
               isRequired: true
               type: number
-              description: Order of columns used to calculate the hash.
+              description: Position of this column within its hash group, lowest first.
               example: 1
 
         - name: not_null
           description: >-
-            Fails on rows where the column is NULL. Presence enables the test — remove the annotation
-            to turn it off.
+            Column-level data quality test.
+            Fails on rows where the column is NULL.
+            Presence enables the test — remove the annotation to turn it off.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and  either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
 
         - name: unique
-          description: Fails when a value appears on more than one row.
+          description: >- 
+            Column-level data quality test.
+            Fails when a value appears on more than one row.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
 
         - name: empty
           description: >-
-            Fails on rows where the column trims to the empty string. NULLs are the not_null test's
-            business, not this one's.
+            Column-level data quality test.
+            Fails on rows where the column trims to the empty string;
+            NULL values pass this test and are instead caught by not_null.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
 
         - name: accepted_values
           description: >-
-            Fails on rows whose value is outside the allow list. Repeat the annotation once per
-            permitted value. Values are compared as strings.
+            Column-level data quality test.
+            Fails on rows whose value is outside the allow list.
+            Repeat the annotation once per permitted value.
+            Each value is pasted into the SQL verbatim, so quote it to match the column's data
+            type — a number as accepted_values("<num>"), a string as accepted_values("'<string>'").
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: value
               type: string
               isRequired: true
-              example: "<value>"
 
         - name: rejected_values
           description: >-
-            Fails on rows whose value is in the deny list. Repeat the annotation once per forbidden
-            value. Values are compared as strings.
+            Column-level data quality test.
+            Fails on rows whose value is in the deny list.
+            Repeat the annotation once per forbidden value. Each value is pasted into the SQL verbatim, so quote it to match the column's data type — a number as rejected_values("<num>"), a string as
+            rejected_values("'<string>'").
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: value
               type: string
               isRequired: true
-              example: "<value>"
+              example: "'<string>'"
 
         - name: min_max
           description: >-
-            Fails on rows outside the inclusive range. Both bounds are pasted into the SQL verbatim,
-            so write a number as "0" and a date as "DATE '2026-01-01'".
+            Column-level data quality test.
+            Fails on rows outside the inclusive range.
+            Both bounds are pasted into the SQL verbatim, so write a number as "0" and a date as "DATE '2026-01-01'".
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           parameters:
             - name: min
               type: string
@@ -173,7 +215,10 @@ metadata:
 
         - name: min_value
           description: >-
-            Fails on rows below the bound. Pasted into the SQL verbatim — see min_max.
+            Column-level data quality test.
+            Fails on rows below the bound.
+            Pasted into the SQL verbatim — see min_max.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           parameters:
             - name: min
               type: string
@@ -182,7 +227,10 @@ metadata:
 
         - name: max_value
           description: >-
-            Fails on rows above the bound. Pasted into the SQL verbatim — see min_max.
+            Column-level data quality test.
+            Fails on rows above the bound.
+            Pasted into the SQL verbatim — see min_max.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           parameters:
             - name: max
               type: string
@@ -191,13 +239,16 @@ metadata:
 
         - name: freshness
           description: >-
-            Fails when the newest value in the column is older than the given age, or when the table
-            is empty. For load timestamps and other date/time columns.
+            Column-level data quality test.
+            Checks that the data is fresh — fails when the column's value is older than the given interval, or when the table has no rows at all.
+            𝗡𝗼𝘁𝗲: on a DATE column the value is truncated to midnight.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           parameters:
             - name: interval
               type: number
               isRequired: true
               example: 1
+
             - name: unit
               type: string
               options: [SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, YEAR]
@@ -205,8 +256,10 @@ metadata:
 
         - name: relative_time
           description: >-
-            Fails on rows where this column does not hold the given relationship to another column of
-            the same node, e.g. @relative_time("<=", "END_DATE"). Rows where either side is NULL pass.
+            Column-level data quality test.
+            Fails on rows where this column does not hold the given relationship to another column of the same node, e.g. @relative_time("<=", "END_DATE").
+            Rows where either side is NULL pass.
+            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           parameters:
             - name: operator
               type: string
@@ -219,8 +272,10 @@ metadata:
 
         - name: business_rule
           description: >-
-            Fails on rows where the boolean expression is not true. The expression is pasted into a
-            WHERE NOT (...) against the target table. Repeatable.
+            Column-level data quality test. Fails on rows where the boolean expression is not true. The
+            expression is pasted into a WHERE NOT (...) against the target table. Repeatable. Runs
+            𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on
+            failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: expression
@@ -234,7 +289,9 @@ metadata:
 
         - name: business_query
           description: >-
-            A complete query, run as written, that returns rows only when the check fails. Repeatable.
+            Column-level data quality test. A complete query, run as written, that returns rows only when the
+            check fails. Repeatable. Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either
+            halts or continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: query
@@ -248,8 +305,10 @@ metadata:
 
         - name: relationship
           description: >-
-            Referential integrity. Fails on rows whose non-NULL value has no match in the parent
-            column, e.g. @relationship("SRC", "CUSTOMER", "C_CUSTKEY"). Repeatable.
+            Column-level data quality test. Referential integrity — fails on rows whose non-NULL value has no
+            match in the parent column, e.g. @relationship("SRC", "CUSTOMER", "C_CUSTKEY").
+            Repeatable. Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗰𝗼𝗹𝘂𝗺𝗻𝗥𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or
+            continues the run on failure per 𝗰𝗼𝗹𝘂𝗺𝗻𝗖𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
           allowsMultiple: true
           parameters:
             - name: location

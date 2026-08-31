@@ -87,10 +87,10 @@ macroString: |-
                 {%- endif -%}
                 {%- if col.freshness is defined and col.freshness.parameters is defined -%}
                     {{ test_stage(col.name + ': freshness', columnContinueOnFailure) }}
-                    SELECT MAX({{ colName }}) AS "LATEST_VALUE"
+                    SELECT MAX(CAST({{ colName }} AS DATETIME)) AS `LATEST_VALUE`
                     FROM {{ target }}
-                    HAVING MAX({{ colName }}) IS NULL
-                        OR MAX({{ colName }}) < DATEADD({{ col.freshness.parameters[1] | default('DAY', true) }}, -{{ col.freshness.parameters[0] }}, CURRENT_TIMESTAMP())
+                    HAVING MAX(CAST({{ colName }} AS DATETIME)) IS NULL
+                        OR MAX(CAST({{ colName }} AS DATETIME)) < DATETIME_SUB(CURRENT_DATETIME(), INTERVAL {{ col.freshness.parameters[0] }} {{ col.freshness.parameters[1] | default('DAY', true) }})
                 {%- endif -%}
                 {%- if col.relative_time is defined and col.relative_time.parameters is defined -%}
                     {%- set other = '"' + col.relative_time.parameters[1] + '"' -%}
