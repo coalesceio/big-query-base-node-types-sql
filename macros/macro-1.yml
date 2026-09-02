@@ -153,11 +153,6 @@ macroString: |-
           {%- set algo_start = algo_upper + '(' -%}
           {%- set algo_end = ')' -%}
 
-          {%- if algo_upper == 'SHA256' -%}
-              {%- set algo_start = 'SHA2(' -%}
-              {%- set algo_end = ', 256)' -%}
-          {%- endif -%}
-
           TO_HEX(
               {{ algo_start }}
                   {%- for c in sorted_cols -%}

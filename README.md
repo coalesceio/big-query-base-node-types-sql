@@ -132,8 +132,10 @@ The Work Node type has three configuration groups:
     Using explicit expression:
     ```sql
     CAST(
-      SHA1(
-        NVL(CAST(<col_name> AS STRING), 'null')
+      TO_HEX(
+        SHA1(
+          IFNULL(CAST(<col_name> AS STRING), 'null')
+        )
       ) AS STRING
     ) AS `GH_Key`
     ```
