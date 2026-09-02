@@ -47,7 +47,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     )
     {{ sources[0].cteString }}
     (
-        SELECT {{ sources[0].selectModifier | default('') }}
+        SELECT {{ sources[0].selectModifier | default('', true) }}
         {%- for col in sources[0].columns %}
             {{ get_source_transform(col) }} AS `{{ col.name }}`
             {%- if not loop.last -%}, {%- endif %}
