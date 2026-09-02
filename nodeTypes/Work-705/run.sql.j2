@@ -31,7 +31,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {%- endif %}
 
 	{# == Truncate data before data insertion  == #}
-    {%- if writeMode != 'append' %}
+    {%- if writeMode | lower != 'append' %}
         {{ stage('Truncate ' + node.materializationType) }}
         TRUNCATE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- endif %}
