@@ -98,44 +98,44 @@ The Work Node type has three configuration groups:
     Using hash macro(default-SHA1)
     ```sql
     <col_name> AS <col_name> @inHash("GH_COL", 1),
-    {{ get_hash('GH_COL') }}::STRING AS `GH_COL`
+    CAST({{ get_hash('GH_COL') }} AS STRING) AS `GH_COL`
     ```
     Using hash macro(MD5)
     ```sql
     <col_name> AS <col_name> @inHash("GH_COL", 1),
-    {{ get_hash('GH_COL', 'MD5') }}::STRING AS `GH_COL`
+    CAST({{ get_hash('GH_COL', 'MD5') }} AS STRING) AS `GH_COL`
     ```
     Using hash macro(SHA256)
     ```sql
     <col_name> AS <col_name> @inHash("GH_COL", 1),
-    {{ get_hash('GH_COL', 'SHA256') }}::STRING AS `GH_COL`
+    CAST({{ get_hash('GH_COL', 'SHA256') }} AS STRING) AS `GH_COL`
     ```
     Using hash macro(algo=SHA256, delimeter='~' )
     ```sql
     <col_name> AS <col_name> @inHash("GH_COL", 1),
-    {{ get_hash('GH_COL', algo='SHA256', delimiter='~') }}::STRING AS `GH_COL`
+    CAST({{ get_hash('GH_COL', algo='SHA256', delimiter='~') }} AS STRING) AS `GH_COL`
     ```
     Using multiple keys hash macro
     ```sql
     <col_name1> AS <col_name1> @inHash("GH_COL", 1),
     <col_name2> AS <col_name2> @inHash("GH_COL", 2),
-    {{ get_hash('GH_COL') }}::STRING AS `GH_COL_COMBINED`
+    CAST({{ get_hash('GH_COL') }} AS STRING) AS `GH_COL_COMBINED`
     ```
     Using multiple hash macros
     ```sql
     <col_name1> AS <col_name1> @inHash("GH_COL1", 1, "GH_COL2", 2),
     <col_name2> AS <col_name2> @inHash("GH_COL1", 2),
     <col_name3> AS <col_name3> @inHash("GH_COL2", 1),
-    {{ get_hash('GH_COL1') }}::STRING AS `GH_COL_COMBINED1`,
-    {{ get_hash('GH_COL2', delimiter='~') }}::STRING AS `GH_COL_COMBINED2`
+    CAST({{ get_hash('GH_COL1') }} AS STRING) AS `GH_COL_COMBINED1`,
+    CAST({{ get_hash('GH_COL2', delimiter='~') }} AS STRING) AS `GH_COL_COMBINED2`
     ```
     Using explicit expression:
     ```sql
     CAST(
       SHA1(
-        NVL(CAST(<col_name> AS VARCHAR), 'null')
+        NVL(CAST(<col_name> AS STRING), 'null')
       ) AS STRING
-    )::STRING AS `GH_Key`
+    ) AS `GH_Key`
     ```
 
 - **²** Node level tests are performed only when `disableTests` is OFF
@@ -303,7 +303,7 @@ WITH RECURSIVE RCTE_FINAL AS (
 
 SELECT
     `LEVEL`          AS `LEVEL`,
-    `TITLE`::VARCHAR AS `TITLE`
+    CAST(`TITLE` AS STRING) AS `TITLE`
 FROM RCTE_FINAL
 ```
 **Using CTE for multisource combine**
