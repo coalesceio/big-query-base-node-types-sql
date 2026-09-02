@@ -4,7 +4,7 @@ This script and its associated documentation are confidential and proprietary to
 Unauthorized reproduction, distribution, or disclosure of this material is strictly prohibited.
 Coalesce permits you to copy and modify this script for the purposes of using with Coalesce but does not permit copying or modification for any other purpose.  
 #}
-{# == Node Type Name           : SQL Work  == #}
+{# == Node Type Name           : Work  == #}
 {# == Node Type Description    : Loads the table with custom SQL logic  == #}
 {#---------------------------------------------------------------------------------------------#}
 
@@ -31,7 +31,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {%- endif %}
 
 	{# == Truncate data before data insertion  == #}
-    {%- if writeMode == "truncateInsert" %}
+    {%- if writeMode != 'append' %}
         {{ stage('Truncate ' + node.materializationType) }}
         TRUNCATE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- endif %}
@@ -49,7 +49,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     (
         SELECT
         {%- for col in sources[0].columns %}
-            {{ get_source_transform_v2(col) }} AS `{{ col.name }}`
+            {{ get_source_transform(col) }} AS `{{ col.name }}`
             {%- if not loop.last -%}, {%- endif %}
         {%- endfor %}
         {{ sources[0].join }}

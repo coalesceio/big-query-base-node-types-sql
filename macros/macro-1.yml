@@ -16,23 +16,14 @@ macroString: |-
   ========================================================================= #}
   {%- macro run_tests(runOrder) -%}
 
-    {%- if config.columnRunOrder is defined
-        and config.columnRunOrder.parameters is defined
-        and config.columnRunOrder.parameters | length > 0 -%}
-        {%- set columnRunOrder = config.columnRunOrder.parameters[0] -%}
-    {%- endif -%}
-
-    {%- set columnContinueOnFailure = false if get_boolean_config("columnContinueOnFailure") == "false" else true -%}
+    {%- set columnContinueOnFailure = true -%}
 
     {%- if get_boolean_config("disableTests") != "true" -%}
-        {%- if runOrder == columnRunOrder | default("After") -%}
+        {%- if runOrder == "After" -%}
             {%- for col in columns -%}
                 {%- set colName = '`' + col.name + '`' -%}
                 {%- set accepted = col.accepted_values if (col.accepted_values is sequence and col.accepted_values is not mapping) else [] -%}
                 {%- set rejected = col.rejected_values if (col.rejected_values is sequence and col.rejected_values is not mapping) else [] -%}
-                {%- set rules = col.business_rule if (col.business_rule is sequence and col.business_rule is not mapping) else [] -%}
-                {%- set queries = col.business_query if (col.business_query is sequence and col.business_query is not mapping) else [] -%}
-                {%- set relationships = col.relationship if (col.relationship is sequence and col.relationship is not mapping) else [] -%}
                 {%- set target = ref(node.location.name, node.name) -%}
                 {%- if col.not_null is defined -%}
                     {{ test_stage(col.name + ': not_null', columnContinueOnFailure) }}
@@ -40,8 +31,8 @@ macroString: |-
                     FROM {{ target }}
                     WHERE {{ colName }} IS NULL
                 {%- endif -%}
-                {%- if col.unique is defined -%}
-                    {{ test_stage(col.name + ': unique', columnContinueOnFailure) }}
+                {%- if col.uniqueness is defined -%}
+                    {{ test_stage(col.name + ': uniqueness', columnContinueOnFailure) }}
                     SELECT {{ colName }}
                     FROM {{ target }}
                     GROUP BY {{ colName }}
@@ -100,26 +91,6 @@ macroString: |-
                     WHERE {{ colName }} IS NOT NULL AND {{ other }} IS NOT NULL
                     AND NOT ({{ colName }} {{ col.relative_time.parameters[0] }} {{ other }})
                 {%- endif -%}
-                {%- for rule in rules -%}
-                    {{ test_stage(col.name + ': ' + (rule.parameters[1] | default('business_rule', true)), columnContinueOnFailure) }}
-                    SELECT *
-                    FROM {{ target }}
-                    WHERE NOT ({{ rule.parameters[0] }})
-                {%- endfor -%}
-                {%- for query in queries -%}
-                    {{ test_stage(col.name + ': ' + (query.parameters[1] | default('business_query', true)), columnContinueOnFailure) }}
-                    {{ query.parameters[0] }}
-                {%- endfor -%}
-                {%- for rel in relationships -%}
-                    {%- set parent_column = '`' + rel.parameters[2] + '`' -%}
-                    {{ test_stage(col.name + ': relationship - ' + rel.parameters[0] + '.' + rel.parameters[1] + '.' + rel.parameters[2], columnContinueOnFailure) }}
-                    SELECT `CHILD`.{{ colName }}
-                    FROM {{ target }} `CHILD`
-                    LEFT JOIN {{ ref_no_link(rel.parameters[0], rel.parameters[1]) }} `PARENT`
-                        ON `CHILD`.{{ colName }} = `PARENT`.{{ parent_column }}
-                    WHERE `CHILD`.{{ colName }} IS NOT NULL
-                    AND `PARENT`.{{ parent_column }} IS NULL
-                {%- endfor -%}
             {%- endfor -%}
         {%- endif -%}
 
@@ -136,50 +107,7 @@ macroString: |-
                   {%- endif -%}
               {%- endif -%}
           {%- endfor -%}
-      {%- endif -%}
-  {%- endmacro -%}
 
-  {# ========================================================================
-  Purpose:
-      Returns the SQL expression to be used for a column transformation.
-
-  Input:
-      col
-          - transform: Column transform expression.
-          - sourceColumns[0].node.name: Source table name.
-          - sourceColumns[0].column.name: Source column name.
-
-  Logic:
-      1. If transform is not empty and matches the source column name
-          (ignoring double quotes), return a fully qualified source
-          column reference:
-              "SOURCE_TABLE"."SOURCE_COLUMN"
-
-      2. If transform is not empty and does not match the source column
-          name, return the transform expression as-is.
-
-      3. If transform is empty, return NULL.
-
-  Examples:
-      transform = '"N_NAME"'      -> "NATION_TEST"."N_NAME"
-      transform = 'N_NAME'        -> "NATION_TEST"."N_NAME"
-      transform = 'UPPER(N_NAME)' -> UPPER(N_NAME)
-      transform = ''              -> NULL
-  ========================================================================#}
-  {%- macro get_source_transform_v2(col) -%}
-      {%- set transform = col.transform | trim -%}
-      {%- if transform != '' -%}
-          {%- if col.sourceColumns
-                  and col.sourceColumns[0].node
-                  and transform | replace('`', '')
-                      == col.sourceColumns[0].column.name -%}
-
-              `{{ col.sourceColumns[0].node.name }}`.`{{ col.sourceColumns[0].column.name }}`
-          {%- else -%}
-              {{ transform }}
-          {%- endif -%}
-      {%- else -%}
-          NULL
       {%- endif -%}
   {%- endmacro -%}
 
@@ -210,7 +138,7 @@ macroString: |-
                   {%- if hash == hash_name -%}
                       {%- set cols.items = cols.items + [{
                           "position": position,
-                          "column": get_source_transform_v2(col)
+                          "column": get_source_transform(col)
                       }] -%}
                   {%- endif -%}
               {%- endfor -%}
