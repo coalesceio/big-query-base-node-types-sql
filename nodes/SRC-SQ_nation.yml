@@ -1,0 +1,101 @@
+fileVersion: 1
+id: 72919ccd-b63a-4856-aaef-ad843950e68e
+name: SQ_nation
+operation:
+  database: ""
+  deployEnabled: true
+  description: ""
+  locationName: SRC
+  metadata:
+    columns:
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 0713a583-ae8a-4819-b1ef-529d501047ce
+          stepCounter: 72919ccd-b63a-4856-aaef-ad843950e68e
+        config: {}
+        dataType: INT64
+        defaultValue: ""
+        description: ""
+        name: N_NATIONKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: b6a95ca3-1111-48f4-a550-75eb79395d23
+          stepCounter: 72919ccd-b63a-4856-aaef-ad843950e68e
+        config: {}
+        dataType: STRING
+        defaultValue: ""
+        description: ""
+        name: N_NAME
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 9bf08411-7813-46d9-b665-9baa4f5b8385
+          stepCounter: 72919ccd-b63a-4856-aaef-ad843950e68e
+        config: {}
+        dataType: INT64
+        defaultValue: ""
+        description: ""
+        name: N_REGIONKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 027b0aa1-f79a-4845-b61b-6b91a4f324c2
+          stepCounter: 72919ccd-b63a-4856-aaef-ad843950e68e
+        config: {}
+        dataType: STRING
+        defaultValue: ""
+        description: ""
+        name: N_COMMENT
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 4317a160-d014-4292-96c1-3fc732d672ad
+          stepCounter: 72919ccd-b63a-4856-aaef-ad843950e68e
+        config: {}
+        dataType: TIMESTAMP
+        defaultValue: ""
+        description: ""
+        name: last_modified
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+  name: SQ_nation
+  schema: ""
+  sqlType: Source
+  type: sourceInput
+  version: 1
+type: Node

@@ -1,0 +1,67 @@
+fileVersion: 1
+id: 34ab5001-52bf-4262-9e07-9fb616ff6b60
+name: orders_example
+operation:
+  database: ""
+  deployEnabled: true
+  description: ""
+  locationName: SRC
+  metadata:
+    columns:
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 98ce33df-68bd-4d0d-980b-a237051c2a9c
+          stepCounter: 34ab5001-52bf-4262-9e07-9fb616ff6b60
+        config: {}
+        dataType: INT64
+        defaultValue: ""
+        description: ""
+        name: order_id
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 91058165-e75d-46c4-a9ab-8e11c521cc4a
+          stepCounter: 34ab5001-52bf-4262-9e07-9fb616ff6b60
+        config: {}
+        dataType: STRING
+        defaultValue: ""
+        description: ""
+        name: customer_name
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: e67dc2e1-f6b2-4234-9d1d-27747ea8c2e8
+          stepCounter: 34ab5001-52bf-4262-9e07-9fb616ff6b60
+        config: {}
+        dataType: ARRAY<STRUCT<PRODUCT_ID INT64, PRODUCT_NAME STRING, QUANTITY INT64, PRICE FLOAT64>>
+        defaultValue: ""
+        description: ""
+        name: line_items
+        nullable: false
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+  name: orders_example
+  schema: ""
+  sqlType: Source
+  type: sourceInput
+  version: 1
+type: Node

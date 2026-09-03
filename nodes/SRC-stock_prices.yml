@@ -1,0 +1,67 @@
+fileVersion: 1
+id: 15e93b0e-32a8-48b0-8b9b-5c5804ac56d6
+name: stock_prices
+operation:
+  database: ""
+  deployEnabled: true
+  description: ""
+  locationName: SRC
+  metadata:
+    columns:
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 6ab69ef3-c063-489d-bf3c-df0b863d5293
+          stepCounter: 15e93b0e-32a8-48b0-8b9b-5c5804ac56d6
+        config: {}
+        dataType: STRING
+        defaultValue: ""
+        description: ""
+        name: symbol
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 78db3ea7-4a19-4c5c-8dce-b70beb37b472
+          stepCounter: 15e93b0e-32a8-48b0-8b9b-5c5804ac56d6
+        config: {}
+        dataType: TIMESTAMP
+        defaultValue: ""
+        description: ""
+        name: trade_time
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 5bf9fac7-144e-4d42-8422-af0f1e107a30
+          stepCounter: 15e93b0e-32a8-48b0-8b9b-5c5804ac56d6
+        config: {}
+        dataType: FLOAT64
+        defaultValue: ""
+        description: ""
+        name: price
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+  name: stock_prices
+  schema: ""
+  sqlType: Source
+  type: sourceInput
+  version: 1
+type: Node

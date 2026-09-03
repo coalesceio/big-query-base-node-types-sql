@@ -1,0 +1,67 @@
+fileVersion: 1
+id: e98fe7df-182c-4a76-97b7-61f2928b1c34
+name: JSONSAMPLE
+operation:
+  database: ""
+  deployEnabled: true
+  description: ""
+  locationName: SRC
+  metadata:
+    columns:
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 4f66695d-ea36-470a-b029-07eaddf6f023
+          stepCounter: e98fe7df-182c-4a76-97b7-61f2928b1c34
+        config: {}
+        dataType: INT64
+        defaultValue: ""
+        description: ""
+        name: employee_id
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: 6aee9687-30c8-4c83-80ac-cce7d91477c8
+          stepCounter: e98fe7df-182c-4a76-97b7-61f2928b1c34
+        config: {}
+        dataType: STRING
+        defaultValue: ""
+        description: ""
+        name: employee_name
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+      - acceptedValues:
+          strictMatch: true
+          values: []
+        appliedColumnTests: {}
+        columnReference:
+          columnCounter: e62d8f3a-353b-47d9-a349-f33815fb3f6a
+          stepCounter: e98fe7df-182c-4a76-97b7-61f2928b1c34
+        config: {}
+        dataType: JSON
+        defaultValue: ""
+        description: ""
+        name: details
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences: []
+            transform: ""
+        transform: ""
+  name: JSONSAMPLE
+  schema: ""
+  sqlType: Source
+  type: sourceInput
+  version: 1
+type: Node
