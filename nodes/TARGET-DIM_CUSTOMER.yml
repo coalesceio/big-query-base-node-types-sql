@@ -10,15 +10,18 @@ operation:
     truncateBefore: false
   database: ""
   deployEnabled: true
-  description: "Customer dimension, SCD Type 1 keyed on CUSTOMER_KEY"
+  description: Customer dimension, SCD Type 1 keyed on CUSTOMER_KEY
   isMultisource: false
   locationName: TARGET
   materializationType: table
   metadata:
+    appliedNodeTests: []
     columns:
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 3149bc12-ea53-4052-9e0c-5468c701b613
           stepCounter: f461eaea-2fd5-4ecd-ba1d-fa4cf62dd15e
+        config: {}
         dataType: INT64
         description: "Business key: unique customer identifier"
         isBusinessKey: true
@@ -29,11 +32,13 @@ operation:
               - columnCounter: 88630da3-b527-454f-be5b-3a5e16957214
                 stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 43aa9e45-516d-4142-b3e9-3f8fe9046e40
           stepCounter: f461eaea-2fd5-4ecd-ba1d-fa4cf62dd15e
+        config: {}
         dataType: STRING
-        description: "Customer name"
+        description: Customer name
         name: CUSTOMER_NAME
         nullable: true
         sourceColumnReferences:
@@ -41,11 +46,13 @@ operation:
               - columnCounter: 4ec915d9-8aac-4fd7-82e9-7b0fcdb78b1f
                 stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: f01e2e9a-e59c-42a0-89f5-4ff78a12c8ca
           stepCounter: f461eaea-2fd5-4ecd-ba1d-fa4cf62dd15e
+        config: {}
         dataType: INT64
-        description: "Foreign key to the customer's nation"
+        description: Foreign key to the customer's nation
         name: NATION_KEY
         nullable: true
         sourceColumnReferences:
@@ -53,11 +60,13 @@ operation:
               - columnCounter: ef1e8f68-7cb4-4df7-8472-b966c488e2ed
                 stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: d0bfe174-4698-4791-ac21-c19a35b6e42c
           stepCounter: f461eaea-2fd5-4ecd-ba1d-fa4cf62dd15e
+        config: {}
         dataType: FLOAT64
-        description: "Customer account balance"
+        description: Customer account balance
         name: ACCT_BAL
         nullable: true
         sourceColumnReferences:
@@ -65,11 +74,13 @@ operation:
               - columnCounter: 3ea8a060-747e-4854-9770-a0aaf763e4cc
                 stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: adc0a7a0-2810-43a0-bc5e-82cea9c328c1
           stepCounter: f461eaea-2fd5-4ecd-ba1d-fa4cf62dd15e
+        config: {}
         dataType: STRING
-        description: "Market segment"
+        description: Market segment
         name: MKT_SEGMENT
         nullable: true
         sourceColumnReferences:

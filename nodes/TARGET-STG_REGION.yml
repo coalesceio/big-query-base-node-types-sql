@@ -15,10 +15,13 @@ operation:
   locationName: TARGET
   materializationType: table
   metadata:
+    appliedNodeTests: []
     columns:
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 8ff4352a-1b00-4f25-ab73-bb3fcb307093
           stepCounter: 1bec140a-f0d4-401a-91ea-13065cf55a3d
+        config: {}
         dataType: INT64
         description: ""
         name: R_REGIONKEY
@@ -28,9 +31,11 @@ operation:
               - columnCounter: 13d69791-1568-453d-b267-7c0fb51c5759
                 stepCounter: fa3340bb-c352-440d-93f4-4c157de132bd
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: b7c25962-3695-4d87-af2d-82b8b998bbb6
           stepCounter: 1bec140a-f0d4-401a-91ea-13065cf55a3d
+        config: {}
         dataType: STRING
         description: ""
         name: R_NAME

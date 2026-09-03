@@ -22,9 +22,11 @@ operation:
         runOrder: After
         templateString: ""
     columns:
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 85d6994d-ea7d-4250-a154-7bcd52fce19b
           stepCounter: 0cb1bab0-1edc-432b-b47f-6504a45a8312
+        config: {}
         dataType: INT64
         description: ""
         name: N_NATIONKEY
@@ -34,9 +36,11 @@ operation:
               - columnCounter: 8412299d-a967-45a9-9b65-44b85a1d10dd
                 stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: c2c43d40-4fc4-4c2d-8fc5-e9a06009c505
           stepCounter: 0cb1bab0-1edc-432b-b47f-6504a45a8312
+        config: {}
         dataType: STRING
         description: ""
         name: N_NAME
@@ -46,9 +50,11 @@ operation:
               - columnCounter: 645a74c4-94b0-4959-af1a-7c23339a5900
                 stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 90376daf-b4e1-4c45-a1bc-77bf375d5c62
           stepCounter: 0cb1bab0-1edc-432b-b47f-6504a45a8312
+        config: {}
         dataType: INT64
         description: ""
         name: N_REGIONKEY
@@ -58,9 +64,11 @@ operation:
               - columnCounter: e6c7eeec-acdd-4ad3-9d9d-fc1af20930b5
                 stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 0756e8cd-85dc-43d9-8a59-4ca94b52e1d8
           stepCounter: 0cb1bab0-1edc-432b-b47f-6504a45a8312
+        config: {}
         dataType: STRING
         description: ""
         name: N_COMMENT
@@ -70,9 +78,11 @@ operation:
               - columnCounter: e88c63c7-d9dc-447c-ae20-85030629e363
                 stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
             transform: ""
-      - columnReference:
+      - appliedColumnTests: {}
+        columnReference:
           columnCounter: 3c880f20-5340-44da-9012-b8b22e7a5c14
           stepCounter: 0cb1bab0-1edc-432b-b47f-6504a45a8312
+        config: {}
         dataType: TIMESTAMP
         description: ""
         name: last_modified
