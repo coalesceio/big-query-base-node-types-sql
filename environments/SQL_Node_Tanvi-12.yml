@@ -1,5 +1,5 @@
 fileVersion: 1
-id: "876"
+id: "12"
 mappingDefinitions:
   SRC:
     database: cls-dev-bigquery
@@ -7,5 +7,5 @@ mappingDefinitions:
   TARGET:
     database: cls-dev-bigquery
     schema: DE_QA
-name: SQLWork_NewVersion
+name: SQL_Node_Tanvi
 type: Environment

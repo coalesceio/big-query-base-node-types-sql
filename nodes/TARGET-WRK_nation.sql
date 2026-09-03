@@ -7,3 +7,4 @@ SELECT ALL
      `N_COMMENT` AS `N_COMMENT`,
      `last_modified` AS `last_modified`
 FROM {{ ref('SRC', 'nation') }} `nation`
+where `N_NATIONKEY` = {{ parameters.nationkey }}
