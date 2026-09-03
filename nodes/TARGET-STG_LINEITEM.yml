@@ -1,0 +1,111 @@
+fileVersion: 1
+id: a683debd-8468-430b-abe6-b37a8f09d8de
+name: STG_LINEITEM
+operation:
+  config:
+    insertStrategy: INSERT
+    postSQL: ""
+    preSQL: ""
+    testsEnabled: true
+    truncateBefore: true
+  database: ""
+  deployEnabled: true
+  description: ""
+  isMultisource: false
+  locationName: TARGET
+  materializationType: table
+  metadata:
+    columns:
+      - columnReference:
+          columnCounter: f4d06a32-ec4d-4332-9edb-693d35cd2523
+          stepCounter: a683debd-8468-430b-abe6-b37a8f09d8de
+        dataType: INT64
+        description: ""
+        name: L_ORDERKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: ea3aee16-8f9b-4723-bc2a-ff16e0f714ed
+                stepCounter: 536c7fca-84fc-49de-b033-14ad7255f760
+            transform: ""
+      - columnReference:
+          columnCounter: be003ed9-5e02-4419-a8e1-fd58b21a9d75
+          stepCounter: a683debd-8468-430b-abe6-b37a8f09d8de
+        dataType: INT64
+        description: ""
+        name: L_LINENUMBER
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: d27fd1fd-7f3f-4be7-bb6b-93d966e28e01
+                stepCounter: 536c7fca-84fc-49de-b033-14ad7255f760
+            transform: ""
+      - columnReference:
+          columnCounter: 591d191e-2f05-48a3-8d7f-52b66367bd32
+          stepCounter: a683debd-8468-430b-abe6-b37a8f09d8de
+        dataType: FLOAT64
+        description: ""
+        name: L_QUANTITY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 28bb8381-bb98-418a-9e92-f0bbc2741094
+                stepCounter: 536c7fca-84fc-49de-b033-14ad7255f760
+            transform: ""
+      - columnReference:
+          columnCounter: 0012f242-ffd3-42a0-b2c3-9623f837e3af
+          stepCounter: a683debd-8468-430b-abe6-b37a8f09d8de
+        dataType: FLOAT64
+        description: ""
+        name: L_EXTENDEDPRICE
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: b5c2650c-c906-4905-9a54-d39e0d4bcb03
+                stepCounter: 536c7fca-84fc-49de-b033-14ad7255f760
+            transform: ""
+      - columnReference:
+          columnCounter: 7071e75b-1185-4464-9157-e20837fdc8d5
+          stepCounter: a683debd-8468-430b-abe6-b37a8f09d8de
+        dataType: FLOAT64
+        description: ""
+        name: L_DISCOUNT
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 45fd53b5-b38b-4d5a-91a0-18f5eb1a0067
+                stepCounter: 536c7fca-84fc-49de-b033-14ad7255f760
+            transform: ""
+      - columnReference:
+          columnCounter: 2e36b5f0-25e7-4fa0-b02a-82c4e5c42c8a
+          stepCounter: a683debd-8468-430b-abe6-b37a8f09d8de
+        dataType: FLOAT64
+        description: ""
+        name: L_TAX
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 384a9f16-226c-4e92-a685-5a696adbfcce
+                stepCounter: 536c7fca-84fc-49de-b033-14ad7255f760
+            transform: ""
+    cteString: ""
+    enabledColumnTestIDs: []
+    sourceMapping:
+      - aliases:
+          lineitem: 536c7fca-84fc-49de-b033-14ad7255f760
+        customSQL:
+          customSQL: ""
+        dependencies:
+          - locationName: SRC
+            nodeName: lineitem
+        join:
+          joinCondition: FROM {{ ref('SRC', 'lineitem') }} `lineitem`
+        name: STG_LINEITEM
+        noLinkRefs: []
+  name: STG_LINEITEM
+  overrideSQL: false
+  schema: ""
+  sqlType: Stage
+  type: sql
+  version: 1
+type: Node

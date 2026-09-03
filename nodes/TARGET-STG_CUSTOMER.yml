@@ -1,0 +1,99 @@
+fileVersion: 1
+id: aab2cf69-8360-427d-a5e6-0ce6e8df9448
+name: STG_CUSTOMER
+operation:
+  config:
+    insertStrategy: INSERT
+    postSQL: ""
+    preSQL: ""
+    testsEnabled: true
+    truncateBefore: true
+  database: ""
+  deployEnabled: true
+  description: ""
+  isMultisource: false
+  locationName: TARGET
+  materializationType: table
+  metadata:
+    columns:
+      - columnReference:
+          columnCounter: 88630da3-b527-454f-be5b-3a5e16957214
+          stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
+        dataType: INT64
+        description: ""
+        name: C_CUSTKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: eb6f3945-3e1e-4e3f-82d4-f55055295282
+                stepCounter: 6e169108-24cf-4138-8716-9b79d5ebbd53
+            transform: ""
+      - columnReference:
+          columnCounter: 4ec915d9-8aac-4fd7-82e9-7b0fcdb78b1f
+          stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
+        dataType: STRING
+        description: ""
+        name: C_NAME
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 7de5dfb3-0343-40e3-b57c-62045699743b
+                stepCounter: 6e169108-24cf-4138-8716-9b79d5ebbd53
+            transform: ""
+      - columnReference:
+          columnCounter: ef1e8f68-7cb4-4df7-8472-b966c488e2ed
+          stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
+        dataType: INT64
+        description: ""
+        name: C_NATIONKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 4ecdb884-a5d1-4629-993b-3d2c09ed09cc
+                stepCounter: 6e169108-24cf-4138-8716-9b79d5ebbd53
+            transform: ""
+      - columnReference:
+          columnCounter: 3ea8a060-747e-4854-9770-a0aaf763e4cc
+          stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
+        dataType: FLOAT64
+        description: ""
+        name: C_ACCTBAL
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 83dc532c-20e8-472f-8021-112c56e772bb
+                stepCounter: 6e169108-24cf-4138-8716-9b79d5ebbd53
+            transform: ""
+      - columnReference:
+          columnCounter: 9fdd5bd6-db06-4347-8dca-0b811f11cded
+          stepCounter: aab2cf69-8360-427d-a5e6-0ce6e8df9448
+        dataType: STRING
+        description: ""
+        name: C_MKTSEGMENT
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 88d325a8-d836-4e6d-8c3a-92ba93035d30
+                stepCounter: 6e169108-24cf-4138-8716-9b79d5ebbd53
+            transform: ""
+    cteString: ""
+    enabledColumnTestIDs: []
+    sourceMapping:
+      - aliases:
+          customer: 6e169108-24cf-4138-8716-9b79d5ebbd53
+        customSQL:
+          customSQL: ""
+        dependencies:
+          - locationName: SRC
+            nodeName: customer
+        join:
+          joinCondition: FROM {{ ref('SRC', 'customer') }} `customer`
+        name: STG_CUSTOMER
+        noLinkRefs: []
+  name: STG_CUSTOMER
+  overrideSQL: false
+  schema: ""
+  sqlType: Stage
+  type: sql
+  version: 1
+type: Node
