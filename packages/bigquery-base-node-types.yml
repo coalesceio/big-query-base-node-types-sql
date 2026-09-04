@@ -1,0 +1,25 @@
+config:
+  entities:
+    nodeTypes:
+      "159":
+        defaultStorageLocation: null
+        isDisabled: false
+      "160":
+        defaultStorageLocation: null
+        isDisabled: false
+      "161":
+        defaultStorageLocation: null
+        isDisabled: false
+      "162":
+        defaultStorageLocation: null
+        isDisabled: false
+      "168":
+        defaultStorageLocation: null
+        isDisabled: false
+  packageVariables: ""
+fileVersion: 1
+id: "@coalesce/bigquery/bigquery-base-node-types"
+name: bigquery-base-node-types
+packageID: "@coalesce/bigquery/bigquery-base-node-types"
+releaseID: 11283921-ef74-4431-9f47-5ca9edecda0c
+type: Package
