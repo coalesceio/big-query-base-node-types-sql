@@ -1,12 +1,10 @@
-> **Preview:** This node type is available via the Marketplace; however, it is currently supported only in the Coalesce Desktop App and may not function as expected in the web app.
+# SQL-First NodeTypes
 
-# V2 NodeTypes
+The [SQL-first nodes](https://docs.coalesce.io/docs/build-your-pipeline/v2-node-types) is a transformation tool within Coalesce that lets developers write custom, hand-coded SQL instead of using the standard graphical column-mapping interface. It is ideal for complex transformations, advanced window functions, or multi-step logic that is difficult to represent with the standard UI, and ships with a built-in library of column- and node-level data quality tests. While it provides maximum flexibility, it shifts the responsibility of column definition and logic maintenance to the SQL author.
 
-The V2 nodes is a transformation tool within Coalesce that lets developers write custom, hand-coded SQL instead of using the standard graphical column-mapping interface. It is ideal for complex transformations, advanced window functions, or multi-step logic that is difficult to represent with the standard UI, and ships with a built-in library of column- and node-level data quality tests. While it provides maximum flexibility, it shifts the responsibility of column definition and logic maintenance to the SQL author.
+## BigQuery Base Node Types - SQL Package
 
-## Coalesce Base Node Types V2 Package
-
-The Coalesce Base Node Types V2 Package includes:
+The BigQuery Base Node Types - SQL Package includes:
 
 * [Work](#work)
 
@@ -18,9 +16,9 @@ The Work node is a general-purpose transformation node within Coalesce, used to 
 
 The Work Node type has three configuration groups:
 
-* [General](#sql-work-general-options)
-* [Node Annotations](#sql-work-node-annotations)
-* [Column Annotations](#sql-work-column-annotations)
+* [General](#work-general-options)
+* [Node Annotations](#work-node-annotations)
+* [Column Annotations](#work-column-annotations)
 
 #### Work General Options
 
@@ -29,6 +27,8 @@ The Work Node type has three configuration groups:
 | **Property** | **Description** |
 |----------|-------------|
 | **Storage Location** | Storage Location where the Work table or view will be created |
+
+> **Note:** `Deploy Enabled` (the setting that lets a Node be excluded from — or dropped during — redeployment based on a TRUE/FALSE toggle) is **not supported** on this node types.
 
 ### Work Node Annotations
 
@@ -39,7 +39,7 @@ The Work Node type has three configuration groups:
 | `@id(id)` ***(reserved)*** | Unique identifier for the node.<br/>Static and auto-generated when the node is created — not meant to be edited. |
 | `@nodeType(type)` ***(reserved)*** | Identifies the node's type.<br/>Set automatically based on the node type chosen when the node is created.|
 | `@description(text)` ***(reserved)*** | Node-level description.<br/>Can be edited via this annotation or in the node description field below the node name in the UI.<br/>Example: `@description("Table description")` |
-| `@materializationType(type)` ***(reserved)*** | Table/View.<br/>*Not specified in the SQL editor → defaults to **Table**.*<br/>Example: `@materializationType("View")` |
+| `@materializationType(type)` ***(reserved)*** | table/view.<br/>Value is strictly case-sensitive — must be lowercase `table` or `view`.<br/>*Not specified in the SQL editor → defaults to **table**.*<br/>Example: `@materializationType("view")` |
 | `@writeMode("truncateInsert \| append")` | Controls how data is written to the target table.<br/>**truncateInsert** — clears the table before loading, replacing its contents entirely.<br/>**append** — inserts the new rows alongside whatever is already there.<br/>*Not specified in the SQL editor → defaults to **truncateInsert**.*<br/>**Note:** Ignored on Views.<br/>Example: `@writeMode("append")` |
 | `@disableTests`**²** | Controls whether configured tests are skipped.<br/>*Specified in the SQL editor → all node- and column-level tests are skipped.*<br/>*Not specified in the SQL editor → tests run normally.*<br/>To turn tests back on, remove the annotation. Useful while developing a node — iterate on the SQL first, then re-enable once the logic is settled.<br/>Example: `@disableTests` |
 | `@tests(querySQL, continueOnFailure?, runOrder?)` | ***(repeatable)*** Node-level data quality test.<br/>Runs `querySQL` against the target; fails if it returns any records.<br/>Skipped entirely when **@disableTests** is set.<br/>Example: `@tests("SELECT 1 FROM {{ this }} GROUP BY N_NATIONKEY HAVING COUNT(*) > 1", false, "After")` |
@@ -80,7 +80,15 @@ The Work Node type has three configuration groups:
 
 - Verify that all **column datatypes** are successfully resolved before creating the object. Columns with an `UNKNOWN` datatype may cause stage generation or runtime failures.
 
-- It is recommended to use **DISTINCT**, **UNION** and **UNION ALL** within a CTE rather than directly in the final **SELECT** query.
+- Any keyword that is valid immediately after **SELECT** is accepted in the final **SELECT** clause (right after any CTEs) — for example **DISTINCT** or **ALL**. This does not extend to keywords like `DEFAULT` that, while valid SQL keywords elsewhere, don't fit in a `SELECT` clause.
+
+    ```sql
+    SELECT DISTINCT
+         `N_REGIONKEY` AS `N_REGIONKEY`,
+         `N_NAME` AS `N_NAME`
+    FROM {{ ref('SRC', 'NATION') }} `NATION`
+    ```
+
 - **¹** The hash transformation uses the reusable `get_hash()` macro:
 
     ```SQL
@@ -147,21 +155,21 @@ The Work Node type has three configuration groups:
     | Parameter | Description |
     |-----------|-------------|
     | querySQL | SQL statement to execute as a validation test. The test fails if the query returns any records. |
-    | continueOnFailure |**(optional)** `true` or `false`. Determines whether execution continues when the test fails. |
-    | runOrder |**(optional)** `Before` or `After`. Determines whether the test is executed before or after the load operation. |
+    | continueOnFailure |**(optional)** `true`(default) or `false`. Determines whether execution continues when the test fails. |
+    | runOrder |**(optional)** `Before` or `After`(default). Determines whether the test is executed before or after the load operation. |
     
     **Examples**
     
     ```text
-    @tests("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 1", "Before", true)
-    
-    @tests("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 1", "After", true)
+    @tests("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 1", true, "Before")
+    @tests("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 1", false)
+    @tests("SELECT 1 FROM {{ this }} GROUP BY N_COMMENT HAVING COUNT(*) > 1")
     ```
 ---
 
 ### Known Limitations
 
-Users should be aware of the following technical constraints when using SQL:
+Users should be aware of the following technical constraints when using SQL-first nodes:
 
 * **Parsable SQL Only**:
  The node only supports SQL that can be fully parsed by the platform’s engine. Non-standard SQL or vendor-specific "semantic views" that bypass standard parsing will not work.
@@ -169,8 +177,8 @@ Users should be aware of the following technical constraints when using SQL:
 * **SELECT Statements Only**:  
 This node only supports data retrieval and transformation logic. DML or DDL commands such as `CREATE`, `MERGE`, `DELETE`, `UPDATE`, or `TRUNCATE` are not supported and will cause execution failures.
 
-* **Support for `DISTINCT`, `UNION`, and `UNION ALL`**:  
-`DISTINCT`, `UNION`, and `UNION ALL` are fully supported when used within **Common Table Expressions (CTEs)**. While these keywords can also be used in standard `SELECT` statements without generating an error, they may not parsed correctly by the platform. As a result, subsequent clauses (such as `JOIN`s) may be interpreted as part of a standard join structure, causing the generated SQL to differ from the intended query and potentially leading to inconsistent data loads. To ensure the SQL is parsed and executed as expected, always implement these operations inside a CTE.
+* **Support for `UNION`, and `UNION ALL`**:  
+`UNION`, and `UNION ALL` are fully supported when used within **Common Table Expressions (CTEs)**. While these keywords can also be used in standard `SELECT` statements without generating an error, they may not parsed correctly by the platform. As a result, subsequent clauses (such as `JOIN`s) may be interpreted as part of a standard join structure, causing the generated SQL to differ from the intended query and potentially leading to inconsistent data loads. To ensure the SQL is parsed and executed as expected, always implement these operations inside a CTE.
 
 * **Other Keywords**:  
 **GROUP BY, ORDER BY and HAVING** clauses can be included as part of the join query and will be parsed and processed accordingly.
@@ -178,11 +186,14 @@ This node only supports data retrieval and transformation logic. DML or DDL comm
 * **Reserved Keywords as Annotation Names**:  
 Avoid naming custom annotations after words that are reserved keywords in the platform's SQL grammar — e.g. `UNIQUE`, `AS`, `PRIMARY`. The parser may fail to parse such annotations and throw a validation error.
 
+* **Switching Between V1 and V2 Node Types**:  
+Converting an existing V1 (`.yml`) node to a V2 (`.sql`) node, or vice versa, is not supported.
+
 ---
 
 ### Usage Examples 
 
-The following patterns represent common ways to use the Node.<br/>
+The following patterns represent common ways to use the SQL Node.<br/>
 
 **Sample node with Annotations**
 ```sql
@@ -200,6 +211,18 @@ SELECT
      `LAST_MODIFIED` AS L_M_1 @freshness(7, "DAY") @relative_time("<", "L_M_2") @description("timestamp column"),
      `LAST_MODIFIED` AS L_M_2,
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS `GH_COL1` @description("Hash Column")
+FROM {{ ref('SOURCE_DATA', 'NATION') }} `NATION`
+```
+**Sample node with DISTINCT**
+```sql
+@writeMode("append")
+@description("Table description")
+SELECT DISTINCT
+     `N_NATIONKEY` AS `N_NATIONKEY`,
+     `N_NAME` AS `N_NAME`,
+     `N_REGIONKEY` AS `N_REGIONKEY`,
+     `N_COMMENT` AS `N_COMMENT`,
+     `LAST_MODIFIED` AS L_M @freshness(7, "DAY")
 FROM {{ ref('SOURCE_DATA', 'NATION') }} `NATION`
 ```
 **Basic Transformation & Cleaning** - Standard pattern for renaming columns and handling nulls.
@@ -326,7 +349,7 @@ SELECT * FROM ALL_NATIONS
 
 - **Conditional Logic via CASE Statements:** Support for complex business rules and data categorization using standard CASE WHEN syntax to create derived columns based on multiple logical conditions.
 
- - **Flexible Projection (SELECT * with Expressions):** Enhanced projection capabilities that allow for selecting all columns from a source (`SELECT *`) while simultaneously appending new calculated expressions, timestamps, or metadata in the same statement.
+ - **Flexible Projection (SELECT * with Expressions):** Enhanced projection capabilities that allow for selecting all columns from a source (`SELECT *`) while simultaneously appending new calculated expressions, timestamps, or metadata in the same statement.<br/>**Note:** Column-level annotations (e.g. `@not_null`, `@inHash`) can only be attached to columns that are explicitly listed in the `SELECT` clause — they cannot be applied to columns pulled in via `SELECT *`.
 
 - **Nested Subqueries:** Support for correlated and non-correlated subqueries within SELECT, FROM, or WHERE clauses, enabling granular filtering and complex lookups that don't require separate nodes.
 
@@ -421,3 +444,7 @@ The stage executed:
 * [Node definition]()
 * [Create Template]()
 * [Run Template]()
+
+#### Macro
+
+* [Macro]()
