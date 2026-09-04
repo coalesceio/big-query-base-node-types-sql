@@ -28,7 +28,7 @@ operation:
         dataType: INT64
         description: ""
         name: N_NATIONKEY
-        nullable: false
+        nullable: true
         sourceColumnReferences:
           - columnReferences:
               - columnCounter: 8412299d-a967-45a9-9b65-44b85a1d10dd
