@@ -14,7 +14,7 @@ SELECT ALL
      `last_modified` AS L_M_1 @freshness(7, "DAY") @relative_time("<", "L_M_2") @description("timestamp column"),
      `last_modified` AS L_M_2,
      `N_NAME` AS N_NAME_1,
-     `N_NAME` AS N_NAME_2 @defaultValue("'NA'"),
+     `N_NAME` AS N_NAME_2  @not_null,
      `N_NAME` AS N_NAME_3 @not_null,
      `N_NAME` AS N_NAME_4 @description("<text>"),
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS `GH_COL1` @description("Hash Column"),

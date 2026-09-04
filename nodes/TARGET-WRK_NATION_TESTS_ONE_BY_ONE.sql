@@ -5,8 +5,8 @@
 @writeMode("append  ")
 
 -- preSQL/postSQL with backtick-quoted identifiers inside the double-quoted string
-@preSQL("DELETE FROM {{ this }} WHERE `N_REGIONKEY` IS NULL")
-@postSQL("INSERT INTO {{ ref('AUDIT', 'LOAD_LOG') }} (`TABLE_NAME`, `LOAD_TS`) VALUES ('WRK_NATION_TESTS_ONE_BY_ONE', CURRENT_TIMESTAMP())")
+@preSQL("DELETE FROM {{ this }} WHERE `TEST_NOT_NULL` IS NULL")
+@postSQL("DELETE FROM {{ this }} WHERE `TEST_NOT_NULL` IS NULL")
 
 -- Node-level tests, run one by one in the order they appear
 
