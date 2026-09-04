@@ -424,7 +424,6 @@ This is executed in two stages:
 
 | **Stage** | **Description** |
 |-----------|----------------|
-| **Delete Table** | Coalesce Internal table is dropped |
 | **Delete Table** | Target table in BigQuery is dropped |
 
 If a Work Node of materialization type view is deleted from a Workspace, that Workspace is committed to Git and that commit deployed to a higher-level Environment, then the WorkView in the target Environment will be dropped.
