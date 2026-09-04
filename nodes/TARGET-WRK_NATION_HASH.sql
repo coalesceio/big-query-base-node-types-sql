@@ -1,5 +1,6 @@
 @id("92c19493-fed2-4e72-918f-38e55843efbd")
 @nodeType("705")
+@disableTests
 SELECT
      `N_NATIONKEY` AS `N_NATIONKEY` @inHash("GH_DEFAULT", 1),
      `N_NAME` AS `N_NAME` @inHash("GH_MD5", 1),

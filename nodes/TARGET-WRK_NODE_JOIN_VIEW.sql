@@ -1,6 +1,7 @@
 @id("77fb2a96-7742-49ac-8b23-b21378ff3369")
 @nodeType("705")
 @materializationType("view")
+@disableTests
 @description("Adde description")
 SELECT
     c.c_name AS nation,

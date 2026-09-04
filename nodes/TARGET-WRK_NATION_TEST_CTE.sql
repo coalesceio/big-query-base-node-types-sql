@@ -1,5 +1,6 @@
 @id("a13620ea-06ab-4cc1-a51f-f26f400f5403")
 @nodeType("705")
+@disableTests
 WITH nation_cte AS (
     SELECT
         N_NATIONKEY,

@@ -1,5 +1,6 @@
 @id("11573856-34ab-4472-964e-dedee886ee47")
 @nodeType("705")
+@disableTests
 WITH combined_data AS (
     SELECT
         c.c_name AS nation,

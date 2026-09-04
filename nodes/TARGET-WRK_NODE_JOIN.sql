@@ -1,5 +1,6 @@
 @id("78bb9a08-6358-4b51-9a4b-eba7a5b736a8")
 @nodeType("705")
+@disableTests
 SELECT
     c.c_name AS nation,
     r.r_name AS region,

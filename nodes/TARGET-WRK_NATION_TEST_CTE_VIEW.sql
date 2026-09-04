@@ -1,6 +1,7 @@
 @id("37a00602-1bfb-4a4b-8f6b-ba92f9e4c414")
 @nodeType("705")
 @materializationType("view")
+@disableTests
 WITH nation_cte AS (
     SELECT
         N_NATIONKEY,

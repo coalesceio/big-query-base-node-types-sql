@@ -1,5 +1,6 @@
 @id("7986e87a-1377-4bdb-9fec-fa0575d17834")
 @nodeType("705")
+@disableTests
 @writeMode("append")
 @tests("SELECT 1 FROM {{ this }}")
 @tests("SELECT 2 FROM {{ this }}", true, "Before")

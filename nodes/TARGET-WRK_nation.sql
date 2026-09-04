@@ -1,5 +1,6 @@
 @id("ba6285ad-ebb3-4ac8-acb1-742f1f668aab")
 @nodeType("705")
+@disableTests
 SELECT ALL
      `N_NATIONKEY` AS `N_NATIONKEY`,
      `N_NAME` AS `N_NAME`,

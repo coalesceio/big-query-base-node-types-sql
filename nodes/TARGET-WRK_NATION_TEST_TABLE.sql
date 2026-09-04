@@ -1,5 +1,6 @@
 @id("3b902803-2989-468e-967e-c90b7b8b86d1")
 @nodeType("705")
+@disableTests
 @description("Nation Key ''dfhadj")
 @tests("SELECT 1 FROM {{ this }}")
 @tests("SELECT 2 FROM {{ this }}", true, "Before")

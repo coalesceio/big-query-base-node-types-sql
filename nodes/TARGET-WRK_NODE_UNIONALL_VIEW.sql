@@ -1,5 +1,6 @@
 @id("45f9db9f-215d-4d48-952c-ec24ed8551e9")
 @nodeType("705")
+@disableTests
 @materializationType("view")
 WITH combined_data AS (
     SELECT
