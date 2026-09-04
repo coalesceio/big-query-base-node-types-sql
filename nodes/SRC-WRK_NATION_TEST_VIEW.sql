@@ -15,3 +15,4 @@ SELECT DISTINCT
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS `GH_COL1`,
      CAST({{ get_hash('GH_COL2') }}AS STRING) AS `GH_COL2`
 FROM {{ ref('SRC', 'nation') }} `nation`
+where `N_NATIONKEY` = {{ parameters.nationkey }}
