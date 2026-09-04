@@ -1,7 +1,7 @@
-@id("9edd8781-a095-4076-9899-6ad6b7d345fd")
+@id("42692b52-8d76-4fe6-b2a4-06161e559261")
 @nodeType("705")
 @disableTests
-@materializationType("view ")
+@materializationType("view")
 @writeMode("append  ")
 
 -- preSQL/postSQL with backtick-quoted identifiers inside the double-quoted string
