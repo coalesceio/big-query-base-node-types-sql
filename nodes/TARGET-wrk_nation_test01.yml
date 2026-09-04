@@ -1,6 +1,6 @@
 fileVersion: 1
-id: f3cc2ab5-ab9e-4b91-9998-a5b5fce3bd7a
-name: wrk_nation_001
+id: 7f736af2-3d07-4549-b001-2094b6d4cb6c
+name: wrk_nation_test01
 operation:
   config:
     groupByAll: false
@@ -22,13 +22,13 @@ operation:
     columns:
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: 3106599a-363e-46de-872d-cc216e608888
-          stepCounter: f3cc2ab5-ab9e-4b91-9998-a5b5fce3bd7a
+          columnCounter: 68ede19e-70fa-4b64-b7d2-757a09d96623
+          stepCounter: 7f736af2-3d07-4549-b001-2094b6d4cb6c
         config: {}
         dataType: INT64
         description: ""
         name: N_NATIONKEY
-        nullable: false
+        nullable: true
         sourceColumnReferences:
           - columnReferences:
               - columnCounter: 8412299d-a967-45a9-9b65-44b85a1d10dd
@@ -36,8 +36,8 @@ operation:
             transform: ""
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: 20534b74-64dc-472a-890d-e17ce56d0084
-          stepCounter: f3cc2ab5-ab9e-4b91-9998-a5b5fce3bd7a
+          columnCounter: 18a6c613-c09e-45ae-aaf1-534eec4a9f70
+          stepCounter: 7f736af2-3d07-4549-b001-2094b6d4cb6c
         config: {}
         dataType: STRING
         description: ""
@@ -50,8 +50,8 @@ operation:
             transform: ""
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: 2a8a88d8-9a4a-42d3-a00d-f1e5e399717f
-          stepCounter: f3cc2ab5-ab9e-4b91-9998-a5b5fce3bd7a
+          columnCounter: e4407cdc-03a5-425b-8a07-69e7b4103ef0
+          stepCounter: 7f736af2-3d07-4549-b001-2094b6d4cb6c
         config: {}
         dataType: INT64
         description: ""
@@ -64,8 +64,8 @@ operation:
             transform: ""
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: cadeeb14-5fba-4dfe-8d16-7d21895f9fd8
-          stepCounter: f3cc2ab5-ab9e-4b91-9998-a5b5fce3bd7a
+          columnCounter: f07de369-0cdc-4beb-9d4e-38b0e556207e
+          stepCounter: 7f736af2-3d07-4549-b001-2094b6d4cb6c
         config: {}
         dataType: STRING
         description: ""
@@ -78,8 +78,8 @@ operation:
             transform: ""
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: 52e87d11-2e1d-4e63-ab71-4caa4ba4e8ac
-          stepCounter: f3cc2ab5-ab9e-4b91-9998-a5b5fce3bd7a
+          columnCounter: 46b99184-8e9c-40e3-83eb-bf9f87c2289c
+          stepCounter: 7f736af2-3d07-4549-b001-2094b6d4cb6c
         config: {}
         dataType: TIMESTAMP
         description: ""
@@ -102,9 +102,9 @@ operation:
             nodeName: nation
         join:
           joinCondition: FROM {{ ref('SRC', 'nation') }} `nation`
-        name: wrk_nation_001
+        name: wrk_nation_test01
         noLinkRefs: []
-  name: wrk_nation_001
+  name: wrk_nation_test01
   overrideSQL: false
   schema: ""
   sqlType: bigquery-base-node-types:::159
