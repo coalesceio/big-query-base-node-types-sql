@@ -7,7 +7,7 @@
 @preSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 1")
 @postSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 2")
 SELECT DISTINCT
-     `N_NATIONKEY` AS `N_NATIONKEY` @not_null @uniqueness @min_value("0") @max_value("100")  @accepted_values("1") @inHash("GH_COL1", 2) @defaultValue("20") @description("primary column") @notNull,
+     `N_NATIONKEY` AS `N_NATIONKEY` @uniqueness @min_value("0") @max_value("100")  @accepted_values("1") @inHash("GH_COL1", 2) @defaultValue("20") @description("primary column") @notNull,
      `N_NAME` AS `N_NAME` @not_null @empty @accepted_values("'ALGERIA'") @accepted_values("'ARGENTINA'") @inHash("GH_COL1", 1),
      `N_REGIONKEY` AS `N_REGIONKEY` @min_max("0", "4") @notNull @defaultValue("20"),
      `N_COMMENT` AS `N_COMMENT` @rejected_values("'NA'"),

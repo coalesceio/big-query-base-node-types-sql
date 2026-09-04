@@ -10,7 +10,7 @@
 @preSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 3")
 @postSQL("SELECT 1 FROM {{ this }} GROUP BY N_NAME HAVING COUNT(*) > 4")
 SELECT DISTINCT
-     `N_NATIONKEY` AS `N_nATIONKEY` @uniqueness @inHash("GH_COL1", 2) @defaultValue("0"),
+     `N_NATIONKEY` AS `N_nATIONKEY` @uniqueness @inHash("GH_COL1", 2),
      `N_NATIONKEY` AS `N_nATIONKEY_smallCase` @uniqueness @inHash("GH_COL1", 2) @defaultValue("0"),
      `N_NAME` AS `N_NAME` @inHash("GH_COL2", 1) @defaultValue("'NA'"),
      `N_REGIONKEY` @not_null @uniqueness @inHash("GH_COL1", 1) @inHash("GH_COL2", 2),
