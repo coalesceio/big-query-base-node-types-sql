@@ -229,12 +229,12 @@ FROM {{ ref('SOURCE_DATA', 'NATION') }} `NATION`
 
 ```sql
 SELECT
-     `O_ORDERKEY` AS `O_ORDERKEY`,
-     `O_CUSTKEY` AS `O_CUSTKEY`,
-     UPPER(`O_ORDERSTATUS`) AS `O_ORDERSTATUS`,
-     COALESCE(`O_TOTALPRICE`, 0) AS `O_TOTALPRICE`,
-     `O_ORDERDATE` AS `O_ORDERDATE`
-FROM {{ ref('SRC', 'ORDERS') }} `ORDERS`
+    `O_ORDERKEY` AS `O_ORDERKEY`,
+    `O_CUSTKEY` AS `O_CUSTKEY`,
+    CAST(UPPER(`O_ORDERSTATUS`) AS STRING) AS `O_ORDERSTATUS`,
+    CAST(COALESCE(`O_TOTALPRICE`, 0) AS NUMERIC) AS `O_TOTALPRICE`,
+    `O_ORDERDATE` AS `O_ORDERDATE`
+FROM {{ ref('SRC', 'orders') }} `orders`
 WHERE `O_ORDERSTATUS` != 'F'
 ```
 **Using CTEs (Common Table Expressions)** - For more complex, multi-step logic
@@ -243,11 +243,14 @@ WHERE `O_ORDERSTATUS` != 'F'
 WITH PRIORITY_COUNTS AS (
     SELECT 
         `O_ORDERPRIORITY` AS `O_ORDERPRIORITY`,
-        COUNT(*) AS ORDER_COUNT
-    FROM {{ ref('SRC', 'ORDERS') }}
+        COUNT(*) AS `ORDER_COUNT`
+    FROM {{ ref('SRC', 'orders') }}
     GROUP BY 1
 )
-SELECT * FROM PRIORITY_COUNTS
+SELECT
+    `O_ORDERPRIORITY` AS `O_ORDERPRIORITY`,
+    `ORDER_COUNT` AS `ORDER_COUNT`
+FROM PRIORITY_COUNTS
 ```
 **Multi-CTE Transformation With Window Functions** <br/>
 Complex transformations that would otherwise require multiple nodes can be written as a single SQL statement. Coalesce tracks lineage through each CTE and down to the source tables
@@ -264,7 +267,7 @@ ROW_NUMBER() OVER (
 PARTITION BY O_CUSTKEY
 ORDER BY O_ORDERDATE ASC, O_ORDERKEY ASC
 ) AS ORDER_RANK
-FROM {{ ref('SRC', 'ORDERS') }}
+FROM {{ ref('SRC', 'orders') }}
 ),
 FIRST_ORDERS AS (
 -- CTE 2: Filter to keep only the first order (rank 1) for each customer
@@ -285,17 +288,17 @@ F.FIRST_PURCHASE_DATE,
 F.FIRST_ORDER_VALUE,
 F.O_ORDERSTATUS @notNull,
 CURRENT_TIMESTAMP() AS REFRESHED_AT,
-'Initial Customer Purchase' AS RECORD_TYPE
+CAST('Initial Customer Purchase' AS STRING) AS RECORD_TYPE
 FROM FIRST_ORDERS F
 ```
 **Using Recursive CTE - Date Series**
 ```sql
 WITH RECURSIVE RCTE_FNL AS (
-    SELECT DATE '2025-01-01' AS `date_s`
+    SELECT CAST('2025-01-01' AS DATE) AS `date_s`
     UNION ALL
     SELECT DATE_ADD(`date_s`, INTERVAL 1 DAY) AS `date_s`
     FROM RCTE_FNL
-    where `date_s` < DATE '2025-01-10'
+    where `date_s` < CAST('2025-01-10' AS DATE)
   )
 SELECT `date_s`
 FROM RCTE_FNL
