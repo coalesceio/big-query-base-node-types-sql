@@ -1,4 +1,4 @@
-@id("f602cfcd-87c3-432e-acbf-b6fd8cd05189")
+@id("3b902803-2989-468e-967e-c90b7b8b86d1")
 @nodeType("705")
 @description("Nation Key ''dfhadj")
 @tests("SELECT 1 FROM {{ this }}")
