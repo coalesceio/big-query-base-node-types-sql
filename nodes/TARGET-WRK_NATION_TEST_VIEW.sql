@@ -5,7 +5,7 @@
 @tests("SELECT 2 FROM {{ this }}", true, "Before")
 @tests("SELECT 3 FROM {{ this }}", true, "After")
 @tests("SELECT 4 FROM {{ this }}", true, "After")
-SELECT
+SELECT DISTINCT
      `N_NATIONKEY` AS `N_NATIONKEY` @description("Nation'' Key") @uniqueness @inHash("GH_COL1", 2),
      `N_NAME` AS `N_NAME` @description("Name") @inHash("GH_COL2", 1),
      `N_REGIONKEY` AS `N_REGIONKEY` @not_null @uniqueness @inHash("GH_COL1", 1) @inHash("GH_COL2", 2),

@@ -1,0 +1,6 @@
+excludeSelector: ""
+fileVersion: 1
+id: "108"
+includeSelector: "{ location: \"SRC\" name: \"customer\" } OR { location: \"SRC\" name: \"lineitem\" } OR { location: \"SRC\" name: \"nation\" } OR { location: \"SRC\" name: \"orders\" } OR { location: \"SRC\" name: \"orders_example\" } OR { location: \"SRC\" name: \"region\" } OR { location: \"TARGET\" name: \"WRK_nation\" } OR { location: \"TARGET\" name: \"WRK_NATION_HASH\" } OR { location: \"TARGET\" name: \"WRK_NATION_TEST_CTE\" } OR { location: \"TARGET\" name: \"WRK_NATION_TEST_CTE_VIEW\" } OR { location: \"TARGET\" name: \"WRK_NATION_TEST_TABLE\" } OR { location: \"TARGET\" name: \"WRK_NATION_TEST_VIEW\" } OR { location: \"TARGET\" name: \"WRK_NATION_TESTS_ONE_BY_ONE\" } OR { location: \"TARGET\" name: \"WRK_nation_with_column_tests\" } OR { location: \"TARGET\" name: \"WRK_NODE_JOIN\" } OR { location: \"TARGET\" name: \"WRK_NODE_JOIN_VIEW\" } OR { location: \"TARGET\" name: \"WRK_NODE_UNIONALL\" } OR { location: \"TARGET\" name: \"WRK_NODE_UNIONALL_VIEW\" } OR { location: \"TARGET\" name: \"WRK_orders_example\" }"
+name: Test_Job
+type: Job
