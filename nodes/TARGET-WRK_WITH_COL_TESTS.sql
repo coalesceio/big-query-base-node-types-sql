@@ -13,7 +13,6 @@ SELECT ALL
      `N_COMMENT` AS `N_COMMENT` @rejected_values("'NA'") @not_null @defaultValue("'20'"),
      `last_modified` AS L_M_1 @freshness(7, "DAY") @relative_time("<", "L_M_2") @description("timestamp column"),
      `last_modified` AS L_M_2,
-     `N_NAME` AS N_NAME_1 @notNull,
      CAST({{ get_hash('GH_COL1') }} AS STRING) AS `GH_COL1` @description("Hash Column"),
 FROM {{ ref('SRC', 'nation') }} `nation`
 WHERE N_REGIONKEY IS NOT NULL
