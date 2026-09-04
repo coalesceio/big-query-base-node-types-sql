@@ -1,4 +1,4 @@
-@id("165d8a38-5823-4685-85c3-8681ea5b7342")
+@id("7986e87a-1377-4bdb-9fec-fa0575d17834")
 @nodeType("705")
 @writeMode("append")
 @tests("SELECT 1 FROM {{ this }}")
