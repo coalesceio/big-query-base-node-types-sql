@@ -6,7 +6,7 @@ metadata:
   error: null
   nodeMetadataSpec: |-
     capitalized: Work
-    short: WRK
+    short: wrk
     plural: Works
     tagColor: '#2EB67D'
 
