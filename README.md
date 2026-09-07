@@ -343,7 +343,7 @@ WITH ALL_NATIONS AS (
     SELECT *
     FROM {{ ref('SOURCE_DATA', 'NATION_COPY2') }}
 )
-SELECT * FROM ALL_NATIONS
+SELECT n_nationkey FROM ALL_NATIONS
 ```
 
 ### Supported SQL Functionality
@@ -352,7 +352,7 @@ SELECT * FROM ALL_NATIONS
 
 - **Conditional Logic via CASE Statements:** Support for complex business rules and data categorization using standard CASE WHEN syntax to create derived columns based on multiple logical conditions.
 
- - **Flexible Projection (SELECT * with Expressions):** Enhanced projection capabilities that allow for selecting all columns from a source (`SELECT *`) while simultaneously appending new calculated expressions, timestamps, or metadata in the same statement.<br/>**Note:** Column-level annotations (e.g. `@not_null`, `@inHash`) can only be attached to columns that are explicitly listed in the `SELECT` clause — they cannot be applied to columns pulled in via `SELECT *`.
+ - `SELECT *` is **not currently supported** in the final SELECT statement immediately following a CTE. Please specify the column names explicitly instead. SELECT * can be used within the CTE itself.
 
 - **Nested Subqueries:** Support for correlated and non-correlated subqueries within SELECT, FROM, or WHERE clauses, enabling granular filtering and complex lookups that don't require separate nodes.
 
