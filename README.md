@@ -80,6 +80,7 @@ The Work Node type has three configuration groups:
 
 - Verify that all **column datatypes** are successfully resolved before creating the object. Columns with an `UNKNOWN` datatype may cause stage generation or runtime failures.
 - **Datatype Compatibility:** If the defaulted datatype is not compatible with Google BigQuery, use CAST() to explicitly convert the value to a BigQuery-compatible datatype.
+
 - Any keyword that is valid immediately after **SELECT** is accepted in the final **SELECT** clause (right after any CTEs) — for example **DISTINCT** or **ALL**. This does not extend to keywords like `DEFAULT` that, while valid SQL keywords elsewhere, don't fit in a `SELECT` clause.
 
     ```sql
@@ -352,7 +353,7 @@ SELECT n_nationkey FROM ALL_NATIONS
 
 - **Conditional Logic via CASE Statements:** Support for complex business rules and data categorization using standard CASE WHEN syntax to create derived columns based on multiple logical conditions.
 
- - `SELECT *` is **not currently supported** in the final SELECT statement immediately following a CTE. Please specify the column names explicitly instead. SELECT * can be used within the CTE itself.
+- `SELECT *` is **not currently supported**. Please specify the column names explicitly instead. When using a CTE, SELECT * can be used within the CTE, but it is not supported in the outer/main SELECT statement.
 
 - **Nested Subqueries:** Support for correlated and non-correlated subqueries within SELECT, FROM, or WHERE clauses, enabling granular filtering and complex lookups that don't require separate nodes.
 
