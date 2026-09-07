@@ -106,48 +106,6 @@ operation:
             transform: ""
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: e5c6c150-a5d3-4462-9db2-23e37cc26ea8
-          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
-        config: {}
-        dataType: STRING
-        description: ""
-        name: O_CLERK
-        nullable: true
-        sourceColumnReferences:
-          - columnReferences:
-              - columnCounter: O_CLERK
-                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
-            transform: ""
-      - appliedColumnTests: {}
-        columnReference:
-          columnCounter: c91583a1-640f-4c57-83cd-a16d232944c2
-          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
-        config: {}
-        dataType: INT64
-        description: ""
-        name: O_SHIPPRIORITY
-        nullable: true
-        sourceColumnReferences:
-          - columnReferences:
-              - columnCounter: O_SHIPPRIORITY
-                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
-            transform: ""
-      - appliedColumnTests: {}
-        columnReference:
-          columnCounter: 1d60d1ad-a133-4da1-b483-740242e61f23
-          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
-        config: {}
-        dataType: STRING
-        description: ""
-        name: O_COMMENT
-        nullable: true
-        sourceColumnReferences:
-          - columnReferences:
-              - columnCounter: O_COMMENT
-                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
-            transform: ""
-      - appliedColumnTests: {}
-        columnReference:
           columnCounter: 5e18c600-e11b-40bf-a0a5-fb78e3477817
           stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
         config: {}
