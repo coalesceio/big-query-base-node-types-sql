@@ -1,0 +1,11 @@
+fileVersion: 1
+id: "885"
+mappingDefinitions:
+  SRC:
+    database: ""
+    schema: ""
+  TARGET:
+    database: ""
+    schema: ""
+name: "[SQL_Nodes_Test_New]"
+type: Environment

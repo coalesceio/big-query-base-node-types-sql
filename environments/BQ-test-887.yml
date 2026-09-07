@@ -1,0 +1,11 @@
+fileVersion: 1
+id: "887"
+mappingDefinitions:
+  SRC:
+    database: ""
+    schema: ""
+  TARGET:
+    database: ""
+    schema: ""
+name: BQ-test
+type: Environment
