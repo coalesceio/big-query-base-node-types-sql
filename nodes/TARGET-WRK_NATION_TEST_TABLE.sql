@@ -18,4 +18,4 @@ SELECT DISTINCT
      CAST(CONCAT(N_NAME, '_TEST') AS STRING) AS N_NAME_CAPS  @uniqueness @description("Adde COl"),
      CAST({{ get_hash("GH_COL1") }} AS STRING) AS `GH_COL1` @description("Hash Column"),
 FROM {{ ref('SRC', 'nation') }} `nation`
-WHERE `N_NATIONKEY` = {{ parameters.nationkey }}
+--WHERE `N_NATIONKEY` = {{ parameters.nationkey }}
