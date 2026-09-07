@@ -1,6 +1,6 @@
 fileVersion: 1
 id: f210179c-b52e-402e-a6a6-0b506ada4ade
-name: wrk_nation_v1_VIEW
+name: wrk_nation_v1_VIEW_RENAMED
 operation:
   config:
     groupByAll: false
@@ -105,9 +105,9 @@ operation:
             nodeName: nation
         join:
           joinCondition: FROM {{ ref('SRC', 'nation') }} `nation`
-        name: wrk_nation_v1_VIEW
+        name: wrk_nation_v1_VIEW_RENAMED
         noLinkRefs: []
-  name: wrk_nation_v1_VIEW
+  name: wrk_nation_v1_VIEW_RENAMED
   overrideSQL: false
   schema: ""
   sqlType: Stage

@@ -6,4 +6,4 @@ SELECT
      `N_REGIONKEY` AS `N_REGIONKEY`,
      `N_COMMENT` AS `N_COMMENT`,
      `last_modified` AS `last_modified`
-FROM {{ ref('TARGET', 'wrk_nation_v1_VIEW') }} `wrk_nation_v1_VIEW`
+FROM {{ ref('TARGET', 'wrk_nation_v1_VIEW_RENAMED') }} `wrk_nation_v1_VIEW`
