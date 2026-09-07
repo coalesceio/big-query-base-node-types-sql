@@ -1,6 +1,6 @@
 fileVersion: 1
 id: 436f8b7d-9970-4313-9e5c-cb744a8a8e8f
-name: vw_region_v1
+name: vw_region_v1_rename
 operation:
   config:
     OverrideSQLCreate: false
@@ -70,9 +70,9 @@ operation:
             nodeName: region
         join:
           joinCondition: FROM {{ ref('SRC', 'region') }} `region`
-        name: vw_region_v1
+        name: vw_region_v1_rename
         noLinkRefs: []
-  name: vw_region_v1
+  name: vw_region_v1_rename
   overrideSQL: false
   schema: ""
   sqlType: bigquery-base-node-types:::168

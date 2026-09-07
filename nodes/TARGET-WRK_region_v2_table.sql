@@ -5,4 +5,4 @@ SELECT
      `R_REGIONKEY` AS `R_REGIONKEY` @not_null @uniqueness,
      `R_NAME` AS `R_NAME` @empty,
      `R_COMMENT` AS `R_COMMENT`
-FROM {{ ref('TARGET', 'vw_region_v1') }} `vw_region_v1`
+FROM {{ ref('TARGET', 'vw_region_v1_rename') }} `vw_region_v1_rename`

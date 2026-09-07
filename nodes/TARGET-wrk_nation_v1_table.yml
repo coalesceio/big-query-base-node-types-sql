@@ -78,34 +78,6 @@ operation:
             transform: ""
       - appliedColumnTests: {}
         columnReference:
-          columnCounter: d110ac59-dcfa-448d-af38-ccb3d59cb0aa
-          stepCounter: caec7294-6479-4f77-9e94-13db4382d261
-        config: {}
-        dataType: TIMESTAMP
-        description: timestamp column
-        name: L_M_1
-        nullable: true
-        sourceColumnReferences:
-          - columnReferences:
-              - columnCounter: L_M_1
-                stepCounter: 2184690d-6dcb-4268-bdef-81d795de2317
-            transform: ""
-      - appliedColumnTests: {}
-        columnReference:
-          columnCounter: 6a042439-261b-4f5a-bc46-9d5dad456d05
-          stepCounter: caec7294-6479-4f77-9e94-13db4382d261
-        config: {}
-        dataType: TIMESTAMP
-        description: ""
-        name: L_M_2
-        nullable: true
-        sourceColumnReferences:
-          - columnReferences:
-              - columnCounter: L_M_2
-                stepCounter: 2184690d-6dcb-4268-bdef-81d795de2317
-            transform: ""
-      - appliedColumnTests: {}
-        columnReference:
           columnCounter: 73d1d938-30c4-4c27-832a-9029a3803f7f
           stepCounter: caec7294-6479-4f77-9e94-13db4382d261
         config: {}
