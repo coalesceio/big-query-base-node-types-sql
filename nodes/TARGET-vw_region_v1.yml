@@ -1,0 +1,81 @@
+fileVersion: 1
+id: 436f8b7d-9970-4313-9e5c-cb744a8a8e8f
+name: vw_region_v1
+operation:
+  config:
+    OverrideSQLCreate: false
+    groupByAll: false
+    insertStrategy: UNION ALL
+    selectDistinct: true
+  database: ""
+  deployEnabled: true
+  description: ""
+  isMultisource: false
+  locationName: TARGET
+  materializationType: view
+  metadata:
+    appliedNodeTests: []
+    columns:
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 9197d214-6337-45ac-873f-e798fa2c306e
+          stepCounter: 436f8b7d-9970-4313-9e5c-cb744a8a8e8f
+        config: {}
+        dataType: INT64
+        description: ""
+        name: R_REGIONKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 13d69791-1568-453d-b267-7c0fb51c5759
+                stepCounter: fa3340bb-c352-440d-93f4-4c157de132bd
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 04361687-8fda-46a6-9b25-7d18e17fc94c
+          stepCounter: 436f8b7d-9970-4313-9e5c-cb744a8a8e8f
+        config: {}
+        dataType: STRING
+        description: ""
+        name: R_NAME
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: cef32a4d-06a7-4cea-acfb-632de9b031fc
+                stepCounter: fa3340bb-c352-440d-93f4-4c157de132bd
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 0bb285c0-af15-4d2b-a14d-e802aff47fd6
+          stepCounter: 436f8b7d-9970-4313-9e5c-cb744a8a8e8f
+        config: {}
+        dataType: STRING
+        description: ""
+        name: R_COMMENT
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 62162e81-6f93-4bb7-a61c-9437895a234f
+                stepCounter: fa3340bb-c352-440d-93f4-4c157de132bd
+            transform: ""
+    cteString: ""
+    enabledColumnTestIDs: []
+    sourceMapping:
+      - aliases:
+          region: fa3340bb-c352-440d-93f4-4c157de132bd
+        customSQL:
+          customSQL: ""
+        dependencies:
+          - locationName: SRC
+            nodeName: region
+        join:
+          joinCondition: FROM {{ ref('SRC', 'region') }} `region`
+        name: vw_region_v1
+        noLinkRefs: []
+  name: vw_region_v1
+  overrideSQL: false
+  schema: ""
+  sqlType: bigquery-base-node-types:::168
+  type: sql
+  version: 1
+type: Node
