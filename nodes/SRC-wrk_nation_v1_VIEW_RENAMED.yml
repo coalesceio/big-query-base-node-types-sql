@@ -18,7 +18,7 @@ operation:
   deployEnabled: true
   description: ""
   isMultisource: false
-  locationName: TARGET
+  locationName: SRC
   materializationType: view
   metadata:
     appliedNodeTests: []
