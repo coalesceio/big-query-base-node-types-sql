@@ -1,0 +1,183 @@
+fileVersion: 1
+id: 0ec79ff8-7359-443d-947a-1f661160d375
+name: wrk_orders_v1_view
+operation:
+  config:
+    groupByAll: false
+    insertStrategy: INSERT
+    insertStrategy1: UNION DISTINCT
+    postSQL: ""
+    preSQL: ""
+    selectDistinct: false
+    testsEnabled: false
+    truncateBefore: true
+  database: ""
+  deployEnabled: true
+  description: ""
+  isMultisource: false
+  locationName: TARGET
+  materializationType: view
+  metadata:
+    appliedNodeTests: []
+    columns:
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 7e70599c-7956-461e-bd54-8e02f183e118
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: INT64
+        description: ""
+        name: O_ORDERKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_ORDERKEY
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: e705f22c-ab75-4411-bd8e-2e9144347be8
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: INT64
+        description: "'NA'"
+        name: O_CUSTKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_CUSTKEY
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: de37e51c-2aad-4a65-928e-796622d13c20
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: STRING
+        description: ""
+        name: O_ORDERSTATUS
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_ORDERSTATUS
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 329422fa-cbf1-441a-adbe-bb5b10dc4545
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: FLOAT64
+        description: ""
+        name: O_TOTALPRICE
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_TOTALPRICE
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: eb7b7d2f-e189-4d2c-9e6d-c72df9175503
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: DATE
+        description: ""
+        name: O_ORDERDATE
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_ORDERDATE
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 3a68f3b6-a0cc-4eee-8058-cfd1f61a156c
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: STRING
+        description: ""
+        name: O_ORDERPRIORITY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_ORDERPRIORITY
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: e5c6c150-a5d3-4462-9db2-23e37cc26ea8
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: STRING
+        description: ""
+        name: O_CLERK
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_CLERK
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: c91583a1-640f-4c57-83cd-a16d232944c2
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: INT64
+        description: ""
+        name: O_SHIPPRIORITY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_SHIPPRIORITY
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 1d60d1ad-a133-4da1-b483-740242e61f23
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: STRING
+        description: ""
+        name: O_COMMENT
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: O_COMMENT
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 5e18c600-e11b-40bf-a0a5-fb78e3477817
+          stepCounter: 0ec79ff8-7359-443d-947a-1f661160d375
+        config: {}
+        dataType: STRING
+        description: Hash Column
+        name: GH_COL1
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: GH_COL1
+                stepCounter: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+            transform: ""
+    cteString: ""
+    enabledColumnTestIDs: []
+    sourceMapping:
+      - aliases:
+          WRK_orders_v2_table: 8ecedf41-beb4-4cae-9e56-6cf4f2f8bd26
+        customSQL:
+          customSQL: ""
+        dependencies:
+          - locationName: TARGET
+            nodeName: WRK_orders_v2_table
+        join:
+          joinCondition: FROM {{ ref('TARGET', 'WRK_orders_v2_table') }} `WRK_orders_v2_table`
+        name: wrk_orders_v1_view
+        noLinkRefs: []
+  name: wrk_orders_v1_view
+  overrideSQL: false
+  schema: ""
+  sqlType: bigquery-base-node-types:::159
+  type: sql
+  version: 1
+type: Node
