@@ -1,6 +1,7 @@
 @id("7c072b64-e563-47d9-bb3c-c9fae55aee0b")
 @nodeType("705")
 @materializationType("view")
+WITH CTE AS (
 SELECT
      `N_NATIONKEY` AS `N_NATIONKEY`,
      `N_NAME` AS `N_NAME`,
@@ -8,3 +9,6 @@ SELECT
      `N_COMMENT` AS `N_COMMENT`,
      `last_modified` AS `last_modified`
 FROM {{ ref('TARGET', 'wrk_nation_v1_VIEW_RENAMED') }} `wrk_nation_v1_VIEW`
+)
+
+SELECT * FROM CTE
