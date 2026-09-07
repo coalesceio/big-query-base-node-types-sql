@@ -79,7 +79,7 @@ The Work Node type has three configuration groups:
 ### Notes
 
 - Verify that all **column datatypes** are successfully resolved before creating the object. Columns with an `UNKNOWN` datatype may cause stage generation or runtime failures.
-
+- **Datatype Compatibility:** If the defaulted datatype is not compatible with Google BigQuery, use CAST() to explicitly convert the value to a BigQuery-compatible datatype.
 - Any keyword that is valid immediately after **SELECT** is accepted in the final **SELECT** clause (right after any CTEs) — for example **DISTINCT** or **ALL**. This does not extend to keywords like `DEFAULT` that, while valid SQL keywords elsewhere, don't fit in a `SELECT` clause.
 
     ```sql
