@@ -1,0 +1,116 @@
+fileVersion: 1
+id: f210179c-b52e-402e-a6a6-0b506ada4ade
+name: wrk_nation_v1_VIEW
+operation:
+  config:
+    groupByAll: false
+    insertStrategy: INSERT
+    orderby: false
+    orderbycolumn:
+      items:
+        - {}
+    postSQL: ""
+    preSQL: ""
+    selectDistinct: false
+    testsEnabled: true
+    truncateBefore: true
+  database: ""
+  deployEnabled: true
+  description: ""
+  isMultisource: false
+  locationName: TARGET
+  materializationType: view
+  metadata:
+    appliedNodeTests: []
+    columns:
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: d0fef0a7-6efa-480c-aa04-2002eea03cc5
+          stepCounter: f210179c-b52e-402e-a6a6-0b506ada4ade
+        config: {}
+        dataType: INT64
+        description: ""
+        name: N_NATIONKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 8412299d-a967-45a9-9b65-44b85a1d10dd
+                stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 6da9a7e1-7255-4102-8cb5-853e0fd4ab7c
+          stepCounter: f210179c-b52e-402e-a6a6-0b506ada4ade
+        config: {}
+        dataType: STRING
+        description: ""
+        name: N_NAME
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: 645a74c4-94b0-4959-af1a-7c23339a5900
+                stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: 6eaf468a-0c5e-431d-a421-4126a6a99cc6
+          stepCounter: f210179c-b52e-402e-a6a6-0b506ada4ade
+        config: {}
+        dataType: INT64
+        description: ""
+        name: N_REGIONKEY
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: e6c7eeec-acdd-4ad3-9d9d-fc1af20930b5
+                stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: d9394c48-ad6b-4c4c-872f-8db363fbfffb
+          stepCounter: f210179c-b52e-402e-a6a6-0b506ada4ade
+        config: {}
+        dataType: STRING
+        description: ""
+        name: N_COMMENT
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: e88c63c7-d9dc-447c-ae20-85030629e363
+                stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+            transform: ""
+      - appliedColumnTests: {}
+        columnReference:
+          columnCounter: a1a8d85b-169c-492a-9f72-af93c222e6d1
+          stepCounter: f210179c-b52e-402e-a6a6-0b506ada4ade
+        config: {}
+        dataType: TIMESTAMP
+        description: ""
+        name: last_modified
+        nullable: true
+        sourceColumnReferences:
+          - columnReferences:
+              - columnCounter: e1ab30d8-af1c-4feb-90fa-4487f84af937
+                stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+            transform: ""
+    cteString: ""
+    enabledColumnTestIDs: []
+    sourceMapping:
+      - aliases:
+          nation: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+        customSQL:
+          customSQL: ""
+        dependencies:
+          - locationName: SRC
+            nodeName: nation
+        join:
+          joinCondition: FROM {{ ref('SRC', 'nation') }} `nation`
+        name: wrk_nation_v1_VIEW
+        noLinkRefs: []
+  name: wrk_nation_v1_VIEW
+  overrideSQL: false
+  schema: ""
+  sqlType: Stage
+  type: sql
+  version: 1
+type: Node
