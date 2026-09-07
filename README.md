@@ -304,47 +304,42 @@ WITH RECURSIVE RCTE_FNL AS (
 SELECT `date_s`
 FROM RCTE_FNL
 ```
-**Using Recursive CTE - Classic Employee**
+**Using Recursive CTE**
 ```sql
-WITH RECURSIVE RCTE_FINAL AS (
-
-    -- Anchor clause: top-level employees (no manager)
+@description("Gap-free daily order calendar per nation, built from a recursive date spine bounded by the orders date range.")
+WITH RECURSIVE DATE_BOUNDS AS (
     SELECT
-        `EMPLOYEES_RECUR`.`EMPLOYEE_ID`  AS `EMPLOYEE_ID`,
-        1                                AS `LEVEL`,
-        `EMPLOYEES_RECUR`.`TITLE`        AS `TITLE`,
-        `EMPLOYEES_RECUR`.`MANAGER_ID`   AS `MANAGER_ID`
-    FROM {{ ref('SRC', 'EMPLOYEES_RECUR') }} AS `EMPLOYEES_RECUR`
-    WHERE `EMPLOYEES_RECUR`.`MANAGER_ID` IS NULL
+        MIN(O_ORDERDATE) AS MIN_DATE,
+        MAX(O_ORDERDATE) AS MAX_DATE
+    FROM {{ ref('SRC', 'orders') }}
+),
+DATE_SPINE AS (
+    SELECT MIN_DATE AS ORDER_DATE, MAX_DATE
+    FROM DATE_BOUNDS
 
     UNION ALL
 
-    -- Recursive clause: employees reporting to someone in the CTE
+    SELECT DATE_ADD(ORDER_DATE, INTERVAL 1 DAY), MAX_DATE
+    FROM DATE_SPINE
+    WHERE ORDER_DATE < MAX_DATE
+),
+DAILY_ORDERS AS (
     SELECT
-        `EMPLOYEES_RECUR`.`EMPLOYEE_ID`  AS `EMPLOYEE_ID`,
-        `RCTE_FINAL`.`LEVEL` + 1         AS `LEVEL`,
-        `EMPLOYEES_RECUR`.`TITLE`        AS `TITLE`,
-        `EMPLOYEES_RECUR`.`MANAGER_ID`   AS `MANAGER_ID`
-    FROM {{ ref('SRC', 'EMPLOYEES_RECUR') }} AS `EMPLOYEES_RECUR`
-    JOIN RCTE_FINAL
-        ON `EMPLOYEES_RECUR`.`MANAGER_ID` = `RCTE_FINAL`.`EMPLOYEE_ID`
+        O_ORDERDATE,
+        COUNT(*) AS ORDER_COUNT,
+        SUM(O_TOTALPRICE) AS ORDER_TOTAL_VALUE
+    FROM {{ ref('SRC', 'orders') }}
+    GROUP BY O_ORDERDATE
 )
-
 SELECT
-    `LEVEL`          AS `LEVEL`,
-    CAST(`TITLE` AS STRING) AS `TITLE`
-FROM RCTE_FINAL
-```
-**Using CTE for multisource combine**
-```sql
-WITH ALL_NATIONS AS (
-    SELECT *
-    FROM {{ ref('SOURCE_DATA', 'NATION_COPY1') }}
-    UNION
-    SELECT *
-    FROM {{ ref('SOURCE_DATA', 'NATION_COPY2') }}
-)
-SELECT n_nationkey FROM ALL_NATIONS
+    `ds`.`ORDER_DATE` AS `ORDER_DATE` @notNull @description("Calendar day in the orders date range"),
+    `n`.`N_NATIONKEY` AS `N_NATIONKEY` @notNull @description("Nation key"),
+    `n`.`N_NAME` AS `N_NAME` @description("Nation name"),
+    COALESCE(`do`.`ORDER_COUNT`, 0) AS `ORDER_COUNT` @description("Orders placed on this day, across all nations"),
+    CAST(COALESCE(`do`.`ORDER_TOTAL_VALUE`, 0) AS FLOAT64) AS `ORDER_TOTAL_VALUE` @description("Total order value on this day, across all nations")
+FROM DATE_SPINE `ds`
+CROSS JOIN {{ ref('SRC', 'nation') }} `n`
+LEFT JOIN DAILY_ORDERS `do` ON `do`.`O_ORDERDATE` = `ds`.`ORDER_DATE`
 ```
 
 ### Supported SQL Functionality
