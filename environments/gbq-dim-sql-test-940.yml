@@ -1,0 +1,11 @@
+fileVersion: 1
+id: "940"
+mappingDefinitions:
+  SRC:
+    database: cls-dev-bigquery
+    schema: DE_SRC
+  TARGET:
+    database: cls-dev-bigquery
+    schema: DE_QA
+name: "[gbq-dim-sql-test]"
+type: Environment
