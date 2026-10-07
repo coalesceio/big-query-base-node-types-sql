@@ -1,6 +1,6 @@
 fileVersion: 1
 id: "1"
-macroString: |-
+macroString: |
   {# ========================================================================
   Purpose          : Executes data quality tests associated with the node
                       and its columns, based on the configured run order.
@@ -286,7 +286,7 @@ macroString: |-
                   {%- for cluster in col.clusterKey -%}
                       {%- set cols.items = cols.items + [{
                               "position":  cluster.parameters[0] | int,
-                              "column": cluster.parameters[1] | default('"' + col.name + '"', true)
+                              "column": cluster.parameters[1] | default('`' + col.name + '`', true)
                           }] -%}
                   {%- endfor -%}
               {%- endif -%}
@@ -703,128 +703,5 @@ macroString: |-
         {%- endif -%}
 
     {%- endmacro -%}
-
-  get_partition_by()
-
-  Description:
-      Builds the PARTITION BY expression from the @partitionBy(type, expression) annotation.
-      - ingestionTime  : expression if given, otherwise _PARTITIONDATE
-      - timeUnitColumn : expression (a DATE column name or e.g. DATE_TRUNC(columnName, MONTH))
-      - integerRange   : expression (e.g. RANGE_BUCKET(columnName, GENERATE_ARRAY(1, 100, 200)))
-
-  Examples:
-      @partitionBy("ingestionTime")                        -> _PARTITIONDATE
-      @partitionBy("timeUnitColumn", "ORDER_DATE")         -> ORDER_DATE
-      @partitionBy("integerRange", "RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))")
-                                                           -> RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))
-      No annotation                                        -> empty
-  ====================================================================================================#}
-  {%- macro get_partition_by() -%}
-      {%- set ns = namespace(expr='') -%}
-      {%- if config.partitionBy is defined and config.partitionBy.parameters is defined and config.partitionBy.parameters | length > 0 -%}
-          {%- set params = config.partitionBy.parameters -%}
-          {%- set partType = params[0] | trim -%}
-          {%- set partExpr = (params[1] if params | length > 1 else '') | default('', true) | string | trim -%}
-          {%- if partType == 'ingestionTime' -%}
-              {%- set ns.expr = partExpr if partExpr | length > 0 else '_PARTITIONDATE' -%}
-          {%- elif partType == 'timeUnitColumn' or partType == 'integerRange' -%}
-              {%- set ns.expr = partExpr -%}
-          {%- endif -%}
-      {%- endif -%}
-      {{- ns.expr -}}
-  {%- endmacro -%}
-
-
-    {####################################################################################################################################
-      Macro : get_clusterby_sql
-
-      Description:
-        Generates the CLUSTER BY clause for the nodes cluster configuration, from the repeatable
-        @clusterKey(<position>, "<expression>") column annotation. Each occurrence contributes one
-        term, ordered by <position> (lowest first) — omit the expression to cluster by the column
-        itself, or give a transform expression (e.g. trunc(N_NAME, -5)) to cluster by that instead.
-
-      Inputs:
-        - col.clusterKey : list of annotation entries per column, each { parameters: [<position>, <expression>] }
-
-      Output:
-        - If at least one term is present:
-            CLUSTER BY (N_REGIONKEY, trunc(N_NAME, -5))
-        - If no valid terms are found:
-            '' (empty string)
-    ####################################################################################################################################}
-      {%- macro get_clusterby_sql() -%}
-
-          {%- set cols = namespace(items=[]) -%}
-          {# Collect columns participating in this clustreBy #}
-          {%- for col in sources[0].columns -%}
-              {%- if col.clusterKey is defined -%}
-                  {%- for cluster in col.clusterKey -%}
-                      {%- set cols.items = cols.items + [{
-                              "position":  cluster.parameters[0] | int,
-                              "column": cluster.parameters[1] | default('"' + col.name + '"', true)
-                          }] -%}
-                  {%- endfor -%}
-              {%- endif -%}
-          {%- endfor -%}
-
-          {%- if cols.items | length > 0 -%}
-              CLUSTER BY (
-                  {{- cols.items
-                      | sort(attribute='position')
-                      | map(attribute='column')
-                      | join(', ')
-                  -}}
-              )
-          {%- endif -%}
-
-      {%- endmacro -%}
-
-
-  {#===================================================================================================
-  get_table_expiration()
-
-  Description:
-      Builds the expiration_timestamp value from the @tableExpiration(type, value) annotation.
-      - daysFromNow   : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
-      - exactDateTime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
-
-  Examples:
-      @tableExpiration("daysFromNow", "30")            -> TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
-      @tableExpiration("exactDateTime", "2026-12-31")  -> TIMESTAMP "2026-12-31 23:59:59"
-      No annotation                                    -> empty
-  ====================================================================================================#}
-  {%- macro get_table_expiration() -%}
-      {%- set ns = namespace(expr='') -%}
-      {%- if config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 1 -%}
-          {%- set exprnType = config.tableExpiration.parameters[0] | trim -%}
-          {%- set exprnValue = config.tableExpiration.parameters[1] | default('', true) | string | trim -%}
-          {%- if exprnValue | length > 0 -%}
-              {%- if exprnType == 'exactDateTime' -%}
-                  {%- if exprnValue | length > 11 -%}
-                      {%- set ns.expr = 'TIMESTAMP "' + exprnValue + '"' -%}
-                  {%- else -%}
-                      {%- set ns.expr = 'TIMESTAMP "' + exprnValue + ' 23:59:59"' -%}
-                  {%- endif -%}
-              {%- elif exprnType == 'daysFromNow' -%}
-                  {%- set ns.expr = 'TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ' + exprnValue + ' DAY)' -%}
-              {%- endif -%}
-          {%- endif -%}
-      {%- endif -%}
-      {{- ns.expr -}}
-  {%- endmacro -%}
-
-  {#===================================================================================================
-  get_default_rounding_mode()
-
-  Description:
-      Returns the rounding mode from the @defaultRoundingMode(mode) annotation.
-      Empty when not annotated, so BigQuery's own default (ROUND_HALF_AWAY_FROM_ZERO) applies.
-  ====================================================================================================#}
-  {%- macro get_default_rounding_mode() -%}
-      {%- if config.defaultRoundingMode is defined and config.defaultRoundingMode.parameters is defined and config.defaultRoundingMode.parameters | length > 0 -%}
-          {{- config.defaultRoundingMode.parameters[0] | default('', true) | trim -}}
-      {%- endif -%}
-  {%- endmacro -%}
 name: macro
 type: Macro

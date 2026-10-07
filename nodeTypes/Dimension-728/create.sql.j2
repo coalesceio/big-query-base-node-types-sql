@@ -57,7 +57,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 	PARTITION BY {{ partitionBy }}
 	{%- endif %}
 	{%- if clusterBy | length > 0 %}
-	CLUSTER BY {{ get_clusterby_sql() }}
+	{{ get_clusterby_sql() }}
 	{%- endif %}
 	{%- if opts.items | length > 0 %}
 	OPTIONS({{ opts.items | join(', ') }})
