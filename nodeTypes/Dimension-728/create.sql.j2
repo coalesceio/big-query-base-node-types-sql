@@ -1,0 +1,92 @@
+{#
+    Copyright (c) 2026 Coalesce. All rights reserved.
+This script and its associated documentation are confidential and proprietary to Coalesce.
+Unauthorized reproduction, distribution, or disclosure of this material is strictly prohibited.
+Coalesce permits you to copy and modify this script for the purposes of using with Coalesce but does not permit copying or modification for any other purpose.  
+#}
+{# == Node Type Name           : Dimension  == #}
+{# == Node Type Description    : This node creates dimension table or view  == #}
+{#---------------------------------------------------------------------------------------------#}
+
+{%- if node.materializationType == 'table' %}
+
+    {{ validate_dimension_requirements(true) }}
+
+    {%- set primaryKeyCols = get_primary_key() %}
+    {# == Table properties from annotations == #}
+    {%- set partitionBy = get_partition_by() | trim %}
+    {%- set tableExpiration = get_table_expiration() | trim %}
+    {%- set roundingMode = get_default_rounding_mode() | trim %}
+
+    {# == Table OPTIONS: BigQuery allows a single OPTIONS clause == #}
+    {%- set opts = namespace(items=[]) %}
+    {%- if partitionBy | length > 0
+        and config.partitionBy.parameters[0] | trim != 'integerRange'
+        and config.partitionExpirationDays is defined
+        and config.partitionExpirationDays.parameters is defined
+        and config.partitionExpirationDays.parameters | length > 0 %}
+        {%- set opts.items = opts.items + ['partition_expiration_days = ' ~ config.partitionExpirationDays.parameters[0]] %}
+    {%- endif %}
+    {%- if tableExpiration | length > 0 %}
+        {%- set opts.items = opts.items + ['expiration_timestamp = ' ~ tableExpiration] %}
+    {%- endif %}
+    {%- if roundingMode | length > 0 %}
+        {%- set opts.items = opts.items + ["default_rounding_mode = '" ~ roundingMode ~ "'"] %}
+    {%- endif %}
+    {%- if node.description | trim | length > 0 %}
+        {%- set opts.items = opts.items + ["description = '" ~ (node.description | escape) ~ "'"] %}
+    {%- endif %}
+
+
+    {# CreateSQL for Table #}
+    {{ stage('Create ' + node.materializationType ) }}
+	CREATE OR REPLACE {{ node.materializationType }} {{ ref_no_link(node.location.name, node.name) }}
+	(
+		{%- for col in columns %}
+			`{{ col.name }}` {{ col.dataType }}
+			{%- if col.defaultValue %} DEFAULT {{ col.defaultValue }} {%- endif %}
+			{%- if col.nullable == false %} NOT NULL {%- endif %}
+			{%- if col.description | trim | length > 0 %} OPTIONS(description='{{ col.description | escape }}') {%- endif %}
+			{%- if not loop.last or primaryKeyCols | length > 0 -%}, {%- endif %}
+		{%- endfor %}
+		{%- if primaryKeyCols | length > 0 %}
+			PRIMARY KEY ({{ primaryKeyCols }}) NOT ENFORCED
+		{%- endif %}
+	)
+	{%- if partitionBy | length > 0 %}
+	PARTITION BY {{ partitionBy }}
+	{%- endif %}
+	{%- if clusterBy | length > 0 %}
+	CLUSTER BY {{ get_clusterby_sql() }}
+	{%- endif %}
+	{%- if opts.items | length > 0 %}
+	OPTIONS({{ opts.items | join(', ') }})
+	{%- endif %}
+    
+{%- elif node.materializationType == 'view' %}
+
+    {# CreateSQL for View #}
+    {{ stage('Create ' + node.materializationType ) }}
+    CREATE OR REPLACE {{ node.materializationType }} {{ ref_no_link(node.location.name, node.name) }}
+    (
+        {%- for col in columns %}
+            `{{ col.name }}`
+            {%- if col.description | trim | length > 0 %} OPTIONS(description='{{ col.description | escape }}') {%- endif %}
+            {%- if not loop.last -%}, {%- endif %}
+        {%- endfor %}
+    )
+    {%- if node.description | length > 0 %} OPTIONS(description='{{ desiredState.node.description | escape }}') {%- endif %}
+    AS
+    {{ sources[0].cteString }}
+    SELECT {{ sources[0].selectModifier | default('', true) }}
+    {%- for col in sources[0].columns %}
+        {%- if col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate %}
+            CAST(NULL AS {{ col.dataType }})
+        {%- else %}
+            {{ get_source_transform(col) }}
+        {%- endif %}
+        AS `{{ col.name }}`
+        {%- if not loop.last -%}, {%- endif %}
+    {%- endfor %}
+    {{ sources[0].join }}
+{%- endif %}
