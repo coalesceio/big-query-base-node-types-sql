@@ -317,10 +317,9 @@ metadata:
 
         - name: clusterKey
           description: |-
-            Marks this column as a term in the table's CLUSTER BY key, at the given position
-            (lowest first). Pass just the position to cluster by the plain column itself (e.g.
-            clusterKey(1)), or add an expression to cluster by that instead (e.g.
-            clusterKey(2, "trunc(N_NAME, -5)")).
+            Marks this column as part of the table's CLUSTER BY key, at the given position
+            (lowest first), e.g. clusterKey(1).
+            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
             Ignored on views.
           allowsMultiple: true
           parameters:

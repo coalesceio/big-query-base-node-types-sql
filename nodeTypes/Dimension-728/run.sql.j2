@@ -71,10 +71,10 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                 {{- source.cteString }}
                 SELECT 1
                 FROM (
-                    SELECT {{ get_source_transform(col) }} AS "CHECK_COL"
+                    SELECT {{ get_source_transform(col) }} AS `CHECK_COL`
                     {{ source.join }}
-                ) "T"
-                WHERE "T"."CHECK_COL" IS NULL
+                ) `T`
+                WHERE `T`.`CHECK_COL` IS NULL
             {%- endif %}
         {%- endfor %}
     {%- endif %}
@@ -99,13 +99,13 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 	{# == Truncate data before data insertion  == #}
     {%- if writeMode | lower != "append" -%}
         {{ stage('Truncate ' + node.materializationType) }}
-        TRUNCATE IF EXISTS {{ ref_no_link(node.location.name, node.name) }}
+        TRUNCATE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- endif %}
 
     {%- if config.zeroKey is defined and hasSurrogateKey %}
         {%- set zeroKeySurrogateValue = config.zeroKey.parameters[0] if (config.zeroKey.parameters is defined and config.zeroKey.parameters | length > 0) else '0' %}
         {{ stage('Load ' + node.materializationType + ' Using Merge - Zero Key Record') }}
-            MERGE INTO {{ ref_no_link(node.location.name, node.name) }} USING
+            MERGE INTO {{ ref_no_link(node.location.name, node.name) }} `{{ node.name }}` USING
             (
                 SELECT
                 {%- for col in source.columns %}
@@ -120,22 +120,21 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                     {%- else %}
                         {{ resolve_zero_key(col) }}
                     {%- endif %}
-                    AS "{{ col.name }}"
+                    AS `{{ col.name }}`
                     {%- if not loop.last %}, {%- endif %}
                 {%- endfor %}
-                FROM DUAL
             ) AS SOURCE_ZERO
 
             ON
             {%- for col in columns if col.isSurrogateKey %}
-                "{{ node.name }}"."{{ col.name }}" = {{ zeroKeySurrogateValue }}
+                `{{ node.name }}`.`{{ col.name }}` = {{ zeroKeySurrogateValue }}
             {%- endfor %}
 
             {# SYSTEM_CREATE_DATE keeps the zero records first-inserted value; everything else is refreshed. #}
             WHEN MATCHED THEN UPDATE
             SET
             {%- for col in columns if not (col.isSurrogateKey or col.isSystemCreateDate) %}
-                "{{ node.name }}"."{{ col.name }}" = "SOURCE_ZERO"."{{ col.name }}"
+                `{{ node.name }}`.`{{ col.name }}` = `SOURCE_ZERO`.`{{ col.name }}`
                 {%- if not loop.last %}, {%- endif %}			
             {%- endfor %}
 
@@ -143,14 +142,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             INSERT
             (
                 {%- for col in columns %}
-                    "{{ node.name }}"."{{ col.name }}"
+                    `{{ col.name }}`
                     {%- if not loop.last %}, {%- endif %}			
                 {%- endfor %}
             )
             VALUES
             (
                 {%- for col in columns %}
-                    "SOURCE_ZERO"."{{ col.name }}"			
+                    `SOURCE_ZERO`.`{{ col.name }}`			
                     {%- if not loop.last %}, {%- endif %}			
                 {%- endfor %}
             )
@@ -174,7 +173,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- endif %}
     {%- endif %}
 
-    MERGE INTO {{ ref_no_link(node.location.name, node.name) }} "TGT"
+    MERGE INTO {{ ref_no_link(node.location.name, node.name) }} `TGT`
     USING (
         {{- source.cteString }}
         {%- if type2Dimension -%}
@@ -185,55 +184,55 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             {%- set sysUpdateDateCol = get_value_by_column_attribute("isSystemUpdateDate") %}
             {%- set sysEndDateCol = get_value_by_column_attribute("isSystemEndDate") %}
 
-            {{ sourceDataCteOpen }}"SOURCE_DATA" AS (
+            {{ sourceDataCteOpen }}`SOURCE_DATA` AS (
                 /* Incoming source rows, transformed and aliased to the target column names */
                 SELECT {{ source.selectModifier | default('', true) }}
                 {%- for col in source.columns if not (col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate) %}
-                    {{ get_source_transform(col) }} AS "{{ col.name }}"
+                    {{ get_source_transform(col) }} AS `{{ col.name }}`
                     {%- if not loop.last %}, {%- endif %}
                 {%- endfor %}
                 {{ joinclause }}
             ),
 
-            "TARGET_CURRENT" AS (
+            `TARGET_CURRENT` AS (
                 /* Only the current (SYSTEM_CURRENT_FLAG = 'Y') version of each business key —
                    history rows are irrelevant for change detection */
                 SELECT
                 {%- for col in columns if not col.isSurrogateKey %}
                     {%- if col.isBusinessKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate %}
-                    "{{ col.name }}"
+                    `{{ col.name }}`
                     {%- else %}
-                    "{{ col.name }}" AS "TGT_{{ col.name }}"
+                    `{{ col.name }}` AS `TGT_{{ col.name }}`
                     {%- endif %}
                     {%- if not loop.last %}, {%- endif %}
                 {%- endfor %}
                 FROM {{ ref_no_link(node.location.name, node.name) }}
-                WHERE "{{ sysCurrentFlagCol }}" = 'Y'
+                WHERE `{{ sysCurrentFlagCol }}` = 'Y'
             ),
 
-            "CHANGE_DETECTION" AS (
+            `CHANGE_DETECTION` AS (
                 /* Classify each source row as NEW / CHANGED / NOCHANGE / UPDATE_NON_TYPE2 against
                    the current target row */
                 SELECT
-                    "SOURCE_DATA".*,
-                    "TARGET_CURRENT"."{{ sysVersionCol }}",
-                    "TARGET_CURRENT"."{{ sysCreateDateCol }}",
-                    "TARGET_CURRENT"."{{ sysUpdateDateCol }}",
+                    `SOURCE_DATA`.*,
+                    `TARGET_CURRENT`.`{{ sysVersionCol }}`,
+                    `TARGET_CURRENT`.`{{ sysCreateDateCol }}`,
+                    `TARGET_CURRENT`.`{{ sysUpdateDateCol }}`,
                     {%- for col in columns if not (col.isSurrogateKey or col.isBusinessKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate) %}
-                    "TARGET_CURRENT"."TGT_{{ col.name }}",
+                    `TARGET_CURRENT`.`TGT_{{ col.name }}`,
                     {%- endfor %}
                     CASE
                         -- No matching business key in the target at all — this is a brand-new dimension member
-                        WHEN "TARGET_CURRENT"."{{ sysVersionCol }}" IS NULL THEN 'NEW'
+                        WHEN `TARGET_CURRENT`.`{{ sysVersionCol }}` IS NULL THEN 'NEW'
                         {%- if lastModifiedComparison %}
                         -- Last-modified-driven: a newer source timestamp than the current target row means a change
-                        WHEN "SOURCE_DATA"."{{ lastModifiedColName }}" > "TARGET_CURRENT"."TGT_{{ lastModifiedColName }}" THEN 'CHANGED'
+                        WHEN `SOURCE_DATA`.`{{ lastModifiedColName }}` > `TARGET_CURRENT`.`TGT_{{ lastModifiedColName }}` THEN 'CHANGED'
                         {%- else %}
                         -- Change-tracking-driven: any @isChangeTracking column differing means a change
                         WHEN (
                             {%- for col in columns if col.isChangeTracking %}
                             {%- if not loop.first %} OR {%- endif %}
-                            {{ safe_compare('"SOURCE_DATA"."' ~ col.name ~ '"', '"TARGET_CURRENT"."TGT_' ~ col.name ~ '"', col.dataType) }}
+                            {{ safe_compare('`SOURCE_DATA`.`' ~ col.name ~ '`', '`TARGET_CURRENT`.`TGT_' ~ col.name ~ '`', col.dataType) }}
                             {%- endfor %}
                         ) THEN 'CHANGED'
                         {%- set nonType2AttrCount = columns | rejectattr("isBusinessKey") | rejectattr("isSurrogateKey") | rejectattr("isSystemVersion") | rejectattr("isSystemCurrentFlag") | rejectattr("isSystemCreateDate") | rejectattr("isSystemUpdateDate") | rejectattr("isSystemEndDate") | rejectattr("isChangeTracking") | list | length %}
@@ -243,22 +242,22 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                         WHEN (
                             {%- for col in columns if not (col.isBusinessKey or col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate or col.isChangeTracking) %}
                             {%- if not loop.first %} OR {%- endif %}
-                            {{ safe_compare('"SOURCE_DATA"."' ~ col.name ~ '"', '"TARGET_CURRENT"."TGT_' ~ col.name ~ '"', col.dataType) }}
+                            {{ safe_compare('`SOURCE_DATA`.`' ~ col.name ~ '`', '`TARGET_CURRENT`.`TGT_' ~ col.name ~ '`', col.dataType) }}
                             {%- endfor %}
                         ) THEN 'UPDATE_NON_TYPE2'
                         {%- endif %}
                         {%- endif %}
                         ELSE 'NOCHANGE'
-                    END AS "CHANGE_TYPE"
-                FROM "SOURCE_DATA"
-                LEFT JOIN "TARGET_CURRENT" ON
+                    END AS `CHANGE_TYPE`
+                FROM `SOURCE_DATA`
+                LEFT JOIN `TARGET_CURRENT` ON
                 {%- for col in columns if col.isBusinessKey %}
                     {%- if not loop.first %} AND {%- endif %}
-                    {{ safe_equals('"SOURCE_DATA"."' ~ col.name ~ '"', '"TARGET_CURRENT"."' ~ col.name ~ '"', col.dataType) }}
+                    {{ safe_equals('`SOURCE_DATA`.`' ~ col.name ~ '`', '`TARGET_CURRENT`.`' ~ col.name ~ '`', col.dataType) }}
                 {%- endfor %}
             ),
 
-            "MERGE_ROWS" AS (
+            `MERGE_ROWS` AS (
                 /* Union of the three (or four) SCD2 row shapes the outer MERGE needs: a fresh
                    insert for a brand-new key, a new current version for a changed key, the prior
                    version expired, and — when applicable — an in-place update for a changed
@@ -276,13 +275,13 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                     {%- elif col.isSystemEndDate %}
                     CAST('2999-12-31 00:00:00' AS TIMESTAMP)
                     {%- else %}
-                    "{{ col.name }}"
+                    `{{ col.name }}`
                     {%- endif %}
-                    AS "{{ col.name }}",
+                    AS `{{ col.name }}`,
                 {%- endfor %}
-                'INSERT_NEW_ROWS' AS "DML_OPERATION"
-                FROM "CHANGE_DETECTION"
-                WHERE "CHANGE_TYPE" = 'NEW'
+                'INSERT_NEW_ROWS' AS `DML_OPERATION`
+                FROM `CHANGE_DETECTION`
+                WHERE `CHANGE_TYPE` = 'NEW'
 
                 UNION ALL
 
@@ -290,7 +289,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                 SELECT
                 {%- for col in columns if not col.isSurrogateKey %}
                     {%- if col.isSystemVersion %}
-                    "{{ col.name }}" + 1
+                    `{{ col.name }}` + 1
                     {%- elif col.isSystemCurrentFlag %}
                     'Y'
                     {%- elif col.isSystemCreateDate or col.isSystemUpdateDate %}
@@ -298,13 +297,13 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                     {%- elif col.isSystemEndDate %}
                     CAST('2999-12-31 00:00:00' AS TIMESTAMP)
                     {%- else %}
-                    "{{ col.name }}"
+                    `{{ col.name }}`
                     {%- endif %}
-                    AS "{{ col.name }}",
+                    AS `{{ col.name }}`,
                 {%- endfor %}
-                'INSERT_NEW_SCD2_ROWS' AS "DML_OPERATION"
-                FROM "CHANGE_DETECTION"
-                WHERE "CHANGE_TYPE" = 'CHANGED'
+                'INSERT_NEW_SCD2_ROWS' AS `DML_OPERATION`
+                FROM `CHANGE_DETECTION`
+                WHERE `CHANGE_TYPE` = 'CHANGED'
 
                 UNION ALL
 
@@ -312,21 +311,21 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                 SELECT
                 {%- for col in columns if not col.isSurrogateKey %}
                     {%- if col.isBusinessKey or col.isSystemVersion or col.isSystemCreateDate %}
-                    "{{ col.name }}"
+                    `{{ col.name }}`
                     {%- elif col.isSystemUpdateDate %}
                     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
                     {%- elif col.isSystemCurrentFlag %}
                     'N'
                     {%- elif col.isSystemEndDate %}
-                    DATEADD(MILLISECONDS, -1, CAST(CURRENT_TIMESTAMP AS TIMESTAMP))
+                    TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 MILLISECOND)
                     {%- else %}
-                    "TGT_{{ col.name }}"
+                    `TGT_{{ col.name }}`
                     {%- endif %}
-                    AS "{{ col.name }}",
+                    AS `{{ col.name }}`,
                 {%- endfor %}
-                'UPDATE_OLD_SCD2_ROWS' AS "DML_OPERATION"
-                FROM "CHANGE_DETECTION"
-                WHERE "CHANGE_TYPE" = 'CHANGED'
+                'UPDATE_OLD_SCD2_ROWS' AS `DML_OPERATION`
+                FROM `CHANGE_DETECTION`
+                WHERE `CHANGE_TYPE` = 'CHANGED'
 
                 {%- if not lastModifiedComparison and nonType2AttrCount > 0 %}
                 UNION ALL
@@ -342,18 +341,18 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                     {%- elif col.isSystemEndDate %}
                     CAST('2999-12-31 00:00:00' AS TIMESTAMP)
                     {%- else %}
-                    "{{ col.name }}"
+                    `{{ col.name }}`
                     {%- endif %}
-                    AS "{{ col.name }}",
+                    AS `{{ col.name }}`,
                 {%- endfor %}
-                'UPDATE_NON_TYPE2_ROWS' AS "DML_OPERATION"
-                FROM "CHANGE_DETECTION"
-                WHERE "CHANGE_TYPE" = 'UPDATE_NON_TYPE2'
+                'UPDATE_NON_TYPE2_ROWS' AS `DML_OPERATION`
+                FROM `CHANGE_DETECTION`
+                WHERE `CHANGE_TYPE` = 'UPDATE_NON_TYPE2'
                 {%- endif %}
             )
             -- Final SCD2 row set, tagged with DML_OPERATION so the outer MERGE's WHEN clauses
             -- can route each row to the right insert/update behavior
-            SELECT * FROM "MERGE_ROWS"
+            SELECT * FROM `MERGE_ROWS`
         {%- else -%}
             {# SCD Type 1: one row per business key, classified NEW/CHANGED/NOCHANGE off the business key (version/current-flag/end-date columns are optional here). #}
             {%- set sysCreateDateCol = get_value_by_column_attribute("isSystemCreateDate") %}
@@ -366,55 +365,55 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                System columns ride along with the user's own expressions (not hard-coded values), so custom SELECT/CTE logic can set them (e.g. expiring a row for SCD2); only the identity surrogate key is left out. #}
             SELECT {{ source.selectModifier | default('', true) }}
             {%- for col in source.columns if not col.isSurrogateKey %}
-                {{ get_source_transform(col) }} AS "{{ col.name }}"
+                {{ get_source_transform(col) }} AS `{{ col.name }}`
                 {%- if not loop.last %}, {%- endif %}
             {%- endfor %}
             {{ joinclause }}
             {%- else %}
 
-            {{ sourceDataCteOpen }}"SOURCE_DATA" AS (
+            {{ sourceDataCteOpen }}`SOURCE_DATA` AS (
                 /* Incoming source rows, transformed and aliased to the target column names */
                 SELECT {{ source.selectModifier | default('', true) }}
                 {%- for col in source.columns if not (col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate) %}
-                    {{ get_source_transform(col) }} AS "{{ col.name }}"
+                    {{ get_source_transform(col) }} AS `{{ col.name }}`
                     {%- if not loop.last %}, {%- endif %}
                 {%- endfor %}
                 {{ joinclause }}
             ),
 
-            "TARGET_CURRENT" AS (
+            `TARGET_CURRENT` AS (
                 /* SCD1 = one row per key, so no current-flag filter is needed here. SYSTEM_VERSION,
                    if present at all, rides along but is never used to detect a NEW row. */
                 SELECT
                 {%- for col in columns if not col.isSurrogateKey and not (col.isSystemCurrentFlag or col.isSystemUpdateDate or col.isSystemEndDate) %}
                     {%- if col.isBusinessKey or col.isSystemVersion or col.isSystemCreateDate %}
-                    "{{ col.name }}"
+                    `{{ col.name }}`
                     {%- else %}
-                    "{{ col.name }}" AS "TGT_{{ col.name }}"
+                    `{{ col.name }}` AS `TGT_{{ col.name }}`
                     {%- endif %}
                     {%- if not loop.last %}, {%- endif %}
                 {%- endfor %}
                 FROM {{ ref_no_link(node.location.name, node.name) }}
             ),
 
-            "CHANGE_DETECTION" AS (
+            `CHANGE_DETECTION` AS (
                 /* Classify each source row as NEW / CHANGED / NOCHANGE against the current target row */
                 SELECT
-                    "SOURCE_DATA".*,
+                    `SOURCE_DATA`.*,
                     {%- for col in columns if col.isSystemVersion %}
-                    "TARGET_CURRENT"."{{ col.name }}",
+                    `TARGET_CURRENT`.`{{ col.name }}`,
                     {%- endfor %}
-                    "TARGET_CURRENT"."{{ sysCreateDateCol }}",
+                    `TARGET_CURRENT`.`{{ sysCreateDateCol }}`,
                     {%- for col in columns if not (col.isSurrogateKey or col.isBusinessKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate) %}
-                    "TARGET_CURRENT"."TGT_{{ col.name }}",
+                    `TARGET_CURRENT`.`TGT_{{ col.name }}`,
                     {%- endfor %}
                     CASE
                         -- NEW is detected off the business key match, not SYSTEM_VERSION — SCD1 works
                         -- the same whether SYSTEM_VERSION exists on this node or not.
-                        WHEN "TARGET_CURRENT"."{{ firstBizKeyCol }}" IS NULL THEN 'NEW'
+                        WHEN `TARGET_CURRENT`.`{{ firstBizKeyCol }}` IS NULL THEN 'NEW'
                         {%- if lastModifiedComparison %}
                         -- Last-modified-driven: a newer source timestamp than the current target row means a change
-                        WHEN "SOURCE_DATA"."{{ lastModifiedColName }}" > "TARGET_CURRENT"."TGT_{{ lastModifiedColName }}" THEN 'CHANGED'
+                        WHEN `SOURCE_DATA`.`{{ lastModifiedColName }}` > `TARGET_CURRENT`.`TGT_{{ lastModifiedColName }}` THEN 'CHANGED'
                         {%- else %}
                         -- Change-tracking-driven, SCD1: no column can be marked @isChangeTracking here —
                         -- that annotation is exactly what makes a dimension type2 — so SCD1 instead
@@ -424,7 +423,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                         WHEN (
                             {%- for col in scd1AttrCols %}
                             {%- if not loop.first %} OR {%- endif %}
-                            {{ safe_compare('"SOURCE_DATA"."' ~ col.name ~ '"', '"TARGET_CURRENT"."TGT_' ~ col.name ~ '"', col.dataType) }}
+                            {{ safe_compare('`SOURCE_DATA`.`' ~ col.name ~ '`', '`TARGET_CURRENT`.`TGT_' ~ col.name ~ '`', col.dataType) }}
                             {%- endfor %}
                         ) THEN 'CHANGED'
                         {%- else %}
@@ -432,12 +431,12 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                         {%- endif %}
                         {%- endif %}
                         ELSE 'NOCHANGE'
-                    END AS "CHANGE_TYPE"
-                FROM "SOURCE_DATA"
-                LEFT JOIN "TARGET_CURRENT" ON
+                    END AS `CHANGE_TYPE`
+                FROM `SOURCE_DATA`
+                LEFT JOIN `TARGET_CURRENT` ON
                 {%- for col in columns if col.isBusinessKey %}
                     {%- if not loop.first %} AND {%- endif %}
-                    {{ safe_equals('"SOURCE_DATA"."' ~ col.name ~ '"', '"TARGET_CURRENT"."' ~ col.name ~ '"', col.dataType) }}
+                    {{ safe_equals('`SOURCE_DATA`.`' ~ col.name ~ '`', '`TARGET_CURRENT`.`' ~ col.name ~ '`', col.dataType) }}
                 {%- endfor %}
             )
             /* Final SCD1 row set: one row per source key, tagged with the CHANGE_TYPE the
@@ -451,33 +450,33 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                 {%- elif col.isSystemCreateDate %}
                 -- Set once on insert; preserved as-is for every other row (excluded from the
                 -- outer UPDATE SET below, but computed correctly here too for clarity).
-                CASE WHEN "CHANGE_TYPE" = 'NEW' THEN CAST(CURRENT_TIMESTAMP AS TIMESTAMP) ELSE "{{ sysCreateDateCol }}" END
+                CASE WHEN `CHANGE_TYPE` = 'NEW' THEN CAST(CURRENT_TIMESTAMP AS TIMESTAMP) ELSE `{{ sysCreateDateCol }}` END
                 {%- elif col.isSystemUpdateDate %}
                 CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
                 {%- elif col.isSystemEndDate %}
                 CAST('2999-12-31 00:00:00' AS TIMESTAMP)
                 {%- else %}
-                "{{ col.name }}"
+                `{{ col.name }}`
                 {%- endif %}
-                AS "{{ col.name }}",
+                AS `{{ col.name }}`,
             {%- endfor %}
-            "CHANGE_TYPE"
-            FROM "CHANGE_DETECTION"
+            `CHANGE_TYPE`
+            FROM `CHANGE_DETECTION`
             {%- endif %}
         {%- endif %}
 
-    ) AS "SRC"
+    ) AS `SRC`
     ON
 
     {%- for col in columns if col.isBusinessKey %}
         {%- if not loop.first %} AND {%- endif %}
-        {{ safe_equals('"TGT"."' ~ col.name ~ '"', '"SRC"."' ~ col.name ~ '"', col.dataType) }}
+        {{ safe_equals('`TGT`.`' ~ col.name ~ '`', '`SRC`.`' ~ col.name ~ '`', col.dataType) }}
     {%- endfor %}
 
     {%- if type2Dimension %}
         -- SCD2 also matches on version, so MERGE_ROWS' expired-old-version and inserted-new-version
         -- rows for the same business key never collide with each other in the same MATCHED branch
-        AND "TGT"."{{ get_value_by_column_attribute("isSystemVersion") }}" = "SRC"."{{ get_value_by_column_attribute("isSystemVersion") }}"
+        AND `TGT`.`{{ get_value_by_column_attribute("isSystemVersion") }}` = `SRC`.`{{ get_value_by_column_attribute("isSystemVersion") }}`
     {%- endif %}
 
     {%- if type2Dimension %}
@@ -485,7 +484,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         -- new rows/versions come in as NOT MATCHED since they carry a version the target doesn't have yet
         WHEN MATCHED THEN UPDATE SET
         {%- for col in columns if not (col.isBusinessKey or col.isSurrogateKey or col.isSystemCreateDate) %}
-            "TGT"."{{ col.name }}" = "SRC"."{{ col.name }}"
+            `TGT`.`{{ col.name }}` = `SRC`.`{{ col.name }}`
             {%- if not loop.last %}, {%- endif %}
         {%- endfor %}
 
@@ -497,14 +496,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- if upsertUpdateCols | length > 0 %}
         WHEN MATCHED THEN UPDATE SET
         {%- for col in upsertUpdateCols %}
-            "TGT"."{{ col.name }}" = "SRC"."{{ col.name }}"
+            `TGT`.`{{ col.name }}` = `SRC`.`{{ col.name }}`
             {%- if not loop.last %}, {%- endif %}
         {%- endfor %}
         {%- endif %}
 
     {%- else %}
 
-        WHEN MATCHED AND "SRC"."CHANGE_TYPE" = 'CHANGED'
+        WHEN MATCHED AND `SRC`.`CHANGE_TYPE` = 'CHANGED'
 
         THEN UPDATE SET
         {%- for col in columns if not (  col.isBusinessKey or
@@ -512,7 +511,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                                         col.isSystemVersion or
                                         col.isSystemCurrentFlag or
                                         col.isSystemCreateDate) %}
-            "TGT"."{{ col.name }}" = "SRC"."{{ col.name }}"
+            `TGT`.`{{ col.name }}` = `SRC`.`{{ col.name }}`
             {%- if not loop.last %}, {%- endif %}
         {%- endfor %}
     {%- endif %}
@@ -520,14 +519,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     WHEN NOT MATCHED THEN INSERT
     (
         {%- for col in columns if not col.isSurrogateKey %}
-            "{{ col.name }}"
+            `{{ col.name }}`
             {%- if not loop.last %}, {%- endif %}
         {%- endfor %}
     )
     VALUES
     (
         {%- for col in columns if not col.isSurrogateKey %}
-            "SRC"."{{ col.name }}"
+            `SRC`.`{{ col.name }}`
             {%- if not loop.last %}, {%- endif %}
         {%- endfor %}
     )

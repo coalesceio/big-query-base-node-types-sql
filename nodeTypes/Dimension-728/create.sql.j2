@@ -17,6 +17,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {%- set partitionBy = get_partition_by() | trim %}
     {%- set tableExpiration = get_table_expiration() | trim %}
     {%- set roundingMode = get_default_rounding_mode() | trim %}
+    {%- set clusterBy = get_clusterby_sql() | trim %}
 
     {# == Table OPTIONS: BigQuery allows a single OPTIONS clause == #}
     {%- set opts = namespace(items=[]) %}
@@ -38,6 +39,10 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {%- endif %}
 
 
+    {# CREATE OR REPLACE cannot change an existing table's partitioning or clustering, so drop it first #}
+    {{ stage('Drop ' + node.materializationType ) }}
+	DROP TABLE IF EXISTS {{ ref_no_link(node.location.name, node.name) }}
+
     {# CreateSQL for Table #}
     {{ stage('Create ' + node.materializationType ) }}
 	CREATE OR REPLACE {{ node.materializationType }} {{ ref_no_link(node.location.name, node.name) }}
@@ -57,7 +62,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 	PARTITION BY {{ partitionBy }}
 	{%- endif %}
 	{%- if clusterBy | length > 0 %}
-	{{ get_clusterby_sql() }}
+	{{ clusterBy }}
 	{%- endif %}
 	{%- if opts.items | length > 0 %}
 	OPTIONS({{ opts.items | join(', ') }})
