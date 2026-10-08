@@ -2,96 +2,115 @@
     Copyright (c) 2026 Coalesce. All rights reserved.
 This script and its associated documentation are confidential and proprietary to Coalesce.
 Unauthorized reproduction, distribution, or disclosure of this material is strictly prohibited.
-Coalesce permits you to copy and modify this script for the purposes of using with Coalesce but does not permit copying or modification for any other purpose.  
+Coalesce permits you to copy and modify this script for the purposes of using with Coalesce but does not permit copying or modification for any other purpose.
 #}
 {# == Node Type Name           : Dimension  == #}
-{# == Node Type Description    : This node creates dimension table or view  == #}
+{# == Node Type Description    : This node creates dimension table or view with advanced deployment strategy  == #}
 {#---------------------------------------------------------------------------------------------#}
 
-{%- if node.materializationType == 'table' %}
+{%- set nsNodeVariables = namespace(currentProjectDataset = "",
+                                    desiredProjectDataset = "",
+                                    desObjectNameFullPath = "",
+                                    curObjectNameFullPath = "",
+                                    metadataChanges = false) %}
+{{ initializeNodeVariables(nsNodeVariables) }}
 
-    {{ validate_dimension_requirements(true) }}
+{%- if desiredState %}
 
-    {%- set primaryKeyCols = get_primary_key() %}
-    {# == Table properties from annotations == #}
-    {%- set partitionBy = get_partition_by() | trim %}
-    {%- set tableExpiration = get_table_expiration() | trim %}
-    {%- set roundingMode = get_default_rounding_mode() | trim %}
-    {%- set clusterBy = get_clusterby_sql() | trim %}
+    {%- if desiredState.node.materializationType == 'view' %}
 
-    {# == Table OPTIONS: BigQuery allows a single OPTIONS clause == #}
-    {%- set opts = namespace(items=[]) %}
-    {%- if partitionBy | length > 0
-        and config.partitionBy.parameters[0] | trim != 'integerRange'
-        and config.partitionExpirationDays is defined
-        and config.partitionExpirationDays.parameters is defined
-        and config.partitionExpirationDays.parameters | length > 0 %}
-        {%- set opts.items = opts.items + ['partition_expiration_days = ' ~ config.partitionExpirationDays.parameters[0]] %}
-    {%- endif %}
-    {%- if tableExpiration | length > 0 %}
-        {%- set opts.items = opts.items + ['expiration_timestamp = ' ~ tableExpiration] %}
-    {%- endif %}
-    {%- if roundingMode | length > 0 %}
-        {%- set opts.items = opts.items + ["default_rounding_mode = '" ~ roundingMode ~ "'"] %}
-    {%- endif %}
-    {%- if node.description | trim | length > 0 %}
-        {%- set opts.items = opts.items + ["description = '" ~ (node.description | escape) ~ "'"] %}
-    {%- endif %}
-
-
-    {# CREATE OR REPLACE cannot change an existing table's partitioning or clustering, so drop it first #}
-    {{ stage('Drop ' + node.materializationType ) }}
-	DROP TABLE IF EXISTS {{ ref_no_link(node.location.name, node.name) }}
-
-    {# CreateSQL for Table #}
-    {{ stage('Create ' + node.materializationType ) }}
-	CREATE OR REPLACE {{ node.materializationType }} {{ ref_no_link(node.location.name, node.name) }}
-	(
-		{%- for col in columns %}
-			`{{ col.name }}` {{ col.dataType }}
-			{%- if col.defaultValue %} DEFAULT {{ col.defaultValue }} {%- endif %}
-			{%- if col.nullable == false %} NOT NULL {%- endif %}
-			{%- if col.description | trim | length > 0 %} OPTIONS(description='{{ col.description | escape }}') {%- endif %}
-			{%- if not loop.last or primaryKeyCols | length > 0 -%}, {%- endif %}
-		{%- endfor %}
-		{%- if primaryKeyCols | length > 0 %}
-			PRIMARY KEY ({{ primaryKeyCols }}) NOT ENFORCED
-		{%- endif %}
-	)
-	{%- if partitionBy | length > 0 %}
-	PARTITION BY {{ partitionBy }}
-	{%- endif %}
-	{%- if clusterBy | length > 0 %}
-	{{ clusterBy }}
-	{%- endif %}
-	{%- if opts.items | length > 0 %}
-	OPTIONS({{ opts.items | join(', ') }})
-	{%- endif %}
-    
-{%- elif node.materializationType == 'view' %}
-
-    {# CreateSQL for View #}
-    {{ stage('Create ' + node.materializationType ) }}
-    CREATE OR REPLACE {{ node.materializationType }} {{ ref_no_link(node.location.name, node.name) }}
-    (
-        {%- for col in columns %}
-            `{{ col.name }}`
-            {%- if col.description | trim | length > 0 %} OPTIONS(description='{{ col.description | escape }}') {%- endif %}
-            {%- if not loop.last -%}, {%- endif %}
-        {%- endfor %}
-    )
-    {%- if node.description | length > 0 %} OPTIONS(description='{{ desiredState.node.description | escape }}') {%- endif %}
-    AS
-    {{ sources[0].cteString }}
-    SELECT {{ sources[0].selectModifier | default('', true) }}
-    {%- for col in sources[0].columns %}
-        {%- if col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate %}
-            CAST(NULL AS {{ col.dataType }})
-        {%- else %}
-            {{ get_source_transform(col) }}
+        {%- if currentState != undefined
+            and (currentState.node.materializationType != desiredState.node.materializationType
+            or nsNodeVariables.currentProjectDataset != nsNodeVariables.desiredProjectDataset) %}
+                {# Drop current object before creating #}
+                {{ stage('Drop Current ' + currentState.node.materializationType + ' - ' + currentState.node.name, true, "sql", "drop") }}
+                DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
         {%- endif %}
-        AS `{{ col.name }}`
-        {%- if not loop.last -%}, {%- endif %}
-    {%- endfor %}
-    {{ sources[0].join }}
+
+        {# Create new view #}
+        {%- if currentState == undefined or currentState != desiredState %}
+            {{ stage('Create Dimension View', true, "sql", "create") }}
+            CREATE OR REPLACE VIEW {{ nsNodeVariables.desObjectNameFullPath }}
+            (
+                {%- for col in desiredState.columns %}
+                    `{{ col.name }}`
+                    {%- if col.description | trim | length > 0 %} OPTIONS(description = '{{ col.description | escape }}') {%- endif %}
+                    {%- if not loop.last -%}, {%- endif %}
+                {%- endfor %}
+            )
+            {%- if desiredState.node.description | trim | length > 0 %} OPTIONS(description = '{{ desiredState.node.description | escape }}') {%- endif %}
+            AS
+            {{ desiredState.sources[0].cteString }}
+            SELECT {{ desiredState.sources[0].selectModifier | default('', true) }}
+            {%- for col in desiredState.sources[0].columns %}
+                {%- if col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate %}
+                    CAST(NULL AS {{ col.dataType }})
+                {%- else %}
+                    {{ get_source_transform(col) }}
+                {%- endif %}
+                AS `{{ col.name }}`
+                {%- if not loop.last -%}, {%- endif %}
+            {%- endfor %}
+            {{ desiredState.sources[0].join }}
+        {%- endif %}
+
+    {%- elif desiredState.node.materializationType == 'table' %}
+
+        {{ validate_dimension_requirements(true) }}
+
+        {%- set nsConfigVariables = namespace(options = "", partitionBy = "", clusterBy = "", primaryKey = "", createTable = false) %}
+
+        {# Initialise the variables necessary for create of table #}
+        {%- set nsConfigVariables.partitionBy = get_partition_by_sql(desiredState.config) | trim %}
+        {%- set nsConfigVariables.clusterBy = get_clusterby_sql(desiredState.columns) | trim %}
+        {%- set nsConfigVariables.primaryKey = get_primary_key_sql(desiredState.columns) | trim %}
+        {%- set nsConfigVariables.options = get_table_options_sql(desiredState.config, desiredState.node.description) | trim %}
+
+        {# Check the conditions for creating new table #}
+        {%- if currentState != undefined
+                and (currentState.node.materializationType != desiredState.node.materializationType
+                or nsNodeVariables.currentProjectDataset != nsNodeVariables.desiredProjectDataset
+                or get_partition_by_sql(currentState.config) | trim != nsConfigVariables.partitionBy
+                or get_clusterby_sql(currentState.columns) | trim != nsConfigVariables.clusterBy) %}
+            {%- set nsConfigVariables.createTable = true %}
+            {%- set nsNodeVariables.metadataChanges = true %}
+        {%- endif %}
+
+        {# Create table incase of new deployment or unsupported alter changes in existing table #}
+        {%- if currentState == undefined or nsConfigVariables.createTable %}
+
+            {# Drop current object before creating #}
+            {%- if nsConfigVariables.createTable %}
+                {{ stage('Drop Current ' + currentState.node.materializationType + ' - ' + currentState.node.name, true, "sql", "drop") }}
+                DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
+            {%- endif %}
+
+            {# Create table with all the annotation options #}
+            {{ stage('Create Dimension Table', true, "sql", "create") }}
+            CREATE OR REPLACE TABLE {{ nsNodeVariables.desObjectNameFullPath }}
+            (
+                {%- for col in desiredState.columns %}
+                    `{{ col.name }}` {{ col.dataType }}
+                    {%- if col.defaultValue %} DEFAULT {{ col.defaultValue }} {%- endif %}
+                    {%- if col.nullable == false %} NOT NULL {%- endif %}
+                    {%- if col.description | trim | length > 0 %} OPTIONS(description = '{{ col.description | escape }}') {%- endif %}
+                    {%- if not loop.last or nsConfigVariables.primaryKey | length > 0 -%}, {%- endif %}
+                {%- endfor %}
+                {%- if nsConfigVariables.primaryKey | length > 0 %}
+                    {{ nsConfigVariables.primaryKey }}
+                {%- endif %}
+            )
+            {{ nsConfigVariables.partitionBy }}
+            {{ nsConfigVariables.clusterBy }}
+            {{ nsConfigVariables.options }}
+
+        {%- endif %}
+    {%- endif %}
+
+{%- elif currentState != undefined and desiredState == undefined %}
+
+    {# Drop the table/view in undeployment #}
+    {{ stage('Drop Current ' + currentState.node.materializationType) }}
+    DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
+
 {%- endif %}

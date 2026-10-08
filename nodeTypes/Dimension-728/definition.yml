@@ -17,6 +17,89 @@ metadata:
     annotations:
         node:
 
+        - name: partitionBy
+          description: |-
+            Partitions the target table.
+            𝗶𝗻𝗴𝗲𝘀𝘁𝗶𝗼𝗻𝗧𝗶𝗺𝗲 partitions by load time — defaults to _PARTITIONDATE, or pass an expression such as DATE_TRUNC(_PARTITIONTIME, MONTH);
+            𝘁𝗶𝗺𝗲𝗨𝗻𝗶𝘁𝗖𝗼𝗹𝘂𝗺𝗻 partitions by a DATE column name or an expression such as DATE_TRUNC(columnName, MONTH);
+            𝗶𝗻𝘁𝗲𝗴𝗲𝗿𝗥𝗮𝗻𝗴𝗲 partitions by an expression such as RANGE_BUCKET(columnName, GENERATE_ARRAY(1, 100, 200)).
+            ⚠️ On redeployment, partition changes drop and recreate the table.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false
+          parameters:
+            - name: type
+              type: string
+              description: Partitioning strategy for the target table.
+              isRequired: true
+              default: ingestionTime
+              example: timeUnitColumn
+              options:
+                - ingestionTime
+                - timeUnitColumn
+                - integerRange
+
+            - name: expression
+              type: string
+              description: |-
+                Column name or partition expression.
+                Required for 𝘁𝗶𝗺𝗲𝗨𝗻𝗶𝘁𝗖𝗼𝗹𝘂𝗺𝗻 and 𝗶𝗻𝘁𝗲𝗴𝗲𝗿𝗥𝗮𝗻𝗴𝗲; optional for 𝗶𝗻𝗴𝗲𝘀𝘁𝗶𝗼𝗻𝗧𝗶𝗺𝗲.
+              isRequired: false
+              example: DATE_TRUNC(columnName, MONTH)
+
+        - name: partitionExpirationDays
+          description: |-
+            Number of days to keep each partition before BigQuery deletes it.
+            Applies only with @partitionBy of type 𝗶𝗻𝗴𝗲𝘀𝘁𝗶𝗼𝗻𝗧𝗶𝗺𝗲 or 𝘁𝗶𝗺𝗲𝗨𝗻𝗶𝘁𝗖𝗼𝗹𝘂𝗺𝗻.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false
+          parameters:
+            - name: days
+              type: number
+              description: Partition expiration in days.
+              isRequired: true
+              example: 30
+
+        - name: tableExpiration
+          description: |-
+            Sets when BigQuery deletes the target table.
+            𝗱𝗮𝘆𝘀𝗙𝗿𝗼𝗺𝗡𝗼𝘄 expires the table the given number of days after it is created, e.g. 30;
+            𝗲𝘅𝗮𝗰𝘁𝗗𝗮𝘁𝗲𝗧𝗶𝗺𝗲 expires it at a fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false
+          parameters:
+            - name: type
+              type: string
+              description: How the expiration value is interpreted.
+              isRequired: true
+              default: daysFromNow
+              example: exactDateTime
+              options:
+                - daysFromNow
+                - exactDateTime
+
+            - name: value
+              type: string
+              description: Number of days for 𝗱𝗮𝘆𝘀𝗙𝗿𝗼𝗺𝗡𝗼𝘄, or a date / datetime for 𝗲𝘅𝗮𝗰𝘁𝗗𝗮𝘁𝗲𝗧𝗶𝗺𝗲.
+              isRequired: true
+              example: "30"
+
+        - name: defaultRoundingMode
+          description: |-
+            Default rounding mode for NUMERIC and BIGNUMERIC values written to the table.
+            If not specified, BigQuery uses 𝗥𝗢𝗨𝗡𝗗_𝗛𝗔𝗟𝗙_𝗔𝗪𝗔𝗬_𝗙𝗥𝗢𝗠_𝗭𝗘𝗥𝗢.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false
+          parameters:
+            - name: mode
+              type: string
+              description: Rounding mode applied to the table.
+              isRequired: true
+              default: ROUND_HALF_AWAY_FROM_ZERO
+              example: ROUND_HALF_EVEN
+              options:
+                - ROUND_HALF_AWAY_FROM_ZERO
+                - ROUND_HALF_EVEN
+
         - name: writeMode
           description: |-
             Controls how data is written to the target table. 
@@ -101,89 +184,6 @@ metadata:
               isRequired: false
               default: true
 
-        - name: partitionBy
-          description: |-
-            Partitions the target table.
-            𝗶𝗻𝗴𝗲𝘀𝘁𝗶𝗼𝗻𝗧𝗶𝗺𝗲 partitions by load time — defaults to _PARTITIONDATE, or pass an expression such as DATE_TRUNC(_PARTITIONTIME, MONTH);
-            𝘁𝗶𝗺𝗲𝗨𝗻𝗶𝘁𝗖𝗼𝗹𝘂𝗺𝗻 partitions by a DATE column name or an expression such as DATE_TRUNC(columnName, MONTH);
-            𝗶𝗻𝘁𝗲𝗴𝗲𝗿𝗥𝗮𝗻𝗴𝗲 partitions by an expression such as RANGE_BUCKET(columnName, GENERATE_ARRAY(1, 100, 200)).
-            ⚠️ On redeployment, partition changes drop and recreate the table.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: type
-              type: string
-              description: Partitioning strategy for the target table.
-              isRequired: true
-              default: ingestionTime
-              example: timeUnitColumn
-              options:
-                - ingestionTime
-                - timeUnitColumn
-                - integerRange
-
-            - name: expression
-              type: string
-              description: |-
-                Column name or partition expression.
-                Required for 𝘁𝗶𝗺𝗲𝗨𝗻𝗶𝘁𝗖𝗼𝗹𝘂𝗺𝗻 and 𝗶𝗻𝘁𝗲𝗴𝗲𝗿𝗥𝗮𝗻𝗴𝗲; optional for 𝗶𝗻𝗴𝗲𝘀𝘁𝗶𝗼𝗻𝗧𝗶𝗺𝗲.
-              isRequired: false
-              example: DATE_TRUNC(columnName, MONTH)
-
-        - name: partitionExpirationDays
-          description: |-
-            Number of days to keep each partition before BigQuery deletes it.
-            Applies only with @partitionBy of type 𝗶𝗻𝗴𝗲𝘀𝘁𝗶𝗼𝗻𝗧𝗶𝗺𝗲 or 𝘁𝗶𝗺𝗲𝗨𝗻𝗶𝘁𝗖𝗼𝗹𝘂𝗺𝗻.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: days
-              type: number
-              description: Partition expiration in days.
-              isRequired: true
-              example: 30
-
-        - name: tableExpiration
-          description: |-
-            Sets when BigQuery deletes the target table.
-            𝗱𝗮𝘆𝘀𝗙𝗿𝗼𝗺𝗡𝗼𝘄 expires the table the given number of days after it is created, e.g. 30;
-            𝗲𝘅𝗮𝗰𝘁𝗗𝗮𝘁𝗲𝗧𝗶𝗺𝗲 expires it at a fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: type
-              type: string
-              description: How the expiration value is interpreted.
-              isRequired: true
-              default: daysFromNow
-              example: exactDateTime
-              options:
-                - daysFromNow
-                - exactDateTime
-
-            - name: value
-              type: string
-              description: Number of days for 𝗱𝗮𝘆𝘀𝗙𝗿𝗼𝗺𝗡𝗼𝘄, or a date / datetime for 𝗲𝘅𝗮𝗰𝘁𝗗𝗮𝘁𝗲𝗧𝗶𝗺𝗲.
-              isRequired: true
-              example: "30"
-
-        - name: defaultRoundingMode
-          description: |-
-            Default rounding mode for NUMERIC and BIGNUMERIC values written to the table.
-            If not specified, BigQuery uses 𝗥𝗢𝗨𝗡𝗗_𝗛𝗔𝗟𝗙_𝗔𝗪𝗔𝗬_𝗙𝗥𝗢𝗠_𝗭𝗘𝗥𝗢.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: mode
-              type: string
-              description: Rounding mode applied to the table.
-              isRequired: true
-              default: ROUND_HALF_AWAY_FROM_ZERO
-              example: ROUND_HALF_EVEN
-              options:
-                - ROUND_HALF_AWAY_FROM_ZERO
-                - ROUND_HALF_EVEN
-
         - name: disableTests
           type: boolean
           description: |-
@@ -253,6 +253,29 @@ metadata:
 
         column:
 
+        - name: primaryKey
+          description: |-
+            Marks a column as part of the table's primary key.
+            Mark every key column to build a composite key; the columns are added to the key in node column order.
+            Presence enables the key — remove the annotation to drop the column from it.
+            𝗡𝗼𝘁 𝗲𝗻𝗳𝗼𝗿𝗰𝗲𝗱 — BigQuery does not validate uniqueness; pair with uniqueness / not_null to test it.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false
+
+        - name: clusterKey
+          description: |-
+            Marks this column as part of the table's CLUSTER BY key, at the given position
+            (lowest first), e.g. clusterKey(1).
+            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
+            ⚠️ On redeployment, clustering changes drop and recreate the table.
+            Ignored on views.
+          allowsMultiple: true
+          parameters:
+            - name: position
+              type: number
+              isRequired: true
+              example: 1
+
         - name: inHash
           description: |-
                 Marks a column as an input to a generated hash key, grouped by 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲 and ordered within that group by 𝗵𝗮𝘀𝗵𝗢𝗿𝗱𝗲𝗿.
@@ -306,28 +329,6 @@ metadata:
               isRequired: false
               default: 1
 
-        - name: primaryKey
-          description: |-
-            Marks a column as part of the table's primary key.
-            Mark every key column to build a composite key; the columns are added to the key in node column order.
-            Presence enables the key — remove the annotation to drop the column from it.
-            𝗡𝗼𝘁 𝗲𝗻𝗳𝗼𝗿𝗰𝗲𝗱 — BigQuery does not validate uniqueness; pair with uniqueness / not_null to test it.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-
-        - name: clusterKey
-          description: |-
-            Marks this column as part of the table's CLUSTER BY key, at the given position
-            (lowest first), e.g. clusterKey(1).
-            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
-            Ignored on views.
-          allowsMultiple: true
-          parameters:
-            - name: position
-              type: number
-              isRequired: true
-              example: 1
-
         - name: zeroKey
           description: |-
             • Adds a custom zero key value (ghost record) to this column, overriding the node-level 𝘇𝗲𝗿𝗼𝗞𝗲𝘆 defaults for it.
@@ -352,7 +353,7 @@ metadata:
             • 𝗥𝗲𝗾𝘂𝗶𝗿𝗲𝗱 𝗼𝗻𝗹𝘆 𝘄𝗵𝗲𝗻 the node-level @zeroKey is set, since the zero/ghost record is matched against the target by surrogate key value.
 
             Expected expression:
-            0 AS "{{NODE_NAME}}_KEY" @isSurrogateKey
+            0 AS `{{NODE_NAME}}_KEY` @isSurrogateKey
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -368,7 +369,7 @@ metadata:
             • To use different values (e.g. 'Yes'/'No' flags or another end-date sentinel), use upsert and compute them in the SELECT/CTE.
 
             Expected expression:
-            1 AS "SYSTEM_VERSION" @isSystemVersion
+            1 AS `SYSTEM_VERSION` @isSystemVersion
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -384,7 +385,7 @@ metadata:
             • To use different values (e.g. 'Yes'/'No' flags or another end-date sentinel), use upsert and compute them in the SELECT/CTE.
 
             Expected expression:
-            'Y' AS "SYSTEM_CURRENT_FLAG" @isSystemCurrentFlag
+            CAST('Y' AS STRING) AS `SYSTEM_CURRENT_FLAG` @isSystemCurrentFlag
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -399,7 +400,7 @@ metadata:
             • To use different values (e.g. 'Yes'/'No' flags or another end-date sentinel), use upsert and compute them in the SELECT/CTE.
 
             Expected expression:
-            CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_CREATE_DATE" @isSystemCreateDate
+            CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_CREATE_DATE` @isSystemCreateDate
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -415,7 +416,7 @@ metadata:
             • To use different values (e.g. 'Yes'/'No' flags or another end-date sentinel), use upsert and compute them in the SELECT/CTE.
 
             Expected expression:
-            CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_UPDATE_DATE" @isSystemUpdateDate
+            CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE` @isSystemUpdateDate
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -431,7 +432,7 @@ metadata:
             • To use different values (e.g. 'Yes'/'No' flags or another end-date sentinel), use upsert and compute them in the SELECT/CTE.
 
             Expected expression:
-            CAST('2999-12-31 00:00:00' AS TIMESTAMP) AS "SYSTEM_END_DATE" @isSystemEndDate
+            CAST('2999-12-31 00:00:00' AS TIMESTAMP) AS `SYSTEM_END_DATE` @isSystemEndDate
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -582,7 +583,7 @@ metadata:
             {%- endfor -%}
           {%- endfor -%}
           {%- set ns.items = ns.items + [{'expr': '1', 'alias': '`SYSTEM_VERSION`', 'annotation': idAnnotation ~ '@isSystemVersion'}] -%}
-          {%- set ns.items = ns.items + [{'expr': "'Y'", 'alias': '`SYSTEM_CURRENT_FLAG`', 'annotation': idAnnotation ~ '@isSystemCurrentFlag'}] -%}
+          {%- set ns.items = ns.items + [{'expr': "CAST('Y' AS STRING)", 'alias': '`SYSTEM_CURRENT_FLAG`', 'annotation': idAnnotation ~ '@isSystemCurrentFlag'}] -%}
           {%- set ns.items = ns.items + [{'expr': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP)', 'alias': '`SYSTEM_CREATE_DATE`', 'annotation': idAnnotation ~ '@isSystemCreateDate'}] -%}
           {%- set ns.items = ns.items + [{'expr': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP)', 'alias': '`SYSTEM_UPDATE_DATE`', 'annotation': idAnnotation ~ '@isSystemUpdateDate'}] -%}
           {%- set ns.items = ns.items + [{'expr': "CAST('2999-12-31 00:00:00' AS TIMESTAMP)", 'alias': '`SYSTEM_END_DATE`', 'annotation': idAnnotation ~ '@isSystemEndDate'}] -%}

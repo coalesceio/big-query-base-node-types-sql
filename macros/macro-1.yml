@@ -212,25 +212,34 @@ macroString: |-
   {%- endmacro -%}
 
   {#===================================================================================================
-  get_partition_by()
+  Table DDL clause macros
+
+  Each macro builds one complete clause of the CREATE TABLE statement from the annotations of a node
+  state, or returns an empty string when the clause does not apply. The node state is passed in
+  (desiredState.config / desiredState.columns, or the currentState equivalents), so the advanced-deploy
+  create template can render the same clause for both states and compare them.
+  ====================================================================================================#}
+
+  {#===================================================================================================
+  get_partition_by_sql(nodeConfig)
 
   Description:
-      Builds the PARTITION BY expression from the @partitionBy(type, expression) annotation.
+      Builds the PARTITION BY clause from the @partitionBy(type, expression) annotation.
       - ingestionTime  : expression if given, otherwise _PARTITIONDATE
       - timeUnitColumn : expression (a DATE column name or e.g. DATE_TRUNC(columnName, MONTH))
       - integerRange   : expression (e.g. RANGE_BUCKET(columnName, GENERATE_ARRAY(1, 100, 200)))
 
   Examples:
-      @partitionBy("ingestionTime")                        -> _PARTITIONDATE
-      @partitionBy("timeUnitColumn", "ORDER_DATE")         -> ORDER_DATE
+      @partitionBy("ingestionTime")                        -> PARTITION BY _PARTITIONDATE
+      @partitionBy("timeUnitColumn", "ORDER_DATE")         -> PARTITION BY ORDER_DATE
       @partitionBy("integerRange", "RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))")
-                                                           -> RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))
+                                                           -> PARTITION BY RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))
       No annotation                                        -> empty
   ====================================================================================================#}
-  {%- macro get_partition_by() -%}
+  {%- macro get_partition_by_sql(nodeConfig) -%}
       {%- set ns = namespace(expr='') -%}
-      {%- if config.partitionBy is defined and config.partitionBy.parameters is defined and config.partitionBy.parameters | length > 0 -%}
-          {%- set params = config.partitionBy.parameters -%}
+      {%- if nodeConfig.partitionBy is defined and nodeConfig.partitionBy.parameters is defined and nodeConfig.partitionBy.parameters | length > 0 -%}
+          {%- set params = nodeConfig.partitionBy.parameters -%}
           {%- set partType = params[0] | trim -%}
           {%- set partExpr = (params[1] if params | length > 1 else '') | default('', true) | string | trim -%}
           {%- if partType == 'ingestionTime' -%}
@@ -239,111 +248,136 @@ macroString: |-
               {%- set ns.expr = partExpr -%}
           {%- endif -%}
       {%- endif -%}
-      {{- ns.expr -}}
+      {%- if ns.expr | length > 0 -%}
+          PARTITION BY {{ ns.expr }}
+      {%- endif -%}
   {%- endmacro -%}
 
   {#===================================================================================================
-  get_primary_key()
+  get_primary_key_sql(nodeColumns)
 
   Description:
-      Returns the columns marked with the @primaryKey column annotation as a comma-separated,
-      backtick-quoted list in node column order. Empty when no column is marked.
+      Builds the PRIMARY KEY table constraint from the columns marked @primaryKey, in node column order.
+      BigQuery primary keys are never enforced, so NOT ENFORCED is always added.
+
+  Examples:
+      @primaryKey on N_NATIONKEY                           -> PRIMARY KEY (`N_NATIONKEY`) NOT ENFORCED
+      No column marked                                     -> empty
   ====================================================================================================#}
-  {%- macro get_primary_key() -%}
+  {%- macro get_primary_key_sql(nodeColumns) -%}
       {%- set pk = namespace(cols=[]) -%}
-      {%- for col in columns -%}
+      {%- for col in nodeColumns -%}
           {%- if col.primaryKey is defined -%}
               {%- set pk.cols = pk.cols + ['`' + col.name + '`'] -%}
           {%- endif -%}
       {%- endfor -%}
-      {{- pk.cols | join(', ') -}}
+      {%- if pk.cols | length > 0 -%}
+          PRIMARY KEY ({{ pk.cols | join(', ') }}) NOT ENFORCED
+      {%- endif -%}
   {%- endmacro -%}
 
-    {####################################################################################################################################
-      Macro : get_clusterby_sql
-
-      Description:
-        Generates the CLUSTER BY clause from the repeatable @clusterKey(<position>) column annotation.
-        Columns are ordered by <position> (lowest first). BigQuery clusters by plain top-level columns
-        only (no expressions, at most 4 columns), so each marked column contributes its own name once.
-
-      Inputs:
-        - col.clusterKey : list of annotation entries per column, each { parameters: [<position>] }
-
-      Output:
-        - If at least one column is marked:
-            CLUSTER BY `N_REGIONKEY`, `N_NAME`
-        - If no column is marked:
-            '' (empty string)
-    ####################################################################################################################################}
-      {%- macro get_clusterby_sql() -%}
-
-          {%- set cols = namespace(items=[]) -%}
-          {# Collect columns participating in the cluster key; a column marked more than once keeps its lowest position #}
-          {%- for col in columns -%}
-              {%- if col.clusterKey is defined -%}
-                  {%- set positions = col.clusterKey | map(attribute='parameters') | map('first') | map('int') | list -%}
-                  {%- set cols.items = cols.items + [{
-                          "position": positions | min,
-                          "column": '`' + col.name + '`'
-                      }] -%}
-              {%- endif -%}
-          {%- endfor -%}
-
-          {%- if cols.items | length > 0 -%}
-              CLUSTER BY {{ cols.items
-                  | sort(attribute='position')
-                  | map(attribute='column')
-                  | join(', ')
-              -}}
-          {%- endif -%}
-
-      {%- endmacro -%}
-
-
   {#===================================================================================================
-  get_table_expiration()
+  get_clusterby_sql(nodeColumns)
 
   Description:
-      Builds the expiration_timestamp value from the @tableExpiration(type, value) annotation.
-      - daysFromNow   : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
-      - exactDateTime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
+      Builds the CLUSTER BY clause from the repeatable @clusterKey(<position>) column annotation.
+      Columns are ordered by <position> (lowest first). BigQuery clusters by plain top-level columns
+      only (no expressions, at most 4 columns), so each marked column contributes its own name once.
 
   Examples:
-      @tableExpiration("daysFromNow", "30")            -> TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
-      @tableExpiration("exactDateTime", "2026-12-31")  -> TIMESTAMP "2026-12-31 23:59:59"
-      No annotation                                    -> empty
+      @clusterKey(1) on N_REGIONKEY, @clusterKey(2) on N_NAME -> CLUSTER BY `N_REGIONKEY`, `N_NAME`
+      No column marked                                        -> empty
   ====================================================================================================#}
-  {%- macro get_table_expiration() -%}
-      {%- set ns = namespace(expr='') -%}
-      {%- if config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 1 -%}
-          {%- set exprnType = config.tableExpiration.parameters[0] | trim -%}
-          {%- set exprnValue = config.tableExpiration.parameters[1] | default('', true) | string | trim -%}
+  {%- macro get_clusterby_sql(nodeColumns) -%}
+      {%- set cols = namespace(items=[]) -%}
+      {# A column marked more than once keeps its lowest position #}
+      {%- for col in nodeColumns -%}
+          {%- if col.clusterKey is defined -%}
+              {%- set positions = col.clusterKey | map(attribute='parameters') | map('first') | map('int') | list -%}
+              {%- set cols.items = cols.items + [{
+                      "position": positions | min,
+                      "column": '`' + col.name + '`'
+                  }] -%}
+          {%- endif -%}
+      {%- endfor -%}
+      {%- if cols.items | length > 0 -%}
+          CLUSTER BY {{ cols.items | sort(attribute='position') | map(attribute='column') | join(', ') }}
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===================================================================================================
+  get_table_options_sql(nodeConfig, description, resetUnset=false)
+
+  Description:
+      Builds the table OPTIONS(...) clause (BigQuery allows only one) from:
+      - @partitionExpirationDays(days) -> partition_expiration_days (time-partitioned tables only)
+      - @tableExpiration(type, value)  -> expiration_timestamp
+          daysFromNow   : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
+          exactDateTime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
+      - @defaultRoundingMode(mode)     -> default_rounding_mode
+      - the node description           -> description
+
+      resetUnset=false (CREATE) : only options that are set are listed; empty when none are.
+      resetUnset=true  (ALTER)  : every option is listed and an unset one is written as NULL, so
+                                  ALTER TABLE ... SET OPTIONS(...) also clears options removed since the
+                                  last deploy.
+
+  Examples:
+      @tableExpiration("daysFromNow", "30"), @defaultRoundingMode("ROUND_HALF_EVEN")
+          -> OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY), default_rounding_mode = 'ROUND_HALF_EVEN')
+      No options, resetUnset=false
+          -> empty
+  ====================================================================================================#}
+  {%- macro get_table_options_sql(nodeConfig, description, resetUnset=false) -%}
+      {%- set opts = namespace(items=[]) -%}
+
+      {# partition_expiration_days only applies to time-partitioned tables #}
+      {%- set isTimePartitioned = nodeConfig.partitionBy is defined
+              and nodeConfig.partitionBy.parameters is defined
+              and nodeConfig.partitionBy.parameters | length > 0
+              and nodeConfig.partitionBy.parameters[0] | trim in ('ingestionTime', 'timeUnitColumn') -%}
+      {%- if isTimePartitioned -%}
+          {%- if nodeConfig.partitionExpirationDays is defined and nodeConfig.partitionExpirationDays.parameters is defined and nodeConfig.partitionExpirationDays.parameters | length > 0 -%}
+              {%- set opts.items = opts.items + ['partition_expiration_days = ' ~ nodeConfig.partitionExpirationDays.parameters[0]] -%}
+          {%- elif resetUnset -%}
+              {%- set opts.items = opts.items + ['partition_expiration_days = NULL'] -%}
+          {%- endif -%}
+      {%- endif -%}
+
+      {%- set ns = namespace(expiration='') -%}
+      {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 1 -%}
+          {%- set exprnType = nodeConfig.tableExpiration.parameters[0] | trim -%}
+          {%- set exprnValue = nodeConfig.tableExpiration.parameters[1] | default('', true) | string | trim -%}
           {%- if exprnValue | length > 0 -%}
               {%- if exprnType == 'exactDateTime' -%}
-                  {%- if exprnValue | length > 11 -%}
-                      {%- set ns.expr = 'TIMESTAMP "' + exprnValue + '"' -%}
-                  {%- else -%}
-                      {%- set ns.expr = 'TIMESTAMP "' + exprnValue + ' 23:59:59"' -%}
-                  {%- endif -%}
+                  {%- set ns.expiration = 'TIMESTAMP "' ~ exprnValue ~ ('"' if exprnValue | length > 11 else ' 23:59:59"') -%}
               {%- elif exprnType == 'daysFromNow' -%}
-                  {%- set ns.expr = 'TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ' + exprnValue + ' DAY)' -%}
+                  {%- set ns.expiration = 'TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ' ~ exprnValue ~ ' DAY)' -%}
               {%- endif -%}
           {%- endif -%}
       {%- endif -%}
-      {{- ns.expr -}}
-  {%- endmacro -%}
+      {%- if ns.expiration | length > 0 -%}
+          {%- set opts.items = opts.items + ['expiration_timestamp = ' ~ ns.expiration] -%}
+      {%- elif resetUnset -%}
+          {%- set opts.items = opts.items + ['expiration_timestamp = NULL'] -%}
+      {%- endif -%}
 
-  {#===================================================================================================
-  get_default_rounding_mode()
+      {%- set hasRoundingMode = nodeConfig.defaultRoundingMode is defined and nodeConfig.defaultRoundingMode.parameters is defined and nodeConfig.defaultRoundingMode.parameters | length > 0 -%}
+      {%- set roundingMode = (nodeConfig.defaultRoundingMode.parameters[0] | default('', true) | string | trim) if hasRoundingMode else '' -%}
+      {%- if roundingMode | length > 0 -%}
+          {%- set opts.items = opts.items + ["default_rounding_mode = '" ~ roundingMode ~ "'"] -%}
+      {%- elif resetUnset -%}
+          {%- set opts.items = opts.items + ['default_rounding_mode = NULL'] -%}
+      {%- endif -%}
 
-  Description:
-      Returns the rounding mode from the @defaultRoundingMode(mode) annotation.
-      Empty when not annotated, so BigQuery own default (ROUND_HALF_AWAY_FROM_ZERO) applies.
-  ====================================================================================================#}
-  {%- macro get_default_rounding_mode() -%}
-      {%- if config.defaultRoundingMode is defined and config.defaultRoundingMode.parameters is defined and config.defaultRoundingMode.parameters | length > 0 -%}
-          {{- config.defaultRoundingMode.parameters[0] | default('', true) | trim -}}
+      {%- if description | default('', true) | trim | length > 0 -%}
+          {%- set opts.items = opts.items + ["description = '" ~ (description | escape) ~ "'"] -%}
+      {%- elif resetUnset -%}
+          {%- set opts.items = opts.items + ['description = NULL'] -%}
+      {%- endif -%}
+
+      {%- if opts.items | length > 0 -%}
+          OPTIONS({{ opts.items | join(', ') }})
       {%- endif -%}
   {%- endmacro -%}
 
@@ -734,5 +768,73 @@ macroString: |-
         {%- endif -%}
 
     {%- endmacro -%}
+
+  {#=========================================================
+    Initialize variables for node types that use the
+    advanced deployment strategy
+  ===========================================================#}
+  {%- macro initializeNodeVariables(nsNodeVariables) %}
+
+    {%- if currentState is defined %}
+      {%- set currentProject = currentState.storageLocations
+                                | selectattr('name', 'equalto', currentState.node.location.name)
+                                | map(attribute='database')
+                                | first %}
+      {%- set currentDataset = currentState.storageLocations
+                              | selectattr('name', 'equalto', currentState.node.location.name)
+                              | map(attribute='schema')
+                              | first %}
+      {%- set nsNodeVariables.currentProjectDataset = currentProject + '.' + currentDataset %}
+
+      {%- set nsNodeVariables.curObjectNameFullPath = ref_no_link(currentState.node.location.name, currentState.node.name) %}
+
+    {%- endif %}
+
+    {%- if desiredState is defined %}
+      {%- set desiredProject = desiredState.storageLocations
+                                | selectattr('name', 'equalto', desiredState.node.location.name)
+                                | map(attribute='database')
+                                | first %}
+      {%- set desiredDataset = desiredState.storageLocations
+                                | selectattr('name', 'equalto', desiredState.node.location.name)
+                                | map(attribute='schema')
+                                | first %}
+      {%- set nsNodeVariables.desiredProjectDataset = desiredProject + '.' + desiredDataset %}
+
+      {%- set nsNodeVariables.desObjectNameFullPath = ref_no_link(desiredState.node.location.name, desiredState.node.name) %}
+
+    {%- endif %}
+
+  {%- endmacro %}
+
+  {###########################################################################################
+  Purpose:
+  Determines the correct BigQuery DROP object syntax based on the materialization type.
+
+  Input:
+  - materialization (string): The BigQuery object type to be dropped
+    (e.g., table, view, materialized view, external table, snapshot, clone).
+
+  Returns:
+  - string: The appropriate DROP object keyword with IF EXISTS
+    (e.g., 'TABLE IF EXISTS', 'VIEW IF EXISTS', 'MATERIALIZED VIEW IF EXISTS').
+  #############################################################################################}
+  {%- macro dropMaterialization(materialization) %}
+
+      {%- if materialization in ['table', 'clone'] %}
+          TABLE IF EXISTS
+      {%- elif materialization == 'snapshot' %}
+          SNAPSHOT TABLE IF EXISTS
+      {%- elif materialization in ['view', 'authorized view'] %}
+          VIEW IF EXISTS
+      {%- elif materialization == 'materialized view' %}
+          MATERIALIZED VIEW IF EXISTS
+      {%- elif materialization == 'external table' %}
+          EXTERNAL TABLE IF EXISTS
+      {%- else %}
+          TABLE IF EXISTS   {# safe default for BigQuery #}
+      {%- endif %}
+
+  {%- endmacro %}
 name: macro
 type: Macro
