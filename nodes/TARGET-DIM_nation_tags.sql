@@ -1,5 +1,6 @@
 @id("e534ec9d-a844-40b0-9c03-801064b7e09f")
 @nodeType("728")
+@tag("env", "dev")
 @tag("cost_center", "finance")
 SELECT
     0                                        AS `DIM_nation1_KEY`     @id("fcbdd9") @isSurrogateKey @isBusinessKey,

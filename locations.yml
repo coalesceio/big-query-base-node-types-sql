@@ -2,5 +2,5 @@ defaultStorageMapping: TARGET
 fileVersion: 1
 locations:
   - SRC
-  - TARGET
   - TAG_SOURCE
+  - TARGET
