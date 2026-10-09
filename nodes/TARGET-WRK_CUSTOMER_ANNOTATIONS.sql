@@ -10,7 +10,7 @@ SELECT
     `C_ADDRESS`                  AS `C_ADDRESS`    @id("b9bc73") @inHash("HD_CUSTOMER", 3),
     `C_NATIONKEY`                AS `C_NATIONKEY`  @id("b9bc74") @min_max("0", "24"),
     `C_PHONE`                    AS `C_PHONE`      @id("b9bc75") @empty @inHash("HD_CUSTOMER", 4),
-    `C_ACCTBAL`                  AS `C_ACCTBAL`    @id("b9bc76") @min_value("-999.99") @max_value("9999.99") @description("Account balance"),
+    CAST(`C_ACCTBAL` AS FLOAT64)  AS `C_ACCTBAL`    @id("b9bc76") @min_value("-999.99") @max_value("9999.99") @description("Account balance"),
     `C_MKTSEGMENT`               AS `C_MKTSEGMENT` @id("b9bc77") @accepted_values("'AUTOMOBILE'") @accepted_values("'BUILDING'") @accepted_values("'FURNITURE'") @accepted_values("'HOUSEHOLD'") @accepted_values("'MACHINERY'") @rejected_values("'UNKNOWN'") @rejected_values("''"),
     `C_COMMENT`                  AS `C_COMMENT`    @id("b9bc78") @defaultValue("'NA'"),
     CAST({{ get_hash('HK_CUSTOMER') }} AS STRING)                                  AS `HK_CUSTOMER` @id("b9bc79") @not_null @description("Customer hash key (SHA1)"),
