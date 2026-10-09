@@ -315,6 +315,7 @@ macroString: |-
           daysFromNow   : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
           exactDateTime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
       - @defaultRoundingMode(mode)     -> default_rounding_mode
+      - @tag(name, value, location)    -> tags = [('<project-id>/<name>', '<value>'), ...] (see get_tags_sql)
       - the node description           -> description
 
       resetUnset=false (CREATE) : only options that are set are listed; empty when none are.
@@ -370,6 +371,13 @@ macroString: |-
           {%- set opts.items = opts.items + ['default_rounding_mode = NULL'] -%}
       {%- endif -%}
 
+      {%- set tagsOption = get_tags_sql(nodeConfig.tag) | trim -%}
+      {%- if tagsOption | length > 0 -%}
+          {%- set opts.items = opts.items + [tagsOption] -%}
+      {%- elif resetUnset -%}
+          {%- set opts.items = opts.items + ['tags = []'] -%}
+      {%- endif -%}
+
       {%- if description | default('', true) | trim | length > 0 -%}
           {%- set opts.items = opts.items + ["description = '" ~ (description | escape) ~ "'"] -%}
       {%- elif resetUnset -%}
@@ -378,6 +386,78 @@ macroString: |-
 
       {%- if opts.items | length > 0 -%}
           OPTIONS({{ opts.items | join(', ') }})
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {####################################################################################################################################
+    Macro : get_tag_full_name(bareTagName, locationName)
+
+    Description:
+      Fully qualifies a bare tag name (e.g. "cost_center") with the GCP project of the given storage
+      location, since BigQuery tag keys are namespaced by project: <project-id>/<tagName>. That way
+      @tag annotations only need the tag's own name. A name that already contains "/" (e.g. an
+      org-level key "123456789/env") is returned as-is. locationName defaults to this node's own
+      location — never a hardcoded alias — since a location's name can differ across environments.
+
+    Output:
+      cls-dev-bigquery/cost_center
+  ####################################################################################################################################}
+  {%- macro get_tag_full_name(bareTagName, locationName) -%}
+      {%- set tagName = bareTagName | string | trim -%}
+      {%- if '/' in tagName -%}
+          {{- tagName -}}
+      {%- else -%}
+          {%- set locName = locationName | default(node.location.name, true) -%}
+          {%- set locs = desiredState.storageLocations if (desiredState is defined and desiredState) else storageLocations -%}
+          {%- set project = locs | selectattr('name', 'equalto', locName) | map(attribute='database') | first -%}
+          {{- project ~ '/' ~ tagName -}}
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {####################################################################################################################################
+    Macro : find_duplicate_tag_names(tagList)
+
+    Description:
+      Finds tag names that resolve to the same fully-qualified tag key as another entry in a set of
+      @tag(<tagName>, <tagValue>, <location>) annotations — pass config.tag. A BigQuery table can hold
+      only one value per tag key, so any repeat of the same key is a duplicate, even with different
+      values. The same name in a different location's project is a different key and is allowed.
+
+    Output:
+      "cost_center, env" (comma-separated duplicate names) or '' (empty string) when none.
+  ####################################################################################################################################}
+  {%- macro find_duplicate_tag_names(tagList) -%}
+      {%- set ns = namespace(entries=[], dupes=[]) -%}
+      {%- for t in tagList | default([]) -%}
+          {%- set ns.entries = ns.entries + [{"key": get_tag_full_name(t.parameters[0], t.parameters[2]), "name": t.parameters[0]}] -%}
+      {%- endfor -%}
+      {%- for e in ns.entries -%}
+          {%- if (ns.entries | selectattr('key', 'equalto', e.key) | list | length) > 1 and e.name not in ns.dupes -%}
+              {%- set ns.dupes = ns.dupes + [e.name] -%}
+          {%- endif -%}
+      {%- endfor -%}
+      {{- ns.dupes | join(', ') -}}
+  {%- endmacro -%}
+
+  {####################################################################################################################################
+    Macro : get_tags_sql(tagList)
+
+    Description:
+      Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>, <location>)
+      annotations — pass config.tag. BigQuery takes tags inside the table's single OPTIONS(...) clause,
+      so get_table_options_sql adds this entry there.
+
+    Output:
+      tags = [('cls-dev-bigquery/cost_center', 'finance'), ('cls-dev-bigquery/env', 'prod')]
+      or '' (empty string) when tagList has no @tag annotations.
+  ####################################################################################################################################}
+  {%- macro get_tags_sql(tagList) -%}
+      {%- set ns = namespace(items=[]) -%}
+      {%- for t in tagList | default([]) -%}
+          {%- set ns.items = ns.items + ["('" ~ (get_tag_full_name(t.parameters[0], t.parameters[2]) | replace("'", "\\'")) ~ "', '" ~ (t.parameters[1] | string | trim | replace("'", "\\'")) ~ "')"] -%}
+      {%- endfor -%}
+      {%- if ns.items | length > 0 -%}
+          tags = [{{ ns.items | join(', ') }}]
       {%- endif -%}
   {%- endmacro -%}
 
@@ -464,6 +544,15 @@ macroString: |-
 
         {# Every Dimension column must carry its own @id annotation. #}
         {{ validate_column_ids(hardFail) }}
+
+        {# The same tag key may only be applied once to the table. #}
+        {%- set nodeDupeTags = find_duplicate_tag_names(config.tag) | trim -%}
+        {%- if nodeDupeTags | length > 0 %}
+            {%- set reason = nodeDupeTags ~ " is applied multiple times on " ~ node.name ~ ". A BigQuery table can carry only one value per tag key." %}
+            {{ test_stage('Duplicate Tags Found: ' + node.name, false) }}
+            -- {{ reason }}
+            {{ fail_select(reason) }}
+        {%- endif -%}
 
         {%- set hasBusinessKey = columns | selectattr("isBusinessKey") | list | length > 0 | default(false) -%}
         {%- if not hasBusinessKey %}
