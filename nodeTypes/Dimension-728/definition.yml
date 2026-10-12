@@ -289,7 +289,6 @@ metadata:
             BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
             ⚠️ On redeployment, clustering changes drop and recreate the table.
             Ignored on views.
-          allowsMultiple: true
           parameters:
             - name: position
               type: number

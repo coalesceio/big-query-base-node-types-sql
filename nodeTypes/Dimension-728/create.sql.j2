@@ -83,6 +83,10 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             {%- if nsConfigVariables.createTable %}
                 {{ stage('Drop Current ' + currentState.node.materializationType + ' - ' + currentState.node.name, true, "sql", "drop") }}
                 DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
+            {%- else %}
+                {# No current state: an existing table may still have different partitioning/clustering, which CREATE OR REPLACE cannot change #}
+                {{ stage('Drop Current table - ' + desiredState.node.name, true, "sql", "drop") }}
+                DROP {{ dropMaterialization('table') }} {{ nsNodeVariables.desObjectNameFullPath }}
             {%- endif %}
 
             {# Create table with all the annotation options #}

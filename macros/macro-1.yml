@@ -280,9 +280,9 @@ macroString: |-
   get_clusterby_sql(nodeColumns)
 
   Description:
-      Builds the CLUSTER BY clause from the repeatable @clusterKey(<position>) column annotation.
-      Columns are ordered by <position> (lowest first). BigQuery clusters by plain top-level columns
-      only (no expressions, at most 4 columns), so each marked column contributes its own name once.
+      Builds the CLUSTER BY clause from the @clusterKey(<position>) column annotation.
+      Columns are ordered by <position> (lowest first); columns with the same position keep node column
+      order. BigQuery clusters by plain top-level columns only (no expressions, at most 4 columns).
 
   Examples:
       @clusterKey(1) on N_REGIONKEY, @clusterKey(2) on N_NAME -> CLUSTER BY `N_REGIONKEY`, `N_NAME`
@@ -290,12 +290,11 @@ macroString: |-
   ====================================================================================================#}
   {%- macro get_clusterby_sql(nodeColumns) -%}
       {%- set cols = namespace(items=[]) -%}
-      {# A column marked more than once keeps its lowest position #}
       {%- for col in nodeColumns -%}
           {%- if col.clusterKey is defined -%}
-              {%- set positions = col.clusterKey | map(attribute='parameters') | map('first') | map('int') | list -%}
+              {%- set clusterParams = col.clusterKey.parameters if (col.clusterKey is mapping and col.clusterKey.parameters is defined) else [] -%}
               {%- set cols.items = cols.items + [{
-                      "position": positions | min,
+                      "position": (clusterParams[0] | int(0)) if clusterParams | length > 0 else 0,
                       "column": '`' + col.name + '`'
                   }] -%}
           {%- endif -%}
