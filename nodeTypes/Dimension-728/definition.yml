@@ -12,6 +12,8 @@ metadata:
 
     enableCTESupport: true
 
+    deployStrategy: advanced
+
     annotations:
         node:
 

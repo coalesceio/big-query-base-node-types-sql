@@ -3,7 +3,7 @@
 @description("Test - changeTracking SCD Type 2; partitionBy on a TIMESTAMP column with partitionExpirationDays")
 @mergeStrategy("changeTracking")
 @partitionBy("DATE(last_modified)")
-@partitionExpirationDays(365)
+@partitionExpirationDays(2)
 SELECT
     0                                        AS `DIM_T_CT_SCD2_PARTITION_KEY` @id("b20001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`                 @id("b20002") @isBusinessKey @not_null @uniqueness,

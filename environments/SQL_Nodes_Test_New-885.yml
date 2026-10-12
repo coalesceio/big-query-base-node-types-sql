@@ -4,9 +4,6 @@ mappingDefinitions:
   SRC:
     database: ""
     schema: ""
-  TAG_SOURCE:
-    database: ""
-    schema: ""
   TARGET:
     database: ""
     schema: ""

@@ -2,7 +2,7 @@
 @nodeType("728")
 @description("Test - tableExpiration as a full datetime; changeTracking SCD Type 2")
 @mergeStrategy("changeTracking")
-@tableExpiration("2026-12-31 23:59:59")
+@tableExpiration("2026-10-13 23:59:59")
 SELECT
     0                                        AS `DIM_T_EXPIRATION_DATETIME_KEY` @id("c40001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`                   @id("c40002") @isBusinessKey @not_null @uniqueness,
