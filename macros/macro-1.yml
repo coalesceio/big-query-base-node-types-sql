@@ -224,32 +224,25 @@ macroString: |-
   get_partition_by_sql(nodeConfig)
 
   Description:
-      Builds the PARTITION BY clause from the @partitionBy(type, expression) annotation.
-      - ingestionTime  : expression if given, otherwise _PARTITIONDATE
-      - timeUnitColumn : expression (a DATE column name or e.g. DATE_TRUNC(columnName, MONTH))
-      - integerRange   : expression (e.g. RANGE_BUCKET(columnName, GENERATE_ARRAY(1, 100, 200)))
+      Builds the PARTITION BY clause from the @partitionBy(expression) annotation. The column or
+      expression is written as-is, so it covers every BigQuery partition kind:
+      - ingestion time   : _PARTITIONDATE, or e.g. DATE_TRUNC(_PARTITIONTIME, MONTH)
+      - time-unit column : a DATE column, or e.g. DATE(ts_col), TIMESTAMP_TRUNC(ts_col, HOUR)
+      - integer range    : e.g. RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10))
 
   Examples:
-      @partitionBy("ingestionTime")                        -> PARTITION BY _PARTITIONDATE
-      @partitionBy("timeUnitColumn", "ORDER_DATE")         -> PARTITION BY ORDER_DATE
-      @partitionBy("integerRange", "RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))")
+      @partitionBy("_PARTITIONDATE")                       -> PARTITION BY _PARTITIONDATE
+      @partitionBy("ORDER_DATE")                           -> PARTITION BY ORDER_DATE
+      @partitionBy("RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))")
                                                            -> PARTITION BY RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))
       No annotation                                        -> empty
   ====================================================================================================#}
   {%- macro get_partition_by_sql(nodeConfig) -%}
-      {%- set ns = namespace(expr='') -%}
-      {%- if nodeConfig.partitionBy is defined and nodeConfig.partitionBy.parameters is defined and nodeConfig.partitionBy.parameters | length > 0 -%}
-          {%- set params = nodeConfig.partitionBy.parameters -%}
-          {%- set partType = params[0] | trim -%}
-          {%- set partExpr = (params[1] if params | length > 1 else '') | default('', true) | string | trim -%}
-          {%- if partType == 'ingestionTime' -%}
-              {%- set ns.expr = partExpr if partExpr | length > 0 else '_PARTITIONDATE' -%}
-          {%- elif partType == 'timeUnitColumn' or partType == 'integerRange' -%}
-              {%- set ns.expr = partExpr -%}
-          {%- endif -%}
-      {%- endif -%}
-      {%- if ns.expr | length > 0 -%}
-          PARTITION BY {{ ns.expr }}
+      {%- set partExpr = (nodeConfig.partitionBy.parameters[0] | default('', true) | string | trim)
+              if (nodeConfig.partitionBy is defined and nodeConfig.partitionBy.parameters is defined and nodeConfig.partitionBy.parameters | length > 0)
+              else '' -%}
+      {%- if partExpr | length > 0 -%}
+          PARTITION BY {{ partExpr }}
       {%- endif -%}
   {%- endmacro -%}
 
@@ -257,22 +250,29 @@ macroString: |-
   get_primary_key_sql(nodeColumns)
 
   Description:
-      Builds the PRIMARY KEY table constraint from the columns marked @primaryKey, in node column order.
+      Builds the PRIMARY KEY table constraint from the @primaryKey(<position>) column annotation.
+      Columns are ordered by <position> (lowest first); columns with the same position keep node column order.
       BigQuery primary keys are never enforced, so NOT ENFORCED is always added.
 
   Examples:
-      @primaryKey on N_NATIONKEY                           -> PRIMARY KEY (`N_NATIONKEY`) NOT ENFORCED
+      @primaryKey(1) on N_NATIONKEY                        -> PRIMARY KEY (`N_NATIONKEY`) NOT ENFORCED
+      @primaryKey(1) on N_REGIONKEY, @primaryKey(2) on N_NATIONKEY
+                                                           -> PRIMARY KEY (`N_REGIONKEY`, `N_NATIONKEY`) NOT ENFORCED
       No column marked                                     -> empty
   ====================================================================================================#}
   {%- macro get_primary_key_sql(nodeColumns) -%}
-      {%- set pk = namespace(cols=[]) -%}
+      {%- set pk = namespace(items=[]) -%}
       {%- for col in nodeColumns -%}
           {%- if col.primaryKey is defined -%}
-              {%- set pk.cols = pk.cols + ['`' + col.name + '`'] -%}
+              {%- set pkParams = col.primaryKey.parameters if (col.primaryKey is mapping and col.primaryKey.parameters is defined) else [] -%}
+              {%- set pk.items = pk.items + [{
+                      "position": (pkParams[0] | int(0)) if pkParams | length > 0 else 0,
+                      "column": '`' + col.name + '`'
+                  }] -%}
           {%- endif -%}
       {%- endfor -%}
-      {%- if pk.cols | length > 0 -%}
-          PRIMARY KEY ({{ pk.cols | join(', ') }}) NOT ENFORCED
+      {%- if pk.items | length > 0 -%}
+          PRIMARY KEY ({{ pk.items | sort(attribute='position') | map(attribute='column') | join(', ') }}) NOT ENFORCED
       {%- endif -%}
   {%- endmacro -%}
 
@@ -307,26 +307,24 @@ macroString: |-
 
 
   {####################################################################################################################################
-    Macro : get_tag_full_name(bareTagName, locationName)
+    Macro : get_tag_full_name(bareTagName)
 
     Description:
-      Fully qualifies a bare tag name (e.g. "cost_center") with the GCP project of the given storage
+      Fully qualifies a bare tag name (e.g. "cost_center") with the GCP project of this node's own
       location, since BigQuery tag keys are namespaced by project: <project-id>/<tagName>. That way
-      @tag annotations only need the tag's own name. A name that already contains "/" (e.g. an
-      org-level key "123456789/env") is returned as-is. locationName defaults to this node's own
-      location — never a hardcoded alias — since a location's name can differ across environments.
+      @tag annotations only need the tag's own name. A name that already contains "/" (e.g. a key
+      owned by another project, or an org-level key "123456789/env") is returned as-is.
 
     Output:
       cls-dev-bigquery/cost_center
   ####################################################################################################################################}
-  {%- macro get_tag_full_name(bareTagName, locationName) -%}
+  {%- macro get_tag_full_name(bareTagName) -%}
       {%- set tagName = bareTagName | string | trim -%}
       {%- if '/' in tagName -%}
           {{- tagName -}}
       {%- else -%}
-          {%- set locName = locationName | default(node.location.name, true) -%}
           {%- set locs = desiredState.storageLocations if (desiredState is defined and desiredState) else storageLocations -%}
-          {%- set project = locs | selectattr('name', 'equalto', locName) | map(attribute='database') | first -%}
+          {%- set project = locs | selectattr('name', 'equalto', node.location.name) | map(attribute='database') | first -%}
           {{- project ~ '/' ~ tagName -}}
       {%- endif -%}
   {%- endmacro -%}
@@ -336,9 +334,9 @@ macroString: |-
 
     Description:
       Finds tag names that resolve to the same fully-qualified tag key as another entry in a set of
-      @tag(<tagName>, <tagValue>, <location>) annotations — pass config.tag. A BigQuery table can hold
-      only one value per tag key, so any repeat of the same key is a duplicate, even with different
-      values. The same name in a different location's project is a different key and is allowed.
+      @tag(<tagName>, <tagValue>) annotations — pass config.tag. A BigQuery table can hold only one
+      value per tag key, so any repeat of the same key is a duplicate, even with different values
+      (e.g. "env" and "cls-dev-bigquery/env" on a node in that project).
 
     Output:
       "cost_center, env" (comma-separated duplicate names) or '' (empty string) when none.
@@ -346,7 +344,7 @@ macroString: |-
   {%- macro find_duplicate_tag_names(tagList) -%}
       {%- set ns = namespace(entries=[], dupes=[]) -%}
       {%- for t in tagList | default([]) -%}
-          {%- set ns.entries = ns.entries + [{"key": get_tag_full_name(t.parameters[0], t.parameters[2]), "name": t.parameters[0]}] -%}
+          {%- set ns.entries = ns.entries + [{"key": get_tag_full_name(t.parameters[0]), "name": t.parameters[0]}] -%}
       {%- endfor -%}
       {%- for e in ns.entries -%}
           {%- if (ns.entries | selectattr('key', 'equalto', e.key) | list | length) > 1 and e.name not in ns.dupes -%}
@@ -360,7 +358,7 @@ macroString: |-
     Macro : get_tags_sql(tagList)
 
     Description:
-      Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>, <location>)
+      Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>)
       annotations — pass config.tag. BigQuery takes tags inside the table's single OPTIONS(...) clause,
       so get_table_options_sql adds this entry there.
 
@@ -371,7 +369,7 @@ macroString: |-
   {%- macro get_tags_sql(tagList) -%}
       {%- set ns = namespace(items=[]) -%}
       {%- for t in tagList | default([]) -%}
-          {%- set ns.items = ns.items + ["('" ~ (get_tag_full_name(t.parameters[0], t.parameters[2]) | replace("'", "\\'")) ~ "', '" ~ (t.parameters[1] | string | trim | replace("'", "\\'")) ~ "')"] -%}
+          {%- set ns.items = ns.items + ["('" ~ (get_tag_full_name(t.parameters[0]) | replace("'", "\\'")) ~ "', '" ~ (t.parameters[1] | string | trim | replace("'", "\\'")) ~ "')"] -%}
       {%- endfor -%}
       {%- if ns.items | length > 0 -%}
           tags = [{{ ns.items | join(', ') }}]
@@ -384,12 +382,12 @@ macroString: |-
 
   Description:
       Builds the table OPTIONS(...) clause (BigQuery allows only one) from:
-      - @partitionExpirationDays(days) -> partition_expiration_days (time-partitioned tables only)
-      - @tableExpiration(type, value)  -> expiration_timestamp
-          daysFromNow   : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
-          exactDateTime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
+      - @partitionExpirationDays(days) -> partition_expiration_days (not for RANGE_BUCKET integer-range partitions)
+      - @tableExpiration(value)        -> expiration_timestamp
+          whole number  : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
+          date/datetime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
       - @defaultRoundingMode(mode)     -> default_rounding_mode
-      - @tag(name, value, location)    -> tags = [('<project-id>/<name>', '<value>'), ...] (see get_tags_sql)
+      - @tag(name, value)              -> tags = [('<project-id>/<name>', '<value>'), ...] (see get_tags_sql)
       - the node description           -> description
 
       resetUnset=false (CREATE) : only options that are set are listed; empty when none are.
@@ -398,7 +396,7 @@ macroString: |-
                                   last deploy.
 
   Examples:
-      @tableExpiration("daysFromNow", "30"), @defaultRoundingMode("ROUND_HALF_EVEN")
+      @tableExpiration("30"), @defaultRoundingMode("ROUND_HALF_EVEN")
           -> OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY), default_rounding_mode = 'ROUND_HALF_EVEN')
       No options, resetUnset=false
           -> empty
@@ -406,11 +404,9 @@ macroString: |-
   {%- macro get_table_options_sql(nodeConfig, description, resetUnset=false) -%}
       {%- set opts = namespace(items=[]) -%}
 
-      {# partition_expiration_days only applies to time-partitioned tables #}
-      {%- set isTimePartitioned = nodeConfig.partitionBy is defined
-              and nodeConfig.partitionBy.parameters is defined
-              and nodeConfig.partitionBy.parameters | length > 0
-              and nodeConfig.partitionBy.parameters[0] | trim in ('ingestionTime', 'timeUnitColumn') -%}
+      {# partition_expiration_days only applies to time-partitioned tables, i.e. any partition but an integer-range RANGE_BUCKET one #}
+      {%- set partitionSql = get_partition_by_sql(nodeConfig) | trim -%}
+      {%- set isTimePartitioned = partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
       {%- if isTimePartitioned -%}
           {%- if nodeConfig.partitionExpirationDays is defined and nodeConfig.partitionExpirationDays.parameters is defined and nodeConfig.partitionExpirationDays.parameters | length > 0 -%}
               {%- set opts.items = opts.items + ['partition_expiration_days = ' ~ nodeConfig.partitionExpirationDays.parameters[0]] -%}
@@ -420,14 +416,14 @@ macroString: |-
       {%- endif -%}
 
       {%- set ns = namespace(expiration='') -%}
-      {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 1 -%}
-          {%- set exprnType = nodeConfig.tableExpiration.parameters[0] | trim -%}
-          {%- set exprnValue = nodeConfig.tableExpiration.parameters[1] | default('', true) | string | trim -%}
+      {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 0 -%}
+          {%- set exprnValue = nodeConfig.tableExpiration.parameters[0] | default('', true) | string | trim -%}
           {%- if exprnValue | length > 0 -%}
-              {%- if exprnType == 'exactDateTime' -%}
-                  {%- set ns.expiration = 'TIMESTAMP "' ~ exprnValue ~ ('"' if exprnValue | length > 11 else ' 23:59:59"') -%}
-              {%- elif exprnType == 'daysFromNow' -%}
+              {# A whole number is a day count; anything else is a date / datetime #}
+              {%- if (exprnValue | int(-1)) >= 0 and (exprnValue | int(-1)) | string == exprnValue -%}
                   {%- set ns.expiration = 'TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ' ~ exprnValue ~ ' DAY)' -%}
+              {%- else -%}
+                  {%- set ns.expiration = 'TIMESTAMP "' ~ exprnValue ~ ('"' if exprnValue | length > 11 else ' 23:59:59"') -%}
               {%- endif -%}
           {%- endif -%}
       {%- endif -%}
