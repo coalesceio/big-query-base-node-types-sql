@@ -298,6 +298,19 @@ metadata:
               type: number
               isRequired: true
               example: 1
+        
+        - name: partitionBy
+          description: |-
+            Partitions the target table by this column — use it when the table is partitioned purely by one column.
+                𝗧𝗮𝗸𝗲𝘀 𝗻𝗼 𝗽𝗮𝗿𝗮𝗺𝗲𝘁𝗲𝗿𝘀 — write a bare @partitionBy; passing any stops the create.
+                A 𝗗𝗔𝗧𝗘 column is used as-is; a 𝗧𝗜𝗠𝗘𝗦𝗧𝗔𝗠𝗣 or 𝗗𝗔𝗧𝗘𝗧𝗜𝗠𝗘 column is partitioned by day, as DATE(column).
+                Any other type stops the create — BigQuery partitions only by DATE / TIMESTAMP / DATETIME, or by an INT64 column through RANGE_BUCKET.
+                For an expression (DATE_TRUNC(...), TIMESTAMP_TRUNC(...), RANGE_BUCKET(...) on an INT64 column, _PARTITIONDATE), use the node-level @partitionBy instead.
+                𝗢𝗻𝗲 𝗽𝗮𝗿𝘁𝗶𝘁𝗶𝗼𝗻 𝗽𝗲𝗿 𝘁𝗮𝗯𝗹𝗲 — on more than one column, or together with the node-level @partitionBy, it stops the create.
+                ⚠️ On redeployment, partition changes drop and recreate the table.
+                𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false    
+    	
 
         - name: inHash
           description: |-
