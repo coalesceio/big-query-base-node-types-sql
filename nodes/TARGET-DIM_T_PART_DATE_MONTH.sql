@@ -7,7 +7,6 @@
 SELECT
     0                                        AS `DIM_T_PART_DATE_MONTH_KEY` @id("c30001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`               @id("c30002") @isBusinessKey @not_null @uniqueness,
-    `N_NAME`                                 AS `N_NAME`                    @id("c30003"),
     `N_REGIONKEY`                            AS `N_REGIONKEY`               @id("c30004"),
     `N_COMMENT`                              AS `N_COMMENT`                 @id("c30005"),
     `last_modified`                          AS `last_modified`             @id("c30006") @lastModifiedTracking(2) @not_null,
