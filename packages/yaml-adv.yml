@@ -1,0 +1,25 @@
+config:
+  entities:
+    nodeTypes:
+      "170":
+        defaultStorageLocation: null
+        isDisabled: false
+      "171":
+        defaultStorageLocation: null
+        isDisabled: false
+      "177":
+        defaultStorageLocation: null
+        isDisabled: false
+      "388":
+        defaultStorageLocation: null
+        isDisabled: false
+      "389":
+        defaultStorageLocation: null
+        isDisabled: false
+  packageVariables: ""
+fileVersion: 1
+id: "@coalesce/bigquery/bigquery-base-node-types-advanced-deploy"
+name: yaml-adv
+packageID: "@coalesce/bigquery/bigquery-base-node-types-advanced-deploy"
+releaseID: 3cc84a58-d0cb-461c-b8ef-ed84b9b671fc
+type: Package
