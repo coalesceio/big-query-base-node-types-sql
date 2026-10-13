@@ -8,88 +8,87 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 {# == Node Type Description    : This node creates dimension table or view with advanced deployment strategy  == #}
 {#---------------------------------------------------------------------------------------------#}
 
-{%- set nsNodeVariables = namespace(currentProjectDataset = "",
-                                    desiredProjectDataset = "",
-                                    desObjectNameFullPath = "",
-                                    curObjectNameFullPath = "",
-                                    metadataChanges = false) %}
-{{ initializeNodeVariables(nsNodeVariables) }}
+{#- nsNodeVariables (object paths, materialization types, metaDataChanged) is created and initialized in the shared macros #}
+
+{#- Desired/current materialization type, normalized ("Table " = "table").
+    Empty string when the state is absent (first deploy has no currentState; delete has no desiredState). #}
+{%- set desiredMatType = nsNodeVariables.desiredMatType %}
+{%- set currentMatType = nsNodeVariables.currentMatType %}
 
 {%- if desiredState %}
 
-    {%- if desiredState.node.materializationType == 'view' %}
+    {# Validate: the materialization type must be table or view #}
+    {{ validate_materialization_type() }}
 
-        {%- if currentState != undefined
-            and (currentState.node.materializationType != desiredState.node.materializationType
-            or nsNodeVariables.currentProjectDataset != nsNodeVariables.desiredProjectDataset) %}
-                {# Drop current object before creating #}
-                {{ stage('Drop Current ' + currentState.node.materializationType + ' - ' + currentState.node.name, true, "sql", "drop") }}
-                DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
-        {%- endif %}
+    {# Validate: the same tag key applied twice to the node is not allowed #}
+    {{ tag_check_duplicates() }}
 
-        {# Create new view #}
-        {%- if currentState == undefined or currentState != desiredState %}
+    {%- if desiredMatType == 'view' %}
+
+        {# Drop the current object if it was another type, or the view was renamed/moved #}
+        {{ object_drop_sql() }}
+
+        {# Did the view definition change? Render it for both states and compare #}
+        {%- set viewDefinitionChanged = currentState is not defined
+                or (currentState != desiredState
+                    and view_definition_sql(currentState) != view_definition_sql(desiredState)) %}
+
+        {# CreateSQL for View #}
+        {%- if currentState is not defined
+                or currentMatType != desiredMatType
+                or nsNodeVariables.curObjectNameFullPath != nsNodeVariables.desObjectNameFullPath
+                or viewDefinitionChanged %}
             {{ stage('Create Dimension View', true, "sql", "create") }}
             CREATE OR REPLACE VIEW {{ nsNodeVariables.desObjectNameFullPath }}
-            (
-                {%- for col in desiredState.columns %}
-                    `{{ col.name }}`
-                    {%- if col.description | trim | length > 0 %} OPTIONS(description = '{{ col.description | escape }}') {%- endif %}
-                    {%- if not loop.last -%}, {%- endif %}
-                {%- endfor %}
-            )
-            {%- if desiredState.node.description | trim | length > 0 %} OPTIONS(description = '{{ desiredState.node.description | escape }}') {%- endif %}
-            AS
-            {{ desiredState.sources[0].cteString }}
-            SELECT {{ desiredState.sources[0].selectModifier | default('', true) }}
-            {%- for col in desiredState.sources[0].columns %}
-                {%- if col.isSurrogateKey or col.isSystemVersion or col.isSystemCurrentFlag or col.isSystemCreateDate or col.isSystemUpdateDate or col.isSystemEndDate %}
-                    CAST(NULL AS {{ col.dataType }})
-                {%- else %}
-                    {{ get_source_transform(col) }}
-                {%- endif %}
-                AS `{{ col.name }}`
-                {%- if not loop.last -%}, {%- endif %}
-            {%- endfor %}
-            {{ desiredState.sources[0].join }}
+            {{ view_definition_sql(desiredState) }}
+
+        {%- elif currentState != desiredState %}
+
+            {# Definition unchanged: record a metadata-only change #}
+            {{ alter_metadata_sql() }}
+
         {%- endif %}
 
-    {%- elif desiredState.node.materializationType == 'table' %}
+    {%- elif desiredMatType == 'table' %}
 
+        {# Validate the Dimension's annotations (hard fail: CREATE does not fail a test stage on row count) #}
         {{ validate_dimension_requirements(true) }}
+        {# Validate: @partitionBy on at most one column, and not together with the node-level one #}
+        {{ validate_partition_by() }}
+
+        {# Drop the current object if it was another type #}
+        {{ object_drop_sql() }}
 
         {%- set nsConfigVariables = namespace(options = "", partitionBy = "", clusterBy = "", primaryKey = "", createTable = false) %}
 
         {# Initialise the variables necessary for create of table #}
-        {%- set nsConfigVariables.partitionBy = get_partition_by_sql(desiredState.config) | trim %}
-        {%- set nsConfigVariables.clusterBy = get_clusterby_sql(desiredState.columns) | trim %}
-        {%- set nsConfigVariables.primaryKey = get_primary_key_sql(desiredState.columns) | trim %}
-        {%- set nsConfigVariables.options = get_table_options_sql(desiredState.config, desiredState.node.description) | trim %}
+        {%- set nsConfigVariables.partitionBy = get_partition_by_sql(config, columns) | trim %}
+        {%- set nsConfigVariables.clusterBy = get_clusterby_sql(columns) | trim %}
+        {%- set nsConfigVariables.primaryKey = get_primary_key_sql(columns) | trim %}
+        {%- set nsConfigVariables.options = get_table_options_sql(config, node.description, false, columns) | trim %}
 
-        {# Check the conditions for creating new table #}
-        {%- if currentState != undefined
-                and (currentState.node.materializationType != desiredState.node.materializationType
-                or nsNodeVariables.currentProjectDataset != nsNodeVariables.desiredProjectDataset
-                or get_partition_by_sql(currentState.config) | trim != nsConfigVariables.partitionBy
+        {# BigQuery cannot alter these on an existing table: a dataset move, or a partition / cluster change recreates it #}
+        {%- if currentState is defined and currentMatType == desiredMatType
+                and (nsNodeVariables.currentProjectDataset != nsNodeVariables.desiredProjectDataset
+                or get_partition_by_sql(currentState.config, currentState.columns) | trim != nsConfigVariables.partitionBy
                 or get_clusterby_sql(currentState.columns) | trim != nsConfigVariables.clusterBy) %}
             {%- set nsConfigVariables.createTable = true %}
-            {%- set nsNodeVariables.metadataChanges = true %}
         {%- endif %}
 
-        {# Create table incase of new deployment or unsupported alter changes in existing table #}
-        {%- if currentState == undefined or nsConfigVariables.createTable %}
+        {%- if currentState is not defined or currentMatType != desiredMatType or nsConfigVariables.createTable %}
 
-            {# Drop current object before creating #}
+            {# Drop current table before recreating it #}
             {%- if nsConfigVariables.createTable %}
-                {{ stage('Drop Current ' + currentState.node.materializationType + ' - ' + currentState.node.name, true, "sql", "drop") }}
-                DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
+                {{ stage('Drop Current ' + currentMatType + ' - ' + currentState.node.name, true, "sql", "drop") }}
+                DROP {{ drop_materialization(currentMatType) }} {{ nsNodeVariables.curObjectNameFullPath }}
+                {%- set nsNodeVariables.metaDataChanged = true %}
             {%- endif %}
 
-            {# Create table with all the annotation options #}
+            {# CreateSQL for Table #}
             {{ stage('Create Dimension Table', true, "sql", "create") }}
             CREATE OR REPLACE TABLE {{ nsNodeVariables.desObjectNameFullPath }}
             (
-                {%- for col in desiredState.columns %}
+                {%- for col in columns %}
                     `{{ col.name }}` {{ col.dataType }}
                     {%- if col.defaultValue %} DEFAULT {{ col.defaultValue }} {%- endif %}
                     {%- if col.nullable == false %} NOT NULL {%- endif %}
@@ -104,13 +103,42 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             {{ nsConfigVariables.clusterBy }}
             {{ nsConfigVariables.options }}
 
+        {%- elif currentState is defined and currentState != desiredState and currentMatType == desiredMatType %}
+
+            {# NOT NULL cannot be applied to an existing BigQuery table: warn only #}
+            {{ alter_column_warnings_sql() }}
+
+            {# Every alter runs on the clone (nsNodeVariables.alterObjectNameFullPath) #}
+            {%- set alterSql %}
+
+                {# Alter Column: data type, nullability, description, default (old column names) #}
+                {{ alter_modify_columns_sql() }}
+
+                {# Add Column (default set and backfilled after the add) #}
+                {{ alter_add_columns_sql() }}
+
+                {# Rename Column (matched by @id) #}
+                {{ alter_rename_columns_sql() }}
+
+                {# Delete Column #}
+                {{ alter_drop_columns_sql() }}
+
+            {%- endset %}
+
+            {# Clone Table -> alters -> Replace Table (clone copied back over the table) -> Delete Clone #}
+            {{ alter_clone_swap_sql(alterSql) }}
+
+            {# Edit Table Options on the table: changed options, or re-applied after Replace Table (COPY drops the expiration) #}
+            {{ alter_table_options_sql() }}
+
+            {# Nothing above altered the table: record a metadata-only change #}
+            {{ alter_metadata_sql() }}
         {%- endif %}
     {%- endif %}
 
-{%- elif currentState != undefined and desiredState == undefined %}
+{%- elif currentState is defined and desiredState is not defined %}
 
-    {# Drop the table/view in undeployment #}
-    {{ stage('Drop Current ' + currentState.node.materializationType) }}
-    DROP {{ dropMaterialization(currentState.node.materializationType) }} {{ nsNodeVariables.curObjectNameFullPath }}
+    {# Node deleted: drop the current object #}
+    {{ object_drop_sql() }}
 
 {%- endif %}
