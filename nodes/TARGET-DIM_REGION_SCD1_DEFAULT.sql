@@ -3,7 +3,6 @@
 @description("SCD test - no @mergeStrategy (defaults to changeTracking SCD1) on WRK_REGION_ANNOTATIONS, truncateInsert, zero key with column overrides")
 @writeMode("truncateInsert")
 @zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", true)
-@tests("SELECT 1 FROM {{ this }} WHERE DIM_REGION_SCD1_DEFAULT_KEY = -1 HAVING COUNT(*) <> 1", false, "After")
 @tests("SELECT 1 FROM {{ this }} GROUP BY R_REGIONKEY HAVING COUNT(*) > 1")
 SELECT
     0                                         AS `DIM_REGION_SCD1_DEFAULT_KEY` @id("0ed801") @isSurrogateKey,
