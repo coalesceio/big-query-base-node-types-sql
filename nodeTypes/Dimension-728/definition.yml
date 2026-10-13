@@ -95,16 +95,17 @@ metadata:
           description: |-
             Applies a Resource Manager tag to this table through its 𝗢𝗣𝗧𝗜𝗢𝗡𝗦(𝘁𝗮𝗴𝘀 = [...]).
             Repeat the annotation to apply multiple tags; a tag key can only be used once per table.
-            BigQuery tag keys are namespaced by project (<project-id>/<key>): a bare tag name is qualified with the
-            project of this node's own location, and a name that already contains "/" (e.g. a key from another
-            project or an organization) is used as-is.
+            BigQuery tag keys are namespaced by project (<project-id>/<key>). The optional third parameter
+            names the storage location (as already defined for this node's sources or target) whose project
+            the tag key lives in — lets you pass a bare tag name instead of a fully-qualified one. Defaults to
+            this node's own location when omitted. A tag name that already contains "/" is used as-is.
             The tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
             𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
           allowsMultiple: true
           parameters:
             - name: tagName
               type: string
-              description: Short name of the tag key (must already exist in GCP), or a fully-qualified <project-or-org-id>/<key>.
+              description: Short name of the tag key (must already exist in GCP), or a fully-qualified <project-id>/<key>.
               isRequired: true
               example: cost_center
 
@@ -113,6 +114,12 @@ metadata:
               description: Short name of an existing value of that tag key.
               isRequired: true
               example: finance
+
+            - name: location
+              type: string
+              description: Storage location whose project the tag key lives in. Defaults to this node's own location.
+              isRequired: false
+              example: TARGET
 
         - name: writeMode
           description: |-
