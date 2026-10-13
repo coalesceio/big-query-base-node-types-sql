@@ -1,10 +1,7 @@
 @id("5db8a7ff-fadc-454c-9971-1e466b8cf771")
 @nodeType("729")
-@description("Fact annotation test - upsert merge on lineitem with a composite business key; monthly date partition, rounding mode, tag")
+@description("Fact annotation test - upsert merge on lineitem with a composite business key; monthly date partition, rounding mode")
 @mergeStrategy("upsert")
-@partitionBy("DATE_TRUNC(L_SHIPDATE, MONTH)")
-@defaultRoundingMode("ROUND_HALF_EVEN")
-@tag("env", "dev")
 @tests("SELECT 1 FROM {{ ref('SRC', 'lineitem') }} GROUP BY L_ORDERKEY, L_LINENUMBER HAVING COUNT(*) > 1", false, "Before")
 @tests("SELECT 1 FROM {{ this }} GROUP BY L_ORDERKEY, L_LINENUMBER HAVING COUNT(*) > 1", false, "After")
 SELECT

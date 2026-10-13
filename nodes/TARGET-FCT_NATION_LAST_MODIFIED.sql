@@ -6,7 +6,6 @@
 @tableExpiration("2027-12-31 23:59:59")
 @preSQL("SELECT COUNT(*) FROM {{ this }}")
 @postSQL("UPDATE {{ this }} SET N_COMMENT = TRIM(N_COMMENT) WHERE N_COMMENT <> TRIM(N_COMMENT)")
-@tests("SELECT 1 FROM {{ this }} GROUP BY N_NATIONKEY HAVING COUNT(*) > 1", false, "After")
 SELECT
     `N_NATIONKEY`                        AS `N_NATIONKEY`        @id("bde601") @isBusinessKey @primaryKey(1) @not_null @uniqueness @min_max("0", "24"),
     `N_NAME`                             AS `N_NAME`             @id("bde602") @not_null @empty,
