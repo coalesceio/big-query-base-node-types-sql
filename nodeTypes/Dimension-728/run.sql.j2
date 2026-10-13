@@ -7,6 +7,9 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 {# == Node Type Name           : Dimension  == #}
 {# == Node Type Description    : This node loads data into dimension table using options distinct and multi-source cte if specified == #}
 
+{# == Only table and view are valid in BigQuery; anything else stops here == #}
+{{ validate_materialization_type() }}
+
 {# == To run data quality tests before data insertion == #}
 {{ run_tests('Before') }}
 
@@ -103,14 +106,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {%- endif %}
 
     {%- if config.zeroKey is defined and hasSurrogateKey %}
-        {%- set zeroKeySurrogateValue = config.zeroKey.parameters[0] if (config.zeroKey.parameters is defined and config.zeroKey.parameters | length > 0) else '0' %}
         {{ stage('Load ' + node.materializationType + ' Using Merge - Zero Key Record') }}
             MERGE INTO {{ ref_no_link(node.location.name, node.name) }} `{{ node.name }}` USING
             (
                 SELECT
                 {%- for col in source.columns %}
+                    {# Surrogate key: typed to the column by resolve_zero_key, so a STRING/BYTES surrogate key gets '0' / b'0', not 0. #}
                     {%- if col.isSurrogateKey %}
-                        {{ zeroKeySurrogateValue }}
+                        {{ resolve_zero_key(col) }}
                     {%- elif col.isSystemCurrentFlag %}
                         'Y'
                     {%- elif col.isSystemEndDate or col.isSystemUpdateDate or col.isSystemCreateDate %}
@@ -127,7 +130,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 
             ON
             {%- for col in columns if col.isSurrogateKey %}
-                `{{ node.name }}`.`{{ col.name }}` = {{ zeroKeySurrogateValue }}
+                `{{ node.name }}`.`{{ col.name }}` = {{ resolve_zero_key(col) }}
             {%- endfor %}
 
             {# SYSTEM_CREATE_DATE keeps the zero records first-inserted value; everything else is refreshed. #}
@@ -541,7 +544,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- endif %}
     {%- endfor %}
 
-{%- else %}
+{%- elif node.materializationType == 'view' %}
 	{{ stage('Load Skipped for View') }}
 	-- The node {{node.name}} is materialized as View. Therefore, a Load operation is not supported.
 	SELECT 1 AS INFO_MESSAGE WHERE FALSE

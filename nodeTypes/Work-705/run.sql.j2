@@ -8,10 +8,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 {# == Node Type Description    : Loads the table with custom SQL logic  == #}
 {#---------------------------------------------------------------------------------------------#}
 
+{# == Only table and view are valid in BigQuery; anything else stops here == #}
+{{ validate_materialization_type() }}
+{%- set matType = get_materialization_type(node.materializationType) %}
+
 {# == To run data quality tests before data insertion == #}
 {{ run_tests('Before') }}
 
-{%- if node.materializationType == 'table' %}
+{%- if matType == 'table' %}
 
     {#== Pre-SQL ==#}
     {%- set ns = namespace(cnt=0) %}
@@ -32,12 +36,12 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 
 	{# == Truncate data before data insertion  == #}
     {%- if writeMode | lower != 'append' %}
-        {{ stage('Truncate ' + node.materializationType) }}
+        {{ stage('Truncate ' + matType) }}
         TRUNCATE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- endif %}
 
 	{# == Insert data from sources into Work table  == #}
-    {{ stage('Load ' + node.materializationType + ' using Insert') }}
+    {{ stage('Load ' + matType + ' using Insert') }}
     INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
     (
         {%- for col in sources[0].columns %}
@@ -65,7 +69,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- endif %}
     {%- endfor %}
 
-{%- else %}
+{%- elif matType == 'view' %}
 	{{ stage('Load Skipped for View') }}
 	-- The node {{node.name}} is materialized as View. Therefore, a Load operation is not supported.
 	SELECT 1 FROM UNNEST([1]) AS INFO_MESSAGE WHERE FALSE

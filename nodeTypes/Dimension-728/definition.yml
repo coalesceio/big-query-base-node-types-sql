@@ -37,9 +37,12 @@ metadata:
               _PARTITIONDATE or DATE_TRUNC(_PARTITIONTIME, MONTH) — partition by load time
               ORDER_DATE, DATE(ts_col) or TIMESTAMP_TRUNC(ts_col, HOUR) — partition by a date/time column
               RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10)) — partition by integer ranges
+            To partition purely by one column, @partitionBy can go on that column instead.
+            𝗢𝗻𝗲 𝗽𝗮𝗿𝘁𝗶𝘁𝗶𝗼𝗻 𝗽𝗲𝗿 𝘁𝗮𝗯𝗹𝗲 — BigQuery allows a single partition column or expression. More than one @partitionBy (node or column level), or several columns in one (e.g. "A, B"), stops the create.
             ⚠️ On redeployment, partition changes drop and recreate the table.
             𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
           isRequired: false
+          allowsMultiple: true
           parameters:
             - name: column/expression
               type: string
@@ -50,7 +53,8 @@ metadata:
         - name: partitionExpirationDays
           description: |-
             Number of days to keep each partition before BigQuery deletes it.
-            Applies only to ingestion-time and time-unit column partitions; ignored for an integer-range (RANGE_BUCKET) partition.
+            Applies only to ingestion-time and time-unit column partitions.
+            Requires a time partition (@partitionBy on the node or on a column) — without a partition, or with an integer-range (RANGE_BUCKET) partition, the create stops.
             𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
           isRequired: false
           parameters:
@@ -62,10 +66,10 @@ metadata:
 
         - name: tableExpiration
           description: |-
-            Sets when BigQuery deletes the target table.
+            Sets when BigQuery deletes the target table or view.
             A whole number expires the table that many days after it is created, e.g. 30;
             a date or datetime expires it at that fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            Applies to views as well as tables — a day count restarts on every create or redeploy.
           isRequired: false
           parameters:
             - name: value
@@ -93,13 +97,13 @@ metadata:
 
         - name: tag
           description: |-
-            Applies a Resource Manager tag to this table through its 𝗢𝗣𝗧𝗜𝗢𝗡𝗦(𝘁𝗮𝗴𝘀 = [...]).
-            Repeat the annotation to apply multiple tags; a tag key can only be used once per table.
+            Applies a Resource Manager tag to this table or view through its 𝗢𝗣𝗧𝗜𝗢𝗡𝗦(𝘁𝗮𝗴𝘀 = [...]).
+            Repeat the annotation to apply multiple tags; a tag key can only be used once per table or view.
             BigQuery tag keys are namespaced by project (<project-id>/<key>): a bare tag name is qualified with the
             project of this node's own location, and a name that already contains "/" (e.g. a key from another
             project or an organization) is used as-is.
             The tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            Applies to views as well as tables.
           allowsMultiple: true
           parameters:
             - name: tagName
@@ -286,7 +290,7 @@ metadata:
           description: |-
             Marks this column as part of the table's CLUSTER BY key, at the given position
             (lowest first), e.g. clusterKey(1).
-            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
+            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns; more than 4, or an expression passed as a second parameter, stops the create.
             ⚠️ On redeployment, clustering changes drop and recreate the table.
             Ignored on views.
           parameters:
@@ -294,6 +298,18 @@ metadata:
               type: number
               isRequired: true
               example: 1
+
+        - name: partitionBy
+          description: |-
+            Partitions the target table by this column — use it when the table is partitioned purely by one column.
+            𝗧𝗮𝗸𝗲𝘀 𝗻𝗼 𝗽𝗮𝗿𝗮𝗺𝗲𝘁𝗲𝗿𝘀 — write a bare @partitionBy; passing any stops the create.
+            A 𝗗𝗔𝗧𝗘 column is used as-is; a 𝗧𝗜𝗠𝗘𝗦𝗧𝗔𝗠𝗣 or 𝗗𝗔𝗧𝗘𝗧𝗜𝗠𝗘 column is partitioned by day, as DATE(column).
+            Any other type stops the create — BigQuery partitions only by DATE / TIMESTAMP / DATETIME, or by an INT64 column through RANGE_BUCKET.
+            For an expression (DATE_TRUNC(...), TIMESTAMP_TRUNC(...), RANGE_BUCKET(...) on an INT64 column, _PARTITIONDATE), use the node-level @partitionBy instead.
+            𝗢𝗻𝗲 𝗽𝗮𝗿𝘁𝗶𝘁𝗶𝗼𝗻 𝗽𝗲𝗿 𝘁𝗮𝗯𝗹𝗲 — on more than one column, or together with the node-level @partitionBy, it stops the create.
+            ⚠️ On redeployment, partition changes drop and recreate the table.
+            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+          isRequired: false
 
         - name: inHash
           description: |-

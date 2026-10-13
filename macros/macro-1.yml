@@ -1,6 +1,20 @@
 fileVersion: 1
 id: "1"
 macroString: |-
+  {#===========================================================================
+    Aliases for advanced-deploy node types: in a create template, columns, storageLocations, config,
+    sources, node and parameters point at desiredState, so the macros below can use them directly.
+    Keep this block first, so the aliases are in place before any template code runs.
+  ===========================================================================#}
+  {%- if desiredState -%}
+      {%- set columns = desiredState.columns -%}
+      {%- set storageLocations = desiredState.storageLocations -%}
+      {%- set config = desiredState.config -%}
+      {%- set sources = desiredState.sources -%}
+      {%- set node = desiredState.node -%}
+      {%- set parameters = desiredState.parameters -%}
+  {%- endif -%}
+
   {# ========================================================================
   Purpose          : Executes data quality tests associated with the node
                       and its columns, based on the configured run order.
@@ -221,26 +235,66 @@ macroString: |-
   ====================================================================================================#}
 
   {#===================================================================================================
-  get_partition_by_sql(nodeConfig)
+  get_partition_column_expr(col)
 
   Description:
-      Builds the PARTITION BY clause from the @partitionBy(expression) annotation. The column or
-      expression is written as-is, so it covers every BigQuery partition kind:
-      - ingestion time   : _PARTITIONDATE, or e.g. DATE_TRUNC(_PARTITIONTIME, MONTH)
-      - time-unit column : a DATE column, or e.g. DATE(ts_col), TIMESTAMP_TRUNC(ts_col, HOUR)
-      - integer range    : e.g. RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10))
+      The partition expression for a column marked with the column-level @partitionBy flag. BigQuery
+      partitions by a DATE column directly; a TIMESTAMP or DATETIME column has to be wrapped, so it is
+      partitioned by day as DATE(<column>). Any other type can not be a plain partition column (an INT64
+      needs RANGE_BUCKET on the node-level @partitionBy) — validate_partition_cluster stops the create.
+
+  Examples:
+      @partitionBy on ORDER_DATE DATE        -> `ORDER_DATE`
+      @partitionBy on LOADED_AT TIMESTAMP    -> DATE(`LOADED_AT`)
+      @partitionBy on ID INT64               -> empty
+  ====================================================================================================#}
+  {%- macro get_partition_column_expr(col) -%}
+      {%- set baseType = (col.dataType | default('', true) | upper).split('(')[0] | trim -%}
+      {%- if baseType == 'DATE' -%}
+          `{{ col.name }}`
+      {%- elif baseType in ('TIMESTAMP', 'DATETIME') -%}
+          DATE(`{{ col.name }}`)
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===================================================================================================
+  get_partition_by_sql(nodeConfig, nodeColumns=[])
+
+  Description:
+      Builds the PARTITION BY clause from either
+      - the node-level @partitionBy(expression), written as-is, so it covers every BigQuery partition kind:
+          ingestion time   : _PARTITIONDATE, or e.g. DATE_TRUNC(_PARTITIONTIME, MONTH)
+          time-unit column : a DATE column, or e.g. DATE(ts_col), TIMESTAMP_TRUNC(ts_col, HOUR)
+          integer range    : e.g. RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10))
+      - or the column-level @partitionBy flag, when the table is partitioned purely by one column (see get_partition_column_expr).
+      Only one partition is allowed; validate_partition_cluster stops the create when there are more. If there are, the
+      node-level one wins, then the first column, so the rendered clause stays stable.
+      Pass desiredState.config / desiredState.columns, or the currentState equivalents to compare on redeploy.
 
   Examples:
       @partitionBy("_PARTITIONDATE")                       -> PARTITION BY _PARTITIONDATE
       @partitionBy("ORDER_DATE")                           -> PARTITION BY ORDER_DATE
       @partitionBy("RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))")
                                                            -> PARTITION BY RANGE_BUCKET(ID, GENERATE_ARRAY(0, 1000, 10))
+      @partitionBy on column LOADED_AT TIMESTAMP           -> PARTITION BY DATE(`LOADED_AT`)
       No annotation                                        -> empty
   ====================================================================================================#}
-  {%- macro get_partition_by_sql(nodeConfig) -%}
-      {%- set partExpr = (nodeConfig.partitionBy.parameters[0] | default('', true) | string | trim)
-              if (nodeConfig.partitionBy is defined and nodeConfig.partitionBy.parameters is defined and nodeConfig.partitionBy.parameters | length > 0)
+  {%- macro get_partition_by_sql(nodeConfig, nodeColumns=[]) -%}
+      {# The node-level @partitionBy is declared allowsMultiple only so a repeated annotation reaches validate_partition_cluster (which stops the create);
+         a single annotation arrives as a mapping, repeats as a list — the first entry is used. #}
+      {%- set partEntry = nodeConfig.partitionBy if nodeConfig.partitionBy is defined else none -%}
+      {%- if partEntry is not none and partEntry is not mapping -%}
+          {%- set partEntry = partEntry | first if partEntry | length > 0 else none -%}
+      {%- endif -%}
+      {%- set partExpr = (partEntry.parameters[0] | default('', true) | string | trim)
+              if (partEntry is mapping and partEntry.parameters is defined and partEntry.parameters | length > 0)
               else '' -%}
+      {%- if partExpr | length == 0 -%}
+          {%- set partColumn = nodeColumns | default([], true) | selectattr('partitionBy', 'defined') | selectattr('partitionBy') | first -%}
+          {%- if partColumn is defined and partColumn -%}
+              {%- set partExpr = get_partition_column_expr(partColumn) | trim -%}
+          {%- endif -%}
+      {%- endif -%}
       {%- if partExpr | length > 0 -%}
           PARTITION BY {{ partExpr }}
       {%- endif -%}
@@ -322,7 +376,7 @@ macroString: |-
       {%- if '/' in tagName -%}
           {{- tagName -}}
       {%- else -%}
-          {%- set locs = desiredState.storageLocations if (desiredState is defined and desiredState) else storageLocations -%}
+          {%- set locs = storageLocations -%}
           {%- set project = locs | selectattr('name', 'equalto', node.location.name) | map(attribute='database') | first -%}
           {{- project ~ '/' ~ tagName -}}
       {%- endif -%}
@@ -359,7 +413,7 @@ macroString: |-
     Description:
       Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>)
       annotations — pass config.tag. BigQuery takes tags inside the table's single OPTIONS(...) clause,
-      so get_table_options_sql adds this entry there.
+      so get_object_options_sql adds this entry there.
 
     Output:
       tags = [('cls-dev-bigquery/cost_center', 'finance'), ('cls-dev-bigquery/env', 'prod')]
@@ -377,15 +431,18 @@ macroString: |-
 
 
   {#===================================================================================================
-  get_table_options_sql(nodeConfig, description, resetUnset=false)
+  get_object_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[], forView=false)
 
   Description:
-      Builds the table OPTIONS(...) clause (BigQuery allows only one) from:
-      - @partitionExpirationDays(days) -> partition_expiration_days (not for RANGE_BUCKET integer-range partitions)
+      Builds the table or view OPTIONS(...) clause (BigQuery allows only one) from:
+      - @partitionExpirationDays(days) -> partition_expiration_days (time partitions only — node- or column-level @partitionBy, see get_partition_by_sql;
+                                          validate_partition_cluster stops the create when there is no partition or a RANGE_BUCKET one)
       - @tableExpiration(value)        -> expiration_timestamp
           whole number  : TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <value> DAY)
           date/datetime : TIMESTAMP "<value>"; a date alone is extended to 23:59:59
       - @defaultRoundingMode(mode)     -> default_rounding_mode
+      forView=true (CREATE VIEW): only expiration_timestamp, tags and description — BigQuery views take no
+                                  partition_expiration_days or default_rounding_mode, so those two are left out.
       - @tag(name, value)              -> tags = [('<project-id>/<name>', '<value>'), ...] (see get_tags_sql)
       - the node description           -> description
 
@@ -397,15 +454,17 @@ macroString: |-
   Examples:
       @tableExpiration("30"), @defaultRoundingMode("ROUND_HALF_EVEN")
           -> OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY), default_rounding_mode = 'ROUND_HALF_EVEN')
+      Same with forView=true, plus @tag("env", "dev")
+          -> OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY), tags = [('<project-id>/env', 'dev')])
       No options, resetUnset=false
           -> empty
   ====================================================================================================#}
-  {%- macro get_table_options_sql(nodeConfig, description, resetUnset=false) -%}
+  {%- macro get_object_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[], forView=false) -%}
       {%- set opts = namespace(items=[]) -%}
 
       {# partition_expiration_days only applies to time-partitioned tables, i.e. any partition but an integer-range RANGE_BUCKET one #}
-      {%- set partitionSql = get_partition_by_sql(nodeConfig) | trim -%}
-      {%- set isTimePartitioned = partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
+      {%- set partitionSql = get_partition_by_sql(nodeConfig, nodeColumns) | trim -%}
+      {%- set isTimePartitioned = not forView and partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
       {%- if isTimePartitioned -%}
           {%- if nodeConfig.partitionExpirationDays is defined and nodeConfig.partitionExpirationDays.parameters is defined and nodeConfig.partitionExpirationDays.parameters | length > 0 -%}
               {%- set opts.items = opts.items + ['partition_expiration_days = ' ~ nodeConfig.partitionExpirationDays.parameters[0]] -%}
@@ -432,11 +491,12 @@ macroString: |-
           {%- set opts.items = opts.items + ['expiration_timestamp = NULL'] -%}
       {%- endif -%}
 
-      {%- set hasRoundingMode = nodeConfig.defaultRoundingMode is defined and nodeConfig.defaultRoundingMode.parameters is defined and nodeConfig.defaultRoundingMode.parameters | length > 0 -%}
+      {# default_rounding_mode is a table option only #}
+      {%- set hasRoundingMode = not forView and nodeConfig.defaultRoundingMode is defined and nodeConfig.defaultRoundingMode.parameters is defined and nodeConfig.defaultRoundingMode.parameters | length > 0 -%}
       {%- set roundingMode = (nodeConfig.defaultRoundingMode.parameters[0] | default('', true) | string | trim) if hasRoundingMode else '' -%}
       {%- if roundingMode | length > 0 -%}
           {%- set opts.items = opts.items + ["default_rounding_mode = '" ~ roundingMode ~ "'"] -%}
-      {%- elif resetUnset -%}
+      {%- elif resetUnset and not forView -%}
           {%- set opts.items = opts.items + ['default_rounding_mode = NULL'] -%}
       {%- endif -%}
 
@@ -457,6 +517,190 @@ macroString: |-
           OPTIONS({{ opts.items | join(', ') }})
       {%- endif -%}
   {%- endmacro -%}
+
+  {#===========================================================================
+    Description: Normalizes a materialization type — lower case, spaces trimmed and collapsed ('  Transient  TABLE' -> 'transient table').
+    Input: value (string) — usually node.materializationType.
+    Output: The normalized type, or '' (empty string) when missing.
+    ===========================================================================#}
+    {%- macro get_materialization_type(value) -%}
+        {{- (value | default('', true) | string).split() | join(' ') | lower -}}
+    {%- endmacro -%}
+
+  {#===========================================================================
+    Description: The closing statement of a failed validation check. CREATE does not fail a test stage on row count alone, so checks that must stop a create use the hard fail.
+    Input: hardFail (boolean, default true) — true raises a real SQL error (division by zero); false returns one row, so the stage fails on row count in RUN.
+    Output: SELECT 1/0 (hardFail) or SELECT 1.
+    ===========================================================================#}
+    {%- macro fail_sql(hardFail=true) -%}
+        {%- if hardFail -%}
+            SELECT 1/0
+        {%- else -%}
+            SELECT 1
+        {%- endif -%}
+    {%- endmacro -%}
+
+  {#===========================================================================
+    Description: Stops the node when its materialization type is not one BigQuery supports here (only table and view — BigQuery has no transient table). Call first in create.sql.j2 and run.sql.j2, before any DDL or load.
+    Input: allowedTypes (list, default ['table', 'view']) — normalized types the node type accepts.
+      Reads node — desiredState.node in a create template (see the aliases at the top).
+    Output: A failing "Unsupported Materialization Type" test_stage(...) + SELECT 1/0 when the type is not allowed; nothing otherwise.
+    ===========================================================================#}
+    {%- macro validate_materialization_type(allowedTypes=['table', 'view']) -%}
+        {%- set matType = get_materialization_type(node.materializationType) -%}
+        {%- if matType not in allowedTypes %}
+            {{ test_stage('Unsupported Materialization Type: ' + node.name, false) }}
+            -- '{{ node.materializationType | default('', true) }}' is not a supported materialization type on {{ node.name }}. Use one of: {{ allowedTypes | join(', ') }}.
+            {%- if 'transient' in matType %}
+            -- BigQuery has no transient tables; use @materializationType("table") instead.
+            {%- endif %}
+            {{ fail_sql() }}
+        {%- endif %}
+    {%- endmacro -%}
+
+  {#===========================================================================
+    Description: Stops the node when its tags can not be applied in BigQuery:
+      - the same tag key applied more than once on the node (a table holds one value per tag key — "env" and "<project>/env"
+        on a node in that project are the same key, see find_duplicate_tag_names);
+      - any column-level @tag (BigQuery has no column tags; the column equivalent is a Data Catalog policy tag).
+      Call at the start of create.sql.j2, before any DDL. Reads node / config / columns (desiredState in a create template, see the aliases at the top).
+    Input: hardFail (boolean, default true) — passed to fail_sql.
+    Output: A failing "Duplicate Tags Found: <node>" and/or "Column Tags Not Supported: <node>" test_stage(...) per problem; nothing otherwise.
+    ===========================================================================#}
+    {%- macro tag_check_duplicates(hardFail=true) -%}
+        {%- set nodeDupeTags = find_duplicate_tag_names(config.tag) | trim -%}
+        {%- if nodeDupeTags | length > 0 %}
+            {{ test_stage('Duplicate Tags Found: ' + node.name, false) }}
+            -- {{ nodeDupeTags }} is applied multiple times on {{ node.name }}. A BigQuery table or view can carry only one value per tag key.
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+
+        {%- set taggedColumns = columns | selectattr('tag', 'defined') | selectattr('tag') | map(attribute='name') | list -%}
+        {%- if taggedColumns | length > 0 %}
+            {{ test_stage('Column Tags Not Supported: ' + node.name, false) }}
+            -- @tag is set on column(s) {{ taggedColumns | join(', ') }}. BigQuery has no column-level tags — tags apply to the whole table.
+            -- Move the @tag to the node, or remove it (column-level access control in BigQuery uses Data Catalog policy tags instead).
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+    {%- endmacro -%}
+
+  {#===========================================================================
+    Description: Stops the node when its partitioning / clustering breaks a BigQuery restriction:
+      - more than one partition: @partitionBy on the node and/or on columns counts together, so two node-level annotations,
+        two partitioned columns, or one of each all fail — a table has a single partition column or expression;
+      - several columns in one node-level expression (e.g. @partitionBy("A, B"));
+      - a column-level @partitionBy on a column that is not DATE / TIMESTAMP / DATETIME (see get_partition_column_expr);
+      - @partitionExpirationDays without a partition, or with an integer-range (RANGE_BUCKET) partition — partition_expiration_days
+        only applies to a time-partitioned table;
+      - more than 4 @clusterKey columns — BigQuery clusters by at most 4 columns;
+      - a @clusterKey with an expression (a second parameter, e.g. @clusterKey(1, "UPPER(NAME)")) — BigQuery clusters by plain columns only.
+      Call in the table branch of create.sql.j2, before any DDL. Reads node / config / columns (desiredState in a create template, see the aliases at the top).
+    Input: hardFail (boolean, default true) — passed to fail_sql.
+    Output: A failing "Invalid configuration: partitionBy / partitionExpirationDays / clusterKey" test_stage(...) per problem; nothing otherwise.
+    ===========================================================================#}
+    {%- macro validate_partition_cluster(hardFail=true) -%}
+        {# Node-level @partitionBy is allowsMultiple only so a repeat shows up here: one annotation arrives as a mapping, repeats as a list. #}
+        {%- set part = namespace(exprs=[]) -%}
+        {%- set partConfig = config.partitionBy if config.partitionBy is defined else none -%}
+        {%- set partEntries = [] if partConfig is none else ([partConfig] if partConfig is mapping else partConfig | list) -%}
+        {%- for entry in partEntries -%}
+            {%- set partExpr = (entry.parameters[0] | default('', true) | string | trim) if (entry is mapping and entry.parameters is defined and entry.parameters | length > 0) else '' -%}
+            {%- if partExpr | length > 0 -%}
+                {%- set part.exprs = part.exprs + [partExpr] -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {# Column-level @partitionBy flags. #}
+        {%- set partColumns = columns | selectattr('partitionBy', 'defined') | selectattr('partitionBy') | list -%}
+        {%- set partitionCount = part.exprs | length + partColumns | length -%}
+
+        {%- if partitionCount > 1 %}
+            {%- set found = namespace(items=[]) -%}
+            {%- for expr in part.exprs -%}
+                {%- set found.items = found.items + ['node @partitionBy("' ~ expr ~ '")'] -%}
+            {%- endfor -%}
+            {%- for col in partColumns -%}
+                {%- set found.items = found.items + ['column ' ~ col.name] -%}
+            {%- endfor %}
+            {{ test_stage('Invalid configuration: partitionBy', false) }}
+            -- {{ partitionCount }} partitions are set on {{ node.name }}: {{ found.items | join('; ') }}. A BigQuery table has a single partition column or expression — keep one @partitionBy, on the node or on one column.
+            {{ fail_sql(hardFail) }}
+        {%- elif part.exprs | length == 1 -%}
+            {# A comma outside parentheses means more than one column, e.g. "ORDER_DATE, SHIP_DATE" (commas inside RANGE_BUCKET(...) / DATE_TRUNC(...) are fine). #}
+            {%- set scan = namespace(depth=0, topLevelComma=false) -%}
+            {%- for ch in part.exprs[0] -%}
+                {%- if ch == '(' -%}
+                    {%- set scan.depth = scan.depth + 1 -%}
+                {%- elif ch == ')' -%}
+                    {%- set scan.depth = scan.depth - 1 -%}
+                {%- elif ch == ',' and scan.depth == 0 -%}
+                    {%- set scan.topLevelComma = true -%}
+                {%- endif -%}
+            {%- endfor -%}
+            {%- if scan.topLevelComma %}
+            {{ test_stage('Invalid configuration: partitionBy', false) }}
+            -- @partitionBy("{{ part.exprs[0] }}") lists more than one column. A BigQuery table is partitioned by a single column or expression — keep one, and use @clusterKey for the others.
+            {{ fail_sql(hardFail) }}
+            {%- endif -%}
+        {%- endif -%}
+
+        {# Column-level @partitionBy is a bare flag — it partitions by the column it is on. Anything with parameters is an expression, which belongs on the node. #}
+        {%- set colPart = namespace(withParams=[]) -%}
+        {%- for col in partColumns if col.partitionBy is mapping and col.partitionBy.parameters is defined and col.partitionBy.parameters | length > 0 -%}
+            {%- set colPart.withParams = colPart.withParams + [col.name ~ ' @partitionBy(' ~ (col.partitionBy.parameters | join(', ')) ~ ')'] -%}
+        {%- endfor -%}
+        {%- if colPart.withParams | length > 0 %}
+            {{ test_stage('Invalid configuration: partitionBy', false) }}
+            -- Column-level @partitionBy takes no parameters — it partitions by the column it is on: {{ colPart.withParams | join('; ') }}.
+            -- Use a bare @partitionBy on a DATE / TIMESTAMP / DATETIME column, or put the expression on the node instead, e.g. @partitionBy("DATE_TRUNC(<column>, MONTH)").
+            {{ fail_sql(hardFail) }}
+        {%- elif partitionCount == 1 and partColumns | length == 1 and get_partition_column_expr(partColumns[0]) | trim | length == 0 %}
+            {%- set partCol = partColumns[0] -%}
+            {%- set partColType = (partCol.dataType | default('', true) | upper).split('(')[0] | trim %}
+            {{ test_stage('Invalid configuration: partitionBy', false) }}
+            {%- if partColType in ('INT64', 'INT', 'INTEGER', 'SMALLINT', 'BIGINT', 'TINYINT', 'BYTEINT') %}
+            -- @partitionBy is on column {{ partCol.name }} ({{ partCol.dataType }}). An integer column can only be range-partitioned, which needs a start, end and step,
+            -- so it can not be a column-level partition. Put it on the node instead: @partitionBy("RANGE_BUCKET({{ partCol.name }}, GENERATE_ARRAY(<start>, <end>, <step>))").
+            {%- else %}
+            -- @partitionBy is on column {{ partCol.name }} ({{ partCol.dataType }}). BigQuery can not partition a table by a {{ partColType }} column.
+            -- Partition by a DATE, TIMESTAMP or DATETIME column (bare @partitionBy on the column), or by an INT64 column with the node-level
+            -- @partitionBy("RANGE_BUCKET(<int64 column>, GENERATE_ARRAY(<start>, <end>, <step>))").
+            {%- endif %}
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+
+        {%- if config.partitionExpirationDays is defined %}
+            {%- if partitionCount == 0 %}
+            {{ test_stage('Invalid configuration: partitionExpirationDays', false) }}
+            -- @partitionExpirationDays is set on {{ node.name }}, but the table has no @partitionBy. partition_expiration_days only applies to a partitioned table — add @partitionBy (on the node or on a column), or remove @partitionExpirationDays.
+            {{ fail_sql(hardFail) }}
+            {%- elif part.exprs | length > 0 and 'RANGE_BUCKET' in (part.exprs[0] | upper) %}
+            {{ test_stage('Invalid configuration: partitionExpirationDays', false) }}
+            -- @partitionExpirationDays is set on {{ node.name }}, but the table is partitioned by integer range ({{ part.exprs[0] }}). partition_expiration_days only applies to time-partitioned tables — remove @partitionExpirationDays, or partition by a date/time column.
+            {{ fail_sql(hardFail) }}
+            {%- endif -%}
+        {%- endif -%}
+
+        {%- set cluster = namespace(columns=[], expressions=[]) -%}
+        {%- for col in columns if col.clusterKey is defined -%}
+            {%- set clusterParams = col.clusterKey.parameters if (col.clusterKey is mapping and col.clusterKey.parameters is defined) else [] -%}
+            {%- set cluster.columns = cluster.columns + [col.name] -%}
+            {%- if clusterParams | length > 1 and clusterParams[1] | string | trim | length > 0 -%}
+                {%- set cluster.expressions = cluster.expressions + [col.name ~ ' (' ~ clusterParams[1] | string | trim ~ ')'] -%}
+            {%- endif -%}
+        {%- endfor -%}
+
+        {%- if cluster.columns | length > 4 %}
+            {{ test_stage('Invalid configuration: clusterKey', false) }}
+            -- {{ cluster.columns | length }} columns are marked @clusterKey on {{ node.name }} ({{ cluster.columns | join(', ') }}). BigQuery clusters by at most 4 columns — remove @clusterKey from the rest.
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+
+        {%- if cluster.expressions | length > 0 %}
+            {{ test_stage('Invalid configuration: clusterKey', false) }}
+            -- @clusterKey has an expression on {{ cluster.expressions | join(', ') }}. BigQuery clusters by plain columns only — use @clusterKey(<position>) alone, and compute the expression as its own column in the SELECT if you need to cluster on it.
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+    {%- endmacro -%}
 
   {#===========================================================================
     Description: Checks that every column carries its own @id annotation, reporting duplicate column names and repeated @id values separately. Shared by validate_dimension_requirements.
@@ -485,11 +729,7 @@ macroString: |-
             {%- set reason = "Duplicate column name: " ~ (idCheck.duplicates | join(', ')) ~ ". The SELECT returns more than one column with the same name — remove the extra column or give it a different alias." %}
             {{ test_stage("Duplicate Column Names", false) }}
             -- {{ reason }}
-            {%- if hardFail %}
-            SELECT 1/0
-            {%- else %}
-            SELECT 1
-            {%- endif -%}
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
 
         {# Two columns given the same @id value. #}
@@ -505,22 +745,14 @@ macroString: |-
             {%- set reason = "Duplicate column ID: " ~ (idDup.items | join('; ')) ~ '. Each column needs its own unique @id("<6 hex digits>") — change the repeated ID on all but one of them.' %}
             {{ test_stage("Duplicate Column IDs", false) }}
             -- {{ reason }}
-            {%- if hardFail %}
-            SELECT 1/0
-            {%- else %}
-            SELECT 1
-            {%- endif -%}
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
 
         {%- if idCheck.missing | length > 0 %}
             {%- set reason = "These columns have no real system-generated ID (id equals the column name): " ~ (idCheck.missing | join(', ')) ~ '. Add a unique @id("<6 hex digits>") annotation to each of them.' %}
             {{ test_stage("Missing Column IDs", false) }}
             -- {{ reason }}
-            {%- if hardFail %}
-            SELECT 1/0
-            {%- else %}
-            SELECT 1
-            {%- endif -%}
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
     {%- endmacro -%}
 
@@ -530,33 +762,18 @@ macroString: |-
     Output: Rendered test_stage(...) + SELECT statements for every check that fails.
     ===========================================================================#}
     {%- macro validate_dimension_requirements(hardFail=false) -%}
-        {# CREATE does not fail on row count like RUN does, so hardFail forces a real SQL error instead. #}
-        {%- macro fail_select(reason) -%}
-            {%- if hardFail -%}
-                SELECT 1/0
-            {%- else -%}
-                SELECT 1
-            {%- endif -%}
-        {%- endmacro -%}
-
         {# Every Dimension column must carry its own @id annotation. #}
         {{ validate_column_ids(hardFail) }}
 
-        {# The same tag key may only be applied once to the table. #}
-        {%- set nodeDupeTags = find_duplicate_tag_names(config.tag) | trim -%}
-        {%- if nodeDupeTags | length > 0 %}
-            {%- set reason = nodeDupeTags ~ " is applied multiple times on " ~ node.name ~ ". A BigQuery table can carry only one value per tag key." %}
-            {{ test_stage('Duplicate Tags Found: ' + node.name, false) }}
-            -- {{ reason }}
-            {{ fail_select(reason) }}
-        {%- endif -%}
+        {# The same tag key may only be applied once to the table, and BigQuery has no column tags. #}
+        {{ tag_check_duplicates(hardFail) }}
 
         {%- set hasBusinessKey = columns | selectattr("isBusinessKey") | list | length > 0 | default(false) -%}
         {%- if not hasBusinessKey %}
             {%- set reason = "Mark at least one column with @isBusinessKey to identify the dimension's natural/business key for SCD matching." %}
             {{ test_stage("Missing Business Key", false) }}
             -- {{ reason }}
-            {{ fail_select(reason) }}
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
 
         {%- set lastModifiedCount = columns | selectattr("lastModifiedTracking") | list | length -%}
@@ -580,7 +797,7 @@ macroString: |-
             {%- set reason = '@mergeStrategy(`' ~ mergeStrategyRaw ~ '`) is not a recognised strategy. Use "changeTracking", "lastModified" or "upsert".' %}
             {{ test_stage('Invalid configuration: mergeStrategy', false) }}
             -- {{ reason }}
-            {{ fail_select(reason) }}
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
 
         {# These cross-checks only apply when @mergeStrategy is set explicitly, since an inferred strategy can not conflict with itself. #}
@@ -600,7 +817,7 @@ macroString: |-
             {%- set reason = '@mergeStrategy(`lastModified`) requires exactly one column marked @lastModifiedTracking(<scdType>); none was found.' %}
             {{ test_stage('Invalid configuration: mergeStrategy', false) }}
             -- {{ reason }}
-            {{ fail_select(reason) }}
+            {{ fail_sql(hardFail) }}
         {%- endif %}
 
         {# Only check "at most one @lastModifiedTracking column" once lastModified is the strategy in effect. #}
@@ -608,7 +825,7 @@ macroString: |-
             {%- set reason = "@lastModifiedTracking may be applied to at most one column, but " ~ lastModifiedCount ~ " columns were marked. Remove the annotation from all but one column." %}
             {{ test_stage('Invalid configuration: Last Modified Column', false) }}
             -- {{ reason }}
-            {{ fail_select(reason) }}
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
 
         {%- if isLastModifiedStrategy and changeTrackingCount > 0 %}
@@ -630,7 +847,7 @@ macroString: |-
                         {%- set reason = '@lastModifiedTracking\'s scdType parameter only accepts 1 or 2, but `' ~ scdType ~ '` was given on column ' ~ lastModifiedCol.name ~ '. Mention @lastModifiedTracking(scdType) explicitly — @lastModifiedTracking(1) to overwrite in place, or @lastModifiedTracking(2) to version the row.' %}
                         {{ test_stage('Invalid configuration: lastModifiedTracking scdType', false) }}
                         -- {{ reason }}
-                        {{ fail_select(reason) }}
+                        {{ fail_sql(hardFail) }}
                     {%- endif -%}
                     {%- set type2Dimension = scdType == '2' -%}
                 {%- else -%}
@@ -673,7 +890,7 @@ macroString: |-
             {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                 'required': true,
                 'annotation': '@isSystemCreateDate',
-                'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_CREATE_DATE" @isSystemCreateDate',
+                'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_CREATE_DATE` @isSystemCreateDate',
                 'reason': 'Required because @mergeStrategy("changeTracking"/"lastModified") does change detection against the existing target row: SYSTEM_CREATE_DATE is carried through unchanged from that row into CHANGE_DETECTION so its original insert timestamp is preserved on every update, and only stamped with CURRENT_TIMESTAMP the one time a business key is first inserted.'
             }] -%}
         {%- endif %}
@@ -685,14 +902,14 @@ macroString: |-
                 {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                     'required': true,
                     'annotation': '@isSystemUpdateDate',
-                    'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_UPDATE_DATE" @isSystemUpdateDate',
+                    'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE` @isSystemUpdateDate',
                     'reason': 'Required because this is an SCD Type 2 dimension: SYSTEM_UPDATE_DATE is carried through from the current target row into CHANGE_DETECTION/MERGE_ROWS so it can be stamped with CURRENT_TIMESTAMP whenever a new or changed version is inserted, marking when that version became active.'
                 }] -%}
             {%- else -%}
                 {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                     'required': true,
                     'annotation': '@isSystemUpdateDate',
-                    'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_UPDATE_DATE" @isSystemUpdateDate',
+                    'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE` @isSystemUpdateDate',
                     'reason': 'Required for SCD Type 1: without it there\'s no way to tell when a row\'s attributes were last changed — SYSTEM_CREATE_DATE is set once and never touched again.'
                 }] -%}
             {%- endif -%}
@@ -705,7 +922,7 @@ macroString: |-
                 {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                     'required': true,
                     'annotation': '@isSystemVersion',
-                    'example': '1 AS "SYSTEM_VERSION" @isSystemVersion',
+                    'example': '1 AS `SYSTEM_VERSION` @isSystemVersion',
                     'reason': 'Required because this is an SCD Type 2 dimension (a versioned last-modified column, or an @isChangeTracking column, was found): SYSTEM_VERSION is what distinguishes successive versions of the same business key, and it\'s what the outer MERGE\'s ON clause uses (alongside the business key) to target the exact row version being expired or matched.'
                 }] -%}
             {%- endif -%}
@@ -715,7 +932,7 @@ macroString: |-
                 {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                     'required': true,
                     'annotation': '@isSystemCurrentFlag',
-                    'example': '\'Y\' AS "SYSTEM_CURRENT_FLAG" @isSystemCurrentFlag',
+                    'example': 'CAST(\'Y\' AS STRING) AS `SYSTEM_CURRENT_FLAG` @isSystemCurrentFlag',
                     'reason': 'Required because this is an SCD Type 2 dimension: the CHANGE_DETECTION CTE filters TARGET_CURRENT down to WHERE SYSTEM_CURRENT_FLAG = \'Y\' to find the one active row per business key to compare the incoming source row against — without it there\'s no way to tell which of possibly several historical versions is the current one.'
                 }] -%}
             {%- endif -%}
@@ -725,7 +942,7 @@ macroString: |-
                 {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                     'required': true,
                     'annotation': '@isSystemEndDate',
-                    'example': 'CAST(\'2999-12-31 00:00:00\' AS TIMESTAMP) AS "SYSTEM_END_DATE" @isSystemEndDate',
+                    'example': 'CAST(\'2999-12-31 00:00:00\' AS TIMESTAMP) AS `SYSTEM_END_DATE` @isSystemEndDate',
                     'reason': 'Required because this is an SCD Type 2 dimension: SYSTEM_END_DATE is what gets set to the expiry timestamp when a changed row\'s prior version is expired, and to the far-future sentinel on every newly inserted current version — without it there\'s no way to bound how long each historical version was active.'
                 }] -%}
             {%- endif -%}
@@ -746,7 +963,183 @@ macroString: |-
             {%- endfor %}
             {# Only hard-fail if a REQUIRED item is present; recommendations-only stays non-blocking. #}
             {%- if hardFail and anyRequired -%}
-                {{ fail_select("Missing required system column(s): " ~ (missingSystemColumns.items | selectattr('required') | map(attribute='annotation') | join(', ')) ~ ". See the comments above for details.") }}
+                {{ fail_sql(hardFail) }}
+            {%- else -%}
+                SELECT 1
+            {%- endif -%}
+        {%- endif -%}
+
+        {# Zero key record: a value longer than its STRING(n) / BYTES(n) column's declared length is rejected by BigQuery — including the surrogate key column,
+           which gets surrogateKeyValue as a string when it is a STRING/BYTES key. Plain STRING / BYTES have no length limit. Warn only. #}
+        {%- if config.zeroKey is defined and hasSurrogateKey -%}
+            {%- set zk = namespace(tooLong=[]) -%}
+            {%- for col in columns if not (col.isSystemCurrentFlag or col.isSystemEndDate
+                                           or col.isSystemUpdateDate or col.isSystemCreateDate or col.isSystemVersion) -%}
+                {%- set dt = col.dataType | upper | replace(' ', '') -%}
+                {%- if dt[:7] == 'STRING(' or dt[:6] == 'BYTES(' -%}
+                    {%- set maxLen = dt.split('(')[1].split(')')[0] | int -%}
+                    {# The exact value the Zero Key Record stage writes for this column. #}
+                    {%- set zkValue = resolve_zero_key(col) | trim -%}
+                    {# Only a literal can be measured: unwrap CAST(<literal> AS BYTES) and a b'...' prefix, then strip the quotes ('x' or "x").
+                       Any other expression (e.g. a column-level @zeroKey("CONCAT(...)")) is skipped. #}
+                    {%- set zkLiteral = zkValue[5:-10] | trim if (zkValue | upper)[:5] == 'CAST(' and (zkValue | upper)[-10:] == ' AS BYTES)' else zkValue -%}
+                    {%- set zkLiteral = zkLiteral[1:] if (zkLiteral[:1] in ('b', 'B') and zkLiteral[1:2] in ("'", '"')) else zkLiteral -%}
+                    {%- if zkLiteral | length > 1 and zkLiteral[:1] in ("'", '"') and zkLiteral[-1:] == zkLiteral[:1] -%}
+                        {%- set zkText = zkLiteral[1:-1] -%}
+                        {%- if zkText | length > maxLen -%}
+                            {%- set zk.tooLong = zk.tooLong + [col.name ~ ' ' ~ col.dataType ~ ' gets ' ~ zkValue ~ ' (' ~ zkText | length ~ (' bytes' if dt[:6] == 'BYTES(' else ' characters') ~ ')'
+                                                               ~ (' — the node-level @zeroKey surrogateKeyValue' if col.isSurrogateKey and not (col.zeroKey is defined) else '')] -%}
+                        {%- endif -%}
+                    {%- endif -%}
+                {%- endif -%}
+            {%- endfor -%}
+
+            {%- if zk.tooLong %}
+            {{ test_stage('Warning: Zero Key Value Too Long', true) }}
+            {%- for item in zk.tooLong %}
+            -- {{ item }}.
+            {%- endfor %}
+            -- BigQuery rejects a value longer than a STRING(n) / BYTES(n) column's length, so the Zero Key Record stage will fail.
+            -- Set a shorter value on the column with @zeroKey("'<value>'") (or a shorter surrogateKeyValue in the node-level @zeroKey), or widen the column.
+            SELECT 1 AS MESSAGE
+            {%- endif %}
+        {%- endif -%}
+    {%- endmacro -%}
+
+  {#===========================================================================
+    Description: Validates a Fact node's annotations (column IDs, duplicate tags, mergeStrategy, required system columns). Shared by create.sql.j2 and run.sql.j2.
+      A Fact with no @isBusinessKey column is loaded as a plain insert, so the mergeStrategy / tracking / system-column checks only apply when a business key is present.
+      Every strategy is SCD Type 1 — @lastModifiedTracking takes no scdType here, unlike the Dimension.
+      allColumnMatch is accepted ahead of the Fact node type supporting it: it needs no @isBusinessKey and no system columns.
+    Input: hardFail (boolean, default false) — set true from create.sql.j2 so a failed check raises a real SQL error, since CREATE (unlike RUN) doesn't fail on row count alone.
+    Output: Rendered test_stage(...) + SELECT statements for every check that fails.
+    ===========================================================================#}
+    {%- macro validate_fact_requirements(hardFail=false) -%}
+
+        {# Every Fact column must carry its own @id annotation. #}
+        {{ validate_column_ids(hardFail) }}
+
+        {# The same tag key may only be applied once to the table, and BigQuery has no column tags. #}
+        {{ tag_check_duplicates(hardFail) }}
+
+        {%- set hasBusinessKey = columns | selectattr("isBusinessKey") | list | length > 0 -%}
+        {%- set lastModifiedCount = columns | selectattr("lastModifiedTracking") | list | length -%}
+
+        {%- set mergeStrategyExplicit = config.mergeStrategy is defined and config.mergeStrategy.parameters is defined and config.mergeStrategy.parameters | length > 0 -%}
+        {%- if mergeStrategyExplicit -%}
+            {# Matched case-insensitively (must match run.sql.j2). #}
+            {%- set mergeStrategyRaw = config.mergeStrategy.parameters[0] | string | trim -%}
+            {%- set mergeStrategy = mergeStrategyRaw | lower -%}
+        {%- else -%}
+            {# No @mergeStrategy given — defaults to changeTracking (only used when a business key is present). #}
+            {%- set mergeStrategy = 'changetracking' -%}
+        {%- endif -%}
+        {%- set isSimpleUpsert = mergeStrategy == 'upsert' -%}
+        {%- set isLastModifiedStrategy = mergeStrategy == 'lastmodified' -%}
+        {%- set isChangeTrackingStrategy = mergeStrategy == 'changetracking' -%}
+        {%- set isAllColumnMatch = mergeStrategy == 'allcolumnmatch' %}
+
+        {# An unrecognised strategy would otherwise fall through to change tracking without any warning. #}
+        {%- if not (isSimpleUpsert or isLastModifiedStrategy or isChangeTrackingStrategy or isAllColumnMatch) %}
+            {%- set reason = '@mergeStrategy("' ~ mergeStrategyRaw ~ '") is not a recognised strategy. Use "changeTracking", "lastModified", "upsert" or "allColumnMatch".' %}
+            {{ test_stage('Invalid configuration: mergeStrategy', false) }}
+            -- {{ reason }}
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+
+        {# @mergeStrategy always takes priority. An explicit changeTracking/lastModified/upsert merges on the business key, so a missing @isBusinessKey stops the load.
+           Not for allColumnMatch, which needs no @isBusinessKey — every column is the match key. An unrecognised value is already flagged above. #}
+        {%- if not hasBusinessKey and mergeStrategyExplicit and (isSimpleUpsert or isLastModifiedStrategy or isChangeTrackingStrategy) %}
+            {%- set reason = '@mergeStrategy("' ~ mergeStrategyRaw ~ '") merges on the business key, but no column is marked @isBusinessKey. Mark the business key column(s) with @isBusinessKey, or remove @mergeStrategy to load the node as a plain insert.' %}
+            {{ test_stage('Invalid configuration: No Business Key', false) }}
+            -- {{ reason }}
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+
+        {# No @mergeStrategy and no business key = plain insert, so @lastModifiedTracking is never read. Warn only — the insert still runs. #}
+        {%- if not hasBusinessKey and not mergeStrategyExplicit and lastModifiedCount > 0 %}
+            {{ test_stage('Invalid configuration: No Business Key', true) }}
+            -- No @mergeStrategy and no column marked @isBusinessKey, so this node is loaded as a plain insert — @lastModifiedTracking will be ignored. Mark the business key column(s) with @isBusinessKey and set @mergeStrategy("lastModified") to use it, or remove the annotation.
+            SELECT 1
+        {%- endif -%}
+
+        {# allColumnMatch matches on every non-system column, so @isBusinessKey / @lastModifiedTracking are never read. Warn only — the merge still runs. #}
+        {%- if isAllColumnMatch and hasBusinessKey %}
+            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            -- @mergeStrategy("allColumnMatch") matches on every non-system column, so @isBusinessKey is ignored — all columns are used as the business key for comparison. Remove @isBusinessKey, or switch mergeStrategy to use it.
+            SELECT 1
+        {%- endif -%}
+
+        {%- if isAllColumnMatch and lastModifiedCount > 0 %}
+            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            -- @mergeStrategy("allColumnMatch") performs no change detection, so @lastModifiedTracking columns are never read. Remove them, or switch mergeStrategy to "lastModified" to use them.
+            SELECT 1
+        {%- endif -%}
+
+        {# These cross-checks only apply when @mergeStrategy is set explicitly, since an inferred strategy can not conflict with itself. #}
+        {%- if hasBusinessKey and mergeStrategyExplicit and isSimpleUpsert and lastModifiedCount > 0 %}
+            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            -- @mergeStrategy("upsert") performs no change detection, so @lastModifiedTracking columns are never read. Remove them, or switch mergeStrategy to "lastModified" to use them.
+            SELECT 1
+        {%- endif -%}
+
+        {%- if hasBusinessKey and isChangeTrackingStrategy and lastModifiedCount > 0 %}
+            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            -- @mergeStrategy("changeTracking") does not use @lastModifiedTracking — that column would be silently ignored. Remove it, or switch mergeStrategy to "lastModified".
+            SELECT 1
+        {%- endif -%}
+
+        {%- if hasBusinessKey and isLastModifiedStrategy and lastModifiedCount == 0 %}
+            {%- set reason = '@mergeStrategy("lastModified") requires exactly one column marked @lastModifiedTracking; none was found.' %}
+            {{ test_stage('Invalid configuration: mergeStrategy', false) }}
+            -- {{ reason }}
+            {{ fail_sql(hardFail) }}
+        {%- endif %}
+
+        {# Only check "at most one @lastModifiedTracking column" once lastModified is the strategy in effect. #}
+        {%- if hasBusinessKey and isLastModifiedStrategy and lastModifiedCount > 1 %}
+            {%- set reason = "@lastModifiedTracking may be applied to at most one column, but " ~ lastModifiedCount ~ " columns were marked. Remove the annotation from all but one column." %}
+            {{ test_stage('Invalid configuration: Last Modified Column', false) }}
+            -- {{ reason }}
+            {{ fail_sql(hardFail) }}
+        {%- endif -%}
+
+        {# Collect every missing system column here so one run reports them all together instead of one at a time. #}
+        {%- set missingSystemColumns = namespace(items=[]) %}
+
+        {%- set hasSystemCreateDate = columns | selectattr("isSystemCreateDate") | list | length > 0 -%}
+        {%- if hasBusinessKey and not isSimpleUpsert and not isAllColumnMatch and not hasSystemCreateDate -%}
+            {%- set missingSystemColumns.items = missingSystemColumns.items + [{
+                'required': true,
+                'annotation': '@isSystemCreateDate',
+                'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_CREATE_DATE` @isSystemCreateDate',
+                'reason': 'Required because @mergeStrategy("changeTracking"/"lastModified") does change detection against the existing target row: SYSTEM_CREATE_DATE is carried through unchanged from that row so its original insert timestamp is preserved on every update, and only stamped with CURRENT_TIMESTAMP the one time a business key is first inserted.'
+            }] -%}
+        {%- endif %}
+
+        {%- set hasSystemUpdateDate = columns | selectattr("isSystemUpdateDate") | list | length > 0 -%}
+        {%- if hasBusinessKey and not isSimpleUpsert and not isAllColumnMatch and not hasSystemUpdateDate -%}
+            {%- set missingSystemColumns.items = missingSystemColumns.items + [{
+                'required': true,
+                'annotation': '@isSystemUpdateDate',
+                'example': 'CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE` @isSystemUpdateDate',
+                'reason': 'Required for SCD Type 1: without it there\'s no way to tell when a row\'s attributes were last changed — SYSTEM_CREATE_DATE is set once and never touched again.'
+            }] -%}
+        {%- endif -%}
+
+        {%- if missingSystemColumns.items | length > 0 -%}
+            {%- set anyRequired = missingSystemColumns.items | selectattr('required') | list | length > 0 %}
+            {{ test_stage('Missing Required System Columns', not anyRequired) }}
+            {%- for item in missingSystemColumns.items %}
+            -- {{ loop.index }}. [{{ 'REQUIRED' if item.required else 'RECOMMENDED' }}] {{ item.annotation }}
+            {%- if item.example %}
+            --    Example: {{ item.example }}
+            {%- endif %}
+            --    Reason: {{ item.reason }}
+            {%- endfor %}
+            {# Only hard-fail if a REQUIRED item is present; recommendations-only stays non-blocking. #}
+            {%- if hardFail and anyRequired -%}
+                {{ fail_sql(hardFail) }}
             {%- else -%}
                 SELECT 1
             {%- endif -%}
@@ -754,64 +1147,87 @@ macroString: |-
     {%- endmacro -%}
 
   {#===========================================================================
-    Description: Resolves the zero-key literal for a column (column-level @zeroKey wins, else node-level @zeroKey by dataType, else NULL).
+    Description: Resolves the zero-key literal for a column.
+      - Surrogate key column: column-level @zeroKey (verbatim) wins, else the node-level surrogateKeyValue (default 0),
+        typed to the column — quoted for STRING ('0'), b'0' for BYTES, bare for a number — so a STRING or BYTES
+        surrogate key (e.g. GENERATE_UUID() or TO_HEX(SHA256(...))) gets a value of its own type.
+      - Any other column: column-level @zeroKey (verbatim) wins, else the node-level @zeroKey default for its BigQuery type:
+          STRING -> stringValue (default 'UNKNOWN')        BYTES -> CAST(<stringValue> AS BYTES)
+          INT64 / NUMERIC / BIGNUMERIC / FLOAT64 -> 0      BOOL -> booleanValue (default TRUE)
+          DATE / DATETIME / TIME / TIMESTAMP -> timestampValue (default 1900-01-01 00:00:00), cast to the column type
+          JSON -> JSON 'null'                              anything else (GEOGRAPHY, ARRAY, STRUCT, ...) -> NULL
     Input: col (object)
     Output: SQL literal for the resolved zero-key value.
   ===========================================================================#}
     {%- macro resolve_zero_key(col) -%}
 
         {%- set ns = namespace(zk_type=none, zk_value=none) -%}
+        {%- set zkParams = config.zeroKey.parameters if (config.zeroKey is defined and config.zeroKey.parameters is defined) else [] -%}
+        {# Base type without length/precision or element type: STRING(10) -> STRING, NUMERIC(10,2) -> NUMERIC, ARRAY<INT64> -> ARRAY #}
+        {%- set baseType = (col.dataType | upper).split('(')[0].split('<')[0] | trim -%}
 
         {# Column-level zeroKey #}
         {%- if col.zeroKey is defined
             and col.zeroKey.parameters is defined
-            and col.zeroKey.parameters | trim | length > 0 -%}
+            and col.zeroKey.parameters | length > 0
+            and col.zeroKey.parameters[0] | string | trim | length > 0 -%}
 
             {%- set ns.zk_value = col.zeroKey.parameters[0] -%}
 
+        {# Surrogate key: node-level surrogateKeyValue, typed to the column #}
+        {%- elif col.isSurrogateKey -%}
+            {%- set surrogateValue = (zkParams[0] if zkParams | length > 0 else 0) | string | trim -%}
+            {%- if baseType == 'STRING' -%}
+                {%- set ns.zk_type = 'string' -%}
+                {%- set ns.zk_value = "'" ~ surrogateValue ~ "'" -%}
+            {%- elif baseType == 'BYTES' -%}
+                {%- set ns.zk_type = 'bytes' -%}
+                {%- set ns.zk_value = "b'" ~ surrogateValue ~ "'" -%}
+            {%- else -%}
+                {%- set ns.zk_type = 'numeric' -%}
+                {%- set ns.zk_value = surrogateValue -%}
+            {%- endif -%}
+
         {# Node-level zeroKey, matched by column dataType #}
         {%- else -%}
-            {%- set zkParams = config.zeroKey.parameters if (config.zeroKey is defined and config.zeroKey.parameters is defined) else [] -%}
-            {%- if col.dataType | upper in ('JSON', 'VARIANT') -%}
-                {%- set ns.zk_type = 'variant' -%}
-                {%- set ns.zk_value = none -%}
-            {%- elif col.dataType[:3] | upper in ('VAR', 'CHA', 'STR', 'TEX') -%}
+            {%- if baseType == 'JSON' -%}
+                {%- set ns.zk_type = 'json' -%}
+            {%- elif baseType == 'STRING' -%}
                 {%- set ns.zk_type = 'string' -%}
                 {%- set ns.zk_value = zkParams[1] if zkParams | length > 1 else "'UNKNOWN'" -%}
-            {# Every numeric type (NUMBER/NUMERIC/DECIMAL, INT/INTEGER/BIGINT/SMALLINT/TINYINT/BYTEINT, FLOAT/DOUBLE/REAL) always gets 0 —
-               the node-level surrogateKeyValue applies to the surrogate key column only; override per column with @zeroKey(value). #}
-            {%- elif col.dataType[:3] | upper in ('NUM', 'INT', 'DEC', 'FLO', 'DOU', 'REA', 'BIG', 'SMA', 'TIN', 'BYT') -%}
+            {%- elif baseType == 'BYTES' -%}
+                {# The node-level stringValue, cast to BYTES (BYTES columns have no default of their own). #}
+                {%- set ns.zk_type = 'bytes' -%}
+                {%- set ns.zk_value = 'CAST(' ~ (zkParams[1] if zkParams | length > 1 else "'UNKNOWN'") ~ ' AS BYTES)' -%}
+            {# Every numeric type always gets 0 — the node-level surrogateKeyValue applies to the surrogate key column only; override per column with @zeroKey(value).
+               BYTEINT is an INT64 alias, not BYTES. #}
+            {%- elif baseType in ('INT64', 'INT', 'INTEGER', 'SMALLINT', 'BIGINT', 'TINYINT', 'BYTEINT',
+                                  'NUMERIC', 'DECIMAL', 'BIGNUMERIC', 'BIGDECIMAL', 'FLOAT64', 'FLOAT') -%}
                 {%- set ns.zk_type = 'numeric' -%}
                 {%- set ns.zk_value = 0 -%}
-            {%- elif col.dataType | upper in ('BOOL', 'BOOLEAN') -%}
+            {%- elif baseType in ('BOOL', 'BOOLEAN') -%}
                 {%- set ns.zk_type = 'boolean' -%}
                 {%- set ns.zk_value = zkParams[3] if zkParams | length > 3 else true -%}
-            {%- elif col.dataType[:4] | upper in ('DATE', 'TIME', 'TIMESTAMP') -%}
+            {%- elif baseType in ('DATE', 'DATETIME', 'TIME', 'TIMESTAMP') -%}
                 {%- set ns.zk_type = 'datetime' -%}
                 {%- set ns.zk_value = zkParams[2] if zkParams | length > 2 else '1900-01-01 00:00:00' -%}
             {%- endif -%}
         {%- endif -%}
 
         {# Format the resolved value #}
-        {%- if ns.zk_type == 'numeric' -%}
-            {{ ns.zk_value }}
-        {%- elif ns.zk_type == 'variant' -%}
-            PARSE_JSON('null')
+        {%- if ns.zk_type == 'json' -%}
+            JSON 'null'
         {%- elif ns.zk_value is not none -%}
             {%- if ns.zk_type == 'boolean' -%}
-                {{ ns.zk_value | upper }}
+                {{ ns.zk_value | string | upper }}
 
             {%- elif ns.zk_type == 'datetime' -%}
-                {# Parsed as a TIMESTAMP literal, then cast so DATE / DATETIME / TIME columns get a value of their own type. #}
+                {#- Parsed as a TIMESTAMP literal, then cast so DATE / DATETIME / TIME columns get a value of their own type. -#}
                 CAST(TIMESTAMP '{{ ns.zk_value }}' AS {{ col.dataType }})
 
-            {%- elif ns.zk_type == 'string' -%}
-                {# Node-level default: pasted verbatim, same as the column-level override — supply your own quotes in the annotation, e.g. "'UNKNOWN'". #}
-                {{ ns.zk_value }}
-
             {%- else -%}
-                {# Column-level @zeroKey override: pasted verbatim, exactly as the user wrote it — #}
-                {# they supply their own quotes for a string, or a full expression like CAST(...). #}
+                {#- numeric / string / bytes as resolved above. A column-level @zeroKey override is pasted verbatim, exactly as the user wrote it — -#}
+                {#- they supply their own quotes for a string, or a full expression like CAST(...). -#}
                 {{ ns.zk_value }}
             {%- endif -%}
 
