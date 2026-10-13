@@ -1,6 +1,6 @@
 fileVersion: 1
-id: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
-name: nation
+id: 42283611-9773-43ce-885f-238caa9c47cd
+name: Nation_Test_CamelCase
 operation:
   database: ""
   deployEnabled: true
@@ -13,13 +13,13 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 8412299d-a967-45a9-9b65-44b85a1d10dd
-          stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+          columnCounter: ddb20789-4f4c-44ba-9069-bd01e0d2411c
+          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
         config: {}
         dataType: INT64
         defaultValue: ""
         description: ""
-        name: N_NATIONKEY
+        name: n_NationKey
         nullable: true
         sourceColumnReferences:
           - columnReferences: []
@@ -30,13 +30,13 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 645a74c4-94b0-4959-af1a-7c23339a5900
-          stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+          columnCounter: fe2a7ab5-8722-4de8-9dd9-55f0caad3ab8
+          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
         config: {}
         dataType: STRING
         defaultValue: ""
         description: ""
-        name: N_NAME
+        name: n_Name
         nullable: true
         sourceColumnReferences:
           - columnReferences: []
@@ -47,13 +47,13 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: e6c7eeec-acdd-4ad3-9d9d-fc1af20930b5
-          stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+          columnCounter: 3377ed32-d583-483f-9253-edfad9ffa418
+          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
         config: {}
         dataType: INT64
         defaultValue: ""
         description: ""
-        name: N_REGIONKEY
+        name: n_RegionKey
         nullable: true
         sourceColumnReferences:
           - columnReferences: []
@@ -64,13 +64,13 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: e88c63c7-d9dc-447c-ae20-85030629e363
-          stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+          columnCounter: 627fd7b2-6bf8-46f1-8ab8-83dc2063ebb3
+          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
         config: {}
         dataType: STRING
         defaultValue: ""
         description: ""
-        name: N_COMMENT
+        name: n_Comment
         nullable: true
         sourceColumnReferences:
           - columnReferences: []
@@ -81,19 +81,19 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: e1ab30d8-af1c-4feb-90fa-4487f84af937
-          stepCounter: 6ed94c29-75fa-4a04-9066-e76fa73a33bb
+          columnCounter: 4a87a96b-6aff-494c-9884-46dfc2bd295d
+          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
         config: {}
         dataType: TIMESTAMP
         defaultValue: ""
         description: ""
-        name: last_modified
+        name: last_Modified
         nullable: true
         sourceColumnReferences:
           - columnReferences: []
             transform: ""
         transform: ""
-  name: nation
+  name: Nation_Test_CamelCase
   schema: ""
   sqlType: Source
   type: sourceInput
