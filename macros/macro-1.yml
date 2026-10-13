@@ -456,7 +456,7 @@ macroString: |
   ####################################################################################################################################}
   {%- macro find_duplicate_tag_names(tagList) -%}
       {%- set ns = namespace(entries=[], dupes=[]) -%}
-      {%- for t in ([tagList] if tagList is mapping else tagList | default([], true)) -%}
+      {%- for t in tagList | default([]) -%}
           {%- set ns.entries = ns.entries + [{"key": get_tag_full_name(t.parameters[0]), "name": t.parameters[0]}] -%}
       {%- endfor -%}
       {%- for e in ns.entries -%}
@@ -481,7 +481,7 @@ macroString: |
   ####################################################################################################################################}
   {%- macro get_tags_sql(tagList) -%}
       {%- set ns = namespace(items=[]) -%}
-      {%- for t in ([tagList] if tagList is mapping else tagList | default([], true)) -%}
+      {%- for t in tagList | default([]) -%}
           {%- set ns.items = ns.items + ["('" ~ (get_tag_full_name(t.parameters[0]) | replace("'", "\\'")) ~ "', '" ~ (t.parameters[1] | string | trim | replace("'", "\\'")) ~ "')"] -%}
       {%- endfor -%}
       {%- if ns.items | length > 0 -%}
