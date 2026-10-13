@@ -81,7 +81,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 	{# == Truncate data before data insertion  == #}
     {%- if writeMode | lower != "append" -%}
         {{ stage('Truncate ' + materializationType) }}
-        TRUNCATE IF EXISTS {{ ref_no_link(node.location.name, node.name) }}
+        TRUNCATE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- endif %}
 
     {%- if not hasBusinessKey and not isAllColumnMatch %}

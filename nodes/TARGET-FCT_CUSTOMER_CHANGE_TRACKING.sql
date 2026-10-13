@@ -10,10 +10,10 @@ SELECT
     `C_CUSTKEY`                          AS `C_CUSTKEY`          @id("f58801") @isBusinessKey @notNull @not_null @uniqueness @min_value("1"),
     `C_NAME`                             AS `C_NAME`             @id("f58802") @not_null @empty,
     `C_ADDRESS`                          AS `C_ADDRESS`          @id("f58803"),
-    `C_NATIONKEY`                        AS `C_NATIONKEY`        @id("f58804") @clusterKey(2) @min_max("0", "24"),
+    `C_NATIONKEY`                        AS `C_NATIONKEY`        @id("f58804") @min_max("0", "24"),
     `C_PHONE`                            AS `C_PHONE`            @id("f58805") @empty,
-    `C_ACCTBAL`                          AS `C_ACCTBAL`          @id("f58806") @min_value("-999.99") @max_value("9999.99") @description("Account balance"),
-    `C_MKTSEGMENT`                       AS `C_MKTSEGMENT`       @id("f58807") @clusterKey(1) @accepted_values("'AUTOMOBILE'") @accepted_values("'BUILDING'") @accepted_values("'FURNITURE'") @accepted_values("'HOUSEHOLD'") @accepted_values("'MACHINERY'"),
+    CAST(`C_ACCTBAL` AS FLOAT64)         AS `C_ACCTBAL`          @id("f58806") @min_value("-999.99") @max_value("9999.99") @description("Account balance"),
+    `C_MKTSEGMENT`                       AS `C_MKTSEGMENT`       @id("f58807") @accepted_values("'AUTOMOBILE'") @accepted_values("'BUILDING'") @accepted_values("'FURNITURE'") @accepted_values("'HOUSEHOLD'") @accepted_values("'MACHINERY'"),
     `C_COMMENT`                          AS `C_COMMENT`          @id("f58808") @defaultValue("'NA'"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_CREATE_DATE` @id("f58809") @isSystemCreateDate,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE` @id("f5880a") @isSystemUpdateDate @relative_time(">=", "SYSTEM_CREATE_DATE")
