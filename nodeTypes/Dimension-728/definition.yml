@@ -363,6 +363,19 @@ metadata:
               isRequired: true
               example: "'N/A'"
 
+        - name: columnDefault
+          description: |-
+            • Sets a 𝗗𝗘𝗙𝗔𝗨𝗟𝗧 expression on this column when the table is created (e.g. GENERATE_UUID() for a STRING surrogate key).
+            • 𝗩𝗮𝗹𝘂𝗲 𝗶𝘀 𝗽𝗮𝘀𝘁𝗲𝗱 𝗶𝗻𝘁𝗼 𝘁𝗵𝗲 𝗦𝗤𝗟 𝗲𝘅𝗮𝗰𝘁𝗹𝘆 𝗮𝘀 𝘄𝗿𝗶𝘁𝘁𝗲𝗻 — supply your own quotes for string literals.
+            • Applied only when the table is created or recreated; ignored on views.
+          isRequired: false
+          parameters:
+            - name: value
+              type: string
+              description: Default expression for this column, pasted into the SQL verbatim.
+              isRequired: true
+              example: GENERATE_UUID()
+
         - name: isSurrogateKey
           description: |-
             ⚙ This is a system column.
@@ -372,7 +385,7 @@ metadata:
             • 𝗥𝗲𝗾𝘂𝗶𝗿𝗲𝗱 𝗼𝗻𝗹𝘆 𝘄𝗵𝗲𝗻 the node-level @zeroKey is set, since the zero/ghost record is matched against the target by surrogate key value.
 
             Expected expression:
-            GENERATE_UUID() AS `{{NODE_NAME}}_KEY` @isSurrogateKey
+            GENERATE_UUID() AS `{{NODE_NAME}}_KEY` @isSurrogateKey @columnDefault("GENERATE_UUID()")
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -595,7 +608,7 @@ metadata:
           {%- endmacro -%}
           {%- set ns = namespace(items=[], lines=[]) -%}
           {%- set idAnnotation = '@id("<ID>") ' -%}
-          {%- set ns.items = ns.items + [{'expr': 'GENERATE_UUID()', 'alias': '`' ~ node.name ~ '_KEY`', 'annotation': idAnnotation ~ '@isSurrogateKey'}] -%}
+          {%- set ns.items = ns.items + [{'expr': 'GENERATE_UUID()', 'alias': '`' ~ node.name ~ '_KEY`', 'annotation': idAnnotation ~ '@isSurrogateKey @columnDefault("GENERATE_UUID()")'}] -%}
           {%- for dep in sources[0].dependencies -%}
             {%- for col in dep.columns -%}
               {%- set ns.items = ns.items + [{'expr': '`' ~ col.name ~ '`', 'alias': '`' ~ col.name ~ '`', 'annotation': idAnnotation.rstrip()}] -%}
