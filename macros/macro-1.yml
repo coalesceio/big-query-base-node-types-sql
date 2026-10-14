@@ -495,9 +495,26 @@ macroString: |-
             {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                 'required': false,
                 'annotation': '@isSurrogateKey',
-                'example': '0 AS `' ~ node.name ~ '_KEY` @isSurrogateKey',
+                'example': 'CAST("0" AS STRING) AS `' ~ node.name ~ '_KEY` @isSurrogateKey @defaultValue("GENERATE_UUID()")',
                 'reason': 'Recommended for SCD Type 2, to give tables a stable per-version join key. Ignore this warning if you are managing your own surrogate key logic (e.g. a sequence NEXTVAL) instead of using @isSurrogateKey.'
             }] -%}
+        {%- endif -%}
+
+        {# The surrogate key is never written by the load (it is left out of every MERGE/INSERT column list), so BigQuery fills it from the column DEFAULT:
+           it must be a STRING column with @defaultValue("GENERATE_UUID()"), otherwise new rows get a NULL surrogate key. #}
+        {%- set sk = namespace(invalid=[]) -%}
+        {%- for col in columns if col.isSurrogateKey -%}
+            {%- set skType = (col.dataType | default('', true) | upper).split('(')[0] | trim -%}
+            {%- set skDefault = col.defaultValue | default('', true) | string | upper | replace(' ', '') -%}
+            {%- if skType != 'STRING' or skDefault != 'GENERATE_UUID()' -%}
+                {%- set sk.invalid = sk.invalid + [col.name ~ ' (' ~ (col.dataType | default('no type', true)) ~ ', ' ~ ('DEFAULT ' ~ col.defaultValue if col.defaultValue else 'no @defaultValue') ~ ')'] -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if sk.invalid | length > 0 %}
+            {{ test_stage('Invalid configuration: Surrogate Key', false) }}
+            -- @isSurrogateKey column {{ sk.invalid | join(', ') }} must be a STRING column with @defaultValue("GENERATE_UUID()"): the load never writes the surrogate key, so BigQuery fills it from the column DEFAULT.
+            -- Example: CAST("0" AS STRING) AS `{{ node.name }}_KEY` @isSurrogateKey @defaultValue("GENERATE_UUID()")
+            {{ fail_sql(hardFail) }}
         {%- endif -%}
 
         {%- set hasSystemCreateDate = columns | selectattr("isSystemCreateDate") | list | length > 0 -%}
