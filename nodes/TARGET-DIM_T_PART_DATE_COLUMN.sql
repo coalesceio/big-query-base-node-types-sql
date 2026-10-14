@@ -2,7 +2,7 @@
 @nodeType("728")
 @description("Test - partitionBy a plain DATE column; changeTracking SCD Type 1")
 @mergeStrategy("changeTracking")
-@partitionBy("LOAD_DATE")
+@partitionBy("DATE_TRUNC(LOAD_DATE, MONTH)")
 SELECT
     0                                    AS `DIM_T_PART_DATE_COLUMN_KEY` @id("c20001") @isSurrogateKey,
     `N_NATIONKEY`                        AS `N_NATIONKEY`                @id("c20002") @isBusinessKey @not_null @uniqueness,

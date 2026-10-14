@@ -2,7 +2,6 @@
 @nodeType("728")
 @description("Test - lastModified SCD Type 2; ingestion-time partition, tableExpiration as a date")
 @mergeStrategy("lastModified")
-@partitionBy("_PARTITIONDATE")
 @tableExpiration("2026-12-31")
 SELECT
     0                                        AS `DIM_T_LM_SCD2_INGESTION_KEY` @id("b40001") @isSurrogateKey,
