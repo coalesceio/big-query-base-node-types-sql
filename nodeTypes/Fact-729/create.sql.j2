@@ -53,8 +53,8 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 
         {# Validate the Fact's annotations (hard fail: CREATE does not fail a test stage on row count) #}
         {{ validate_fact_requirements(true) }}
-        {# Validate: @partitionBy on at most one column, and not together with the node-level one #}
-        {{ validate_partition_by() }}
+        {# Validate: one partition (node or column @partitionBy), partition expiration only on a time partition, at most 4 plain cluster columns #}
+        {{ validate_partition_cluster() }}
 
         {# Drop the current object if it was another type #}
         {{ object_drop_sql() }}
