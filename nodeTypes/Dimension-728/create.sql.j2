@@ -20,7 +20,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {# Validate: the materialization type must be table or view #}
     {{ validate_materialization_type() }}
 
-    {# Validate: the same tag key applied twice to the node is not allowed #}
+    {# Validate: the same tag key applied twice to the node, or a @tag on a column, is not allowed #}
     {{ tag_check_duplicates() }}
 
     {%- if desiredMatType == 'view' %}
@@ -28,10 +28,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {# Drop the current object if it was another type, or the view was renamed/moved #}
         {{ object_drop_sql() }}
 
-        {# Did the view definition change? Render it for both states and compare #}
+        {# Did the view definition change (columns, column descriptions, SELECT)? Render it without OPTIONS for both states and compare #}
         {%- set viewDefinitionChanged = currentState is not defined
                 or (currentState != desiredState
-                    and view_definition_sql(currentState) != view_definition_sql(desiredState)) %}
+                    and view_definition_sql(currentState, false) != view_definition_sql(desiredState, false)) %}
+
+        {# Which view OPTIONS changed (expiration, tags, description)? Only those go into the ALTER #}
+        {%- set viewOptionsAlter = view_options_alter_sql(currentState, desiredState) | trim
+                if (currentState is defined and currentState != desiredState) else '' %}
 
         {# CreateSQL for View #}
         {%- if currentState is not defined
@@ -42,19 +46,26 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             CREATE OR REPLACE VIEW {{ nsNodeVariables.desObjectNameFullPath }}
             {{ view_definition_sql(desiredState) }}
 
+        {%- elif viewOptionsAlter | length > 0 %}
+
+            {# Definition unchanged, options changed: one ALTER with only the changed options (a removed one is reset to NULL, tags to []) #}
+            {{ stage('Edit View Options') }}
+            ALTER VIEW {{ nsNodeVariables.desObjectNameFullPath }}
+            SET {{ viewOptionsAlter }}
+
         {%- elif currentState != desiredState %}
 
-            {# Definition unchanged: record a metadata-only change #}
+            {# Definition and options unchanged (e.g. tests or run settings): record a metadata-only change #}
             {{ alter_metadata_sql() }}
 
         {%- endif %}
 
     {%- elif desiredMatType == 'table' %}
 
-        {# Validate the Dimension's annotations (hard fail: CREATE does not fail a test stage on row count) #}
+        {# Validate the Dimension annotations (hard fail: CREATE does not fail a test stage on row count) #}
         {{ validate_dimension_requirements(true) }}
-        {# Validate: @partitionBy on at most one column, and not together with the node-level one #}
-        {{ validate_partition_by() }}
+        {# Validate: one partition (node or column @partitionBy), partition expiration only on a time partition, at most 4 plain cluster columns #}
+        {{ validate_partition_cluster() }}
 
         {# Drop the current object if it was another type #}
         {{ object_drop_sql() }}
@@ -65,7 +76,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- set nsConfigVariables.partitionBy = get_partition_by_sql(config, columns) | trim %}
         {%- set nsConfigVariables.clusterBy = get_clusterby_sql(columns) | trim %}
         {%- set nsConfigVariables.primaryKey = get_primary_key_sql(columns) | trim %}
-        {%- set nsConfigVariables.options = get_table_options_sql(config, node.description, false, columns) | trim %}
+        {%- set nsConfigVariables.options = get_object_options_sql(config, node.description, false, columns) | trim %}
 
         {# BigQuery cannot alter these on an existing table: a dataset move, or a partition / cluster change recreates it #}
         {%- if currentState is defined and currentMatType == desiredMatType
@@ -128,7 +139,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             {# Clone Table -> alters -> Replace Table (clone copied back over the table) -> Delete Clone #}
             {{ alter_clone_swap_sql(alterSql) }}
 
-            {# Edit Table Options on the table: changed options, or re-applied after Replace Table (COPY drops the expiration and tags) #}
+            {# Edit Table Options on the table: changed options, or re-applied after Replace Table (COPY drops the expiration) #}
             {{ alter_table_options_sql() }}
 
             {# Nothing above altered the table: record a metadata-only change #}
