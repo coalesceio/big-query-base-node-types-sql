@@ -1046,7 +1046,7 @@ macroString: |-
     A table is recreated (drop + create) when what BigQuery cannot alter changes: the
     materialization type, the dataset, the partitioning or the clustering. Any other change
     is applied to a clone: Clone Table -> alters -> Replace Table (the clone is copied back over
-    the table) -> Delete Clone -> Edit Table Options (COPY drops the table expiration).
+    the table) -> Delete Clone -> Edit Table Options (COPY drops the table expiration and tags).
     Views are recreated when their definition changes.
   ===========================================================================#}
 
@@ -1226,14 +1226,18 @@ macroString: |-
   {#===========================================================================
     alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table when any
     table option changed (description, table/partition expiration, rounding mode or tags), or
-    when the clone replaced the table: CREATE OR REPLACE ... COPY does not carry the table
-    expiration over, so the options are always re-applied after Replace Table. Every option is
+    when the clone replaced the table and the node has @tableExpiration or @tag:
+    CREATE OR REPLACE ... COPY keeps the description, rounding mode and partition expiration,
+    but drops the table expiration and the tags, so those must be re-applied. Every option is
     listed and a removed one is reset to NULL (tags to []). Call after alter_clone_swap_sql().
   ===========================================================================#}
   {%- macro alter_table_options_sql() -%}
       {%- set currentOptions = get_table_options_sql(currentState.config, currentState.node.description, false, currentState.columns) | trim -%}
       {%- set desiredOptions = get_table_options_sql(config, node.description, false, columns) | trim -%}
-      {%- if currentOptions != desiredOptions or nsNodeVariables.tableReplaced %}
+      {#- Options COPY does not carry over, set on this node #}
+      {%- set hasTableExpiration = config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 0 -%}
+      {%- set hasTags = config.tag | default([]) | length > 0 -%}
+      {%- if currentOptions != desiredOptions or (nsNodeVariables.tableReplaced and (hasTableExpiration or hasTags)) %}
           {{ stage('Edit Table Options') }}
           ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
           SET {{ get_table_options_sql(config, node.description, true, columns) | trim }}
