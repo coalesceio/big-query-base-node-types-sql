@@ -1,5 +1,5 @@
 fileVersion: 2
-id: "SQLDimension"
+id: SQLDimension
 isDisabled: false
 metadata:
   defaultStorageLocation: null
@@ -389,7 +389,8 @@ metadata:
             • 𝗥𝗲𝗾𝘂𝗶𝗿𝗲𝗱 𝗼𝗻𝗹𝘆 𝘄𝗵𝗲𝗻 the node-level @zeroKey is set, since the zero/ghost record is matched against the target by surrogate key value.
 
             Expected expression:
-            0 AS `{{NODE_NAME}}_KEY` @isSurrogateKey
+            CAST("0" AS STRING) AS `<NODE_NAME>_KEY` @isSurrogateKey @defaultValue("GENERATE_UUID()") 
+            Ex: CAST("0" AS STRING) AS `DIM_lineitem_KEY` @isSurrogateKey @defaultValue("GENERATE_UUID()") 
 
             Agentic creation only — manual creation adds this column automatically.
           isRequired: false
@@ -612,7 +613,7 @@ metadata:
           {%- endmacro -%}
           {%- set ns = namespace(items=[], lines=[]) -%}
           {%- set idAnnotation = '@id("<ID>") ' -%}
-          {%- set ns.items = ns.items + [{'expr': '0', 'alias': '`' ~ node.name ~ '_KEY`', 'annotation': idAnnotation ~ '@isSurrogateKey'}] -%}
+          {%- set ns.items = ns.items + [{'expr': 'CAST("0" AS STRING)', 'alias': '`' ~ node.name ~ '_KEY`', 'annotation': idAnnotation ~ '@isSurrogateKey @defaultValue("GENERATE_UUID()")'}] -%}
           {%- for dep in sources[0].dependencies -%}
             {%- for col in dep.columns -%}
               {%- set ns.items = ns.items + [{'expr': '`' ~ col.name ~ '`', 'alias': '`' ~ col.name ~ '`', 'annotation': idAnnotation.rstrip()}] -%}
