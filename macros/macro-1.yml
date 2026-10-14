@@ -495,26 +495,37 @@ macroString: |-
             {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                 'required': false,
                 'annotation': '@isSurrogateKey',
-                'example': 'CAST("0" AS STRING) AS `' ~ node.name ~ '_KEY` @isSurrogateKey @defaultValue("GENERATE_UUID()")',
+                'example': 'CAST("0" AS STRING) AS `' ~ node.name ~ '_KEY` @id("<6 hex digits>") @isSurrogateKey @defaultValue("GENERATE_UUID()")',
                 'reason': 'Recommended for SCD Type 2, to give tables a stable per-version join key. Ignore this warning if you are managing your own surrogate key logic (e.g. a sequence NEXTVAL) instead of using @isSurrogateKey.'
             }] -%}
         {%- endif -%}
 
         {# The surrogate key is never written by the load (it is left out of every MERGE/INSERT column list), so BigQuery fills it from the column DEFAULT:
-           it must be a STRING column with @defaultValue("GENERATE_UUID()"), otherwise new rows get a NULL surrogate key. #}
-        {%- set sk = namespace(invalid=[]) -%}
+           a missing @defaultValue fails (new rows would get a NULL key); a default other than GENERATE_UUID() only warns, since a BigQuery default
+           can not reference other columns and a constant gives every row the same key. #}
+        {%- set sk = namespace(missing=[], other=[]) -%}
         {%- for col in columns if col.isSurrogateKey -%}
-            {%- set skType = (col.dataType | default('', true) | upper).split('(')[0] | trim -%}
-            {%- set skDefault = col.defaultValue | default('', true) | string | upper | replace(' ', '') -%}
-            {%- if skType != 'STRING' or skDefault != 'GENERATE_UUID()' -%}
-                {%- set sk.invalid = sk.invalid + [col.name ~ ' (' ~ (col.dataType | default('no type', true)) ~ ', ' ~ ('DEFAULT ' ~ col.defaultValue if col.defaultValue else 'no @defaultValue') ~ ')'] -%}
+            {%- set skDefault = col.defaultValue | default('', true) | string | trim -%}
+            {%- if skDefault | length == 0 -%}
+                {%- set sk.missing = sk.missing + [col.name] -%}
+            {%- elif skDefault | upper | replace(' ', '') != 'GENERATE_UUID()' -%}
+                {%- set sk.other = sk.other + [col.name ~ ' (DEFAULT ' ~ skDefault ~ ')'] -%}
             {%- endif -%}
         {%- endfor -%}
-        {%- if sk.invalid | length > 0 %}
+        {%- if sk.missing | length > 0 %}
             {{ test_stage('Invalid configuration: Surrogate Key', false) }}
-            -- @isSurrogateKey column {{ sk.invalid | join(', ') }} must be a STRING column with @defaultValue("GENERATE_UUID()"): the load never writes the surrogate key, so BigQuery fills it from the column DEFAULT.
-            -- Example: CAST("0" AS STRING) AS `{{ node.name }}_KEY` @isSurrogateKey @defaultValue("GENERATE_UUID()")
+            -- @isSurrogateKey column {{ sk.missing | join(', ') }} has no @defaultValue.
+            -- The load never writes the surrogate key, so BigQuery fills it from the column DEFAULT; without one every new row would get a NULL key, so the node stops here.
+            -- Example: CAST("0" AS STRING) AS `{{ node.name }}_KEY` @id("<6 hex digits>") @isSurrogateKey @defaultValue("GENERATE_UUID()")
             {{ fail_sql(hardFail) }}
+        {%- endif -%}
+        {%- if sk.other | length > 0 %}
+            {{ test_stage('Warning: Surrogate Key Default', true) }}
+            -- @isSurrogateKey column {{ sk.other | join(', ') }} is filled from that DEFAULT on every insert.
+            -- A constant default gives every row the same key.
+            -- A BigQuery default can not reference other columns, so a hash of the business key fails at create.
+            -- Use @defaultValue("GENERATE_UUID()") for a unique key per row.
+            SELECT 1
         {%- endif -%}
 
         {%- set hasSystemCreateDate = columns | selectattr("isSystemCreateDate") | list | length > 0 -%}
