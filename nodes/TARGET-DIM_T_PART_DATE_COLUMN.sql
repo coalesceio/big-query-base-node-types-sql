@@ -1,5 +1,5 @@
 @id("ca560836-6394-44f5-9754-4cece6b22502")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - partitionBy a plain DATE column; changeTracking SCD Type 1")
 @mergeStrategy("changeTracking")
 @partitionBy("LOAD_DATE")

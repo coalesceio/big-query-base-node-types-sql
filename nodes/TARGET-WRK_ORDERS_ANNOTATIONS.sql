@@ -1,5 +1,5 @@
 @id("fd674048-ee52-4cc0-9810-51b9bb0c7925")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Annotation test - orders with date range, freshness, relative_time and accepted-values column tests")
 @tests("SELECT 1 FROM {{ this }} GROUP BY O_ORDERKEY HAVING COUNT(*) > 1", false, "After")
 @tests("SELECT 1 FROM {{ this }} WHERE O_TOTALPRICE < 0")

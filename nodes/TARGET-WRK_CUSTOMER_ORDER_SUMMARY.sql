@@ -1,5 +1,5 @@
 @id("bd778aa9-47f7-481f-bfdb-733e023b7794")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Annotation test - CTE join of orders, lineitem, customer, nation and region aggregated per customer")
 @writeMode("truncateInsert")
 @tests("SELECT 1 FROM {{ this }} GROUP BY C_CUSTKEY HAVING COUNT(*) > 1", false)

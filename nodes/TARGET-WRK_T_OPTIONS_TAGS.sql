@@ -1,5 +1,5 @@
 @id("518bf292-e432-40f4-94ff-435477e764ac")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Work test - tableExpiration in days, defaultRoundingMode, tags")
 @tableExpiration("30")
 @defaultRoundingMode("ROUND_HALF_EVEN")

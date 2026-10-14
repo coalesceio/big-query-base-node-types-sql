@@ -1,5 +1,5 @@
 @id("90281c0e-1a7a-412b-9454-6f047788ac76")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - tableExpiration as a full datetime; changeTracking SCD Type 2")
 @mergeStrategy("changeTracking")
 @tableExpiration("2026-10-13 23:59:59")

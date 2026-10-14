@@ -1,5 +1,5 @@
 @id("cdd589c3-38d5-4f7f-a72d-0bae55e6bece")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - partitionBy ingestion time, monthly partitions; upsert")
 @mergeStrategy("upsert")
 @partitionBy("DATE_TRUNC(_PARTITIONTIME, MONTH)")

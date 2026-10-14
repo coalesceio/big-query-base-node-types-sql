@@ -1,5 +1,5 @@
 @id("bc5223af-a2b9-41d9-8fdb-0a4d1f7f5c43")
-@nodeType("729")
+@nodeType("SQLFact")
 @description("Fact test - changeTracking merge; integer-range partition, clusterKey")
 @mergeStrategy("changeTracking")
 @partitionBy("RANGE_BUCKET(N_NATIONKEY, GENERATE_ARRAY(0, 100, 5))")

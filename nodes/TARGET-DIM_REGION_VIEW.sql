@@ -1,5 +1,5 @@
 @id("bfcc3de7-b128-4f5a-b08e-cd6fe117ee1e")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("SCD test - Dimension materialized as a view on WRK_REGION_ANNOTATIONS; merge, zero key, write mode and pre/post SQL are ignored")
 @materializationType("view")
 @mergeStrategy("changeTracking")

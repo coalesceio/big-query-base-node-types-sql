@@ -1,5 +1,5 @@
 @id("b230f44b-79a7-44c8-90db-0ab623c5d0f2")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - changeTracking SCD Type 1; clusterKey on 2 columns, single-column primaryKey")
 @mergeStrategy("changeTracking")
 SELECT

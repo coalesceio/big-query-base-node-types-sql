@@ -1,5 +1,5 @@
 @id("d03fff12-ef65-4a9d-a260-b3dbd0672fb0")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Annotation test - lineitem with composite hash key, ship/receipt date ordering and numeric range tests")
 @tests("SELECT 1 FROM {{ this }} WHERE L_EXTENDEDPRICE < 0", true, "After")
 @tests("SELECT 1 FROM {{ this }} WHERE L_COMMITDATE IS NULL", true, "Before")

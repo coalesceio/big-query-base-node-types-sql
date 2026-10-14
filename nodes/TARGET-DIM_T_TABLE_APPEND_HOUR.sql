@@ -1,5 +1,5 @@
 @id("2628c102-665c-42a7-bd54-33edfb598565")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - explicit table materialization, append writeMode, hourly partition plus cluster key")
 @materializationType("table")
 @writeMode("append")

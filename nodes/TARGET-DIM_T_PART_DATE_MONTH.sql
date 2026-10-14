@@ -1,5 +1,5 @@
 @id("edfb25a5-2f0b-4181-95a6-c3c88caa0b50")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - partitionBy DATE_TRUNC on a DATE column, monthly partitions; lastModified SCD Type 2")
 @mergeStrategy("lastModified")
 @partitionBy("DATE_TRUNC(LOAD_DATE, MONTH)")

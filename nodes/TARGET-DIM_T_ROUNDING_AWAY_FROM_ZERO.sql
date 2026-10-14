@@ -1,5 +1,5 @@
 @id("5faea46e-6ec8-49a1-9f4a-6f19d7806d04")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - defaultRoundingMode ROUND_HALF_AWAY_FROM_ZERO on a NUMERIC column; lastModified SCD Type 1")
 @mergeStrategy("lastModified")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")

@@ -1,5 +1,5 @@
 @id("af2fa996-27c6-4433-92b8-8df719ca4d98")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Partition test - changeTracking SCD Type 2, partitioned by day of last_modified")
 @mergeStrategy("changeTracking")
 @partitionExpirationDays("365")

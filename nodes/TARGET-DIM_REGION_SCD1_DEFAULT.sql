@@ -1,5 +1,5 @@
 @id("0ed8f710-5515-4111-8538-c5a4462a5a17")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("SCD test - no @mergeStrategy (defaults to changeTracking SCD1) on WRK_REGION_ANNOTATIONS, truncateInsert, zero key with column overrides")
 @writeMode("truncateInsert")
 @zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", true)

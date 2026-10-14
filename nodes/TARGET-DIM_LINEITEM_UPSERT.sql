@@ -1,5 +1,5 @@
 @id("c8498ffe-4dfe-4de7-b1eb-33d1136cf092")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("SCD test - upsert on WRK_LINEITEM_ANNOTATIONS with a composite business key; no change detection, system columns written as computed")
 @mergeStrategy("upsert")
 @tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_LINEITEM_ANNOTATIONS') }} GROUP BY L_ORDERKEY, L_LINENUMBER HAVING COUNT(*) > 1", false, "Before")

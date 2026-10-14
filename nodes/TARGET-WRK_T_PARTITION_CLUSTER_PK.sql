@@ -1,5 +1,5 @@
 @id("d7a9dfa2-456b-46ca-996f-5e6fecabd1a5")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Work test - partitionBy with partitionExpirationDays, clusterKey, composite primaryKey")
 @partitionBy("DATE(last_modified)")
 @partitionExpirationDays(30)

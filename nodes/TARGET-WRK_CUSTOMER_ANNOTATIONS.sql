@@ -1,5 +1,5 @@
 @id("b9bc7b8b-3911-446f-983a-3e75faf4ac2d")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Annotation test - customer in append mode with hash keys, range and deny-list column tests")
 @writeMode("append")
 @tests("SELECT 1 FROM {{ this }} WHERE C_ACCTBAL IS NULL", true)

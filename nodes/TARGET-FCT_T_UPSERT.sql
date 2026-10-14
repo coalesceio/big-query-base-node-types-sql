@@ -1,5 +1,5 @@
 @id("25862a23-f915-46e0-af0a-3c409fc8ed78")
-@nodeType("729")
+@nodeType("SQLFact")
 @description("Fact test - upsert merge with truncateInsert; defaultRoundingMode and tags")
 @mergeStrategy("upsert")
 @writeMode("truncateInsert")

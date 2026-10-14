@@ -4,8 +4,8 @@ This script and its associated documentation are confidential and proprietary to
 Unauthorized reproduction, distribution, or disclosure of this material is strictly prohibited.
 Coalesce permits you to copy and modify this script for the purposes of using with Coalesce but does not permit copying or modification for any other purpose.
 #}
-{# == Node Type Name           : Fact  == #}
-{# == Node Type Description    : This node creates fact table or view with advanced deployment strategy  == #}
+{# == Node Type Name           : Work  == #}
+{# == Node Type Description    : This node creates work table or view with advanced deployment strategy  == #}
 {#---------------------------------------------------------------------------------------------#}
 
 {#- nsNodeVariables (object paths, materialization types, metaDataChanged) is created and initialized in the shared macros #}
@@ -20,7 +20,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {# Validate: the materialization type must be table or view #}
     {{ validate_materialization_type() }}
 
-    {# Validate: the same tag key applied twice to the node is not allowed #}
+    {# Validate: the same tag key applied twice to the node, or a @tag on a column, is not allowed #}
     {{ tag_check_duplicates() }}
 
     {%- if desiredMatType == 'view' %}
@@ -28,33 +28,42 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {# Drop the current object if it was another type, or the view was renamed/moved #}
         {{ object_drop_sql() }}
 
-        {# Did the view definition change? Render it for both states and compare #}
+        {# Did the view definition change (columns, column descriptions, SELECT)? Render it without OPTIONS for both states and compare #}
         {%- set viewDefinitionChanged = currentState is not defined
                 or (currentState != desiredState
-                    and view_definition_sql(currentState) != view_definition_sql(desiredState)) %}
+                    and view_definition_sql(currentState, false) != view_definition_sql(desiredState, false)) %}
+
+        {# Which view OPTIONS changed (expiration, tags, description)? Only those go into the ALTER #}
+        {%- set viewOptionsAlter = view_options_alter_sql(currentState, desiredState) | trim
+                if (currentState is defined and currentState != desiredState) else '' %}
 
         {# CreateSQL for View #}
         {%- if currentState is not defined
                 or currentMatType != desiredMatType
                 or nsNodeVariables.curObjectNameFullPath != nsNodeVariables.desObjectNameFullPath
                 or viewDefinitionChanged %}
-            {{ stage('Create Fact View', true, "sql", "create") }}
+            {{ stage('Create Work View', true, "sql", "create") }}
             CREATE OR REPLACE VIEW {{ nsNodeVariables.desObjectNameFullPath }}
             {{ view_definition_sql(desiredState) }}
 
+        {%- elif viewOptionsAlter | length > 0 %}
+
+            {# Definition unchanged, options changed: one ALTER with only the changed options (a removed one is reset to NULL, tags to []) #}
+            {{ stage('Edit View Options') }}
+            ALTER VIEW {{ nsNodeVariables.desObjectNameFullPath }}
+            SET {{ viewOptionsAlter }}
+
         {%- elif currentState != desiredState %}
 
-            {# Definition unchanged: record a metadata-only change #}
+            {# Definition and options unchanged (e.g. tests or run settings): record a metadata-only change #}
             {{ alter_metadata_sql() }}
 
         {%- endif %}
 
     {%- elif desiredMatType == 'table' %}
 
-        {# Validate the Fact's annotations (hard fail: CREATE does not fail a test stage on row count) #}
-        {{ validate_fact_requirements(true) }}
-        {# Validate: @partitionBy on at most one column, and not together with the node-level one #}
-        {{ validate_partition_by() }}
+        {# Validate: one partition (node or column @partitionBy), partition expiration only on a time partition, at most 4 plain cluster columns #}
+        {{ validate_partition_cluster() }}
 
         {# Drop the current object if it was another type #}
         {{ object_drop_sql() }}
@@ -65,7 +74,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- set nsConfigVariables.partitionBy = get_partition_by_sql(config, columns) | trim %}
         {%- set nsConfigVariables.clusterBy = get_clusterby_sql(columns) | trim %}
         {%- set nsConfigVariables.primaryKey = get_primary_key_sql(columns) | trim %}
-        {%- set nsConfigVariables.options = get_table_options_sql(config, node.description, false, columns) | trim %}
+        {%- set nsConfigVariables.options = get_object_options_sql(config, node.description, false, columns) | trim %}
 
         {# BigQuery cannot alter these on an existing table: a dataset move, or a partition / cluster change recreates it #}
         {%- if currentState is defined and currentMatType == desiredMatType
@@ -85,14 +94,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             {%- endif %}
 
             {# CreateSQL for Table #}
-            {{ stage('Create Fact Table', true, "sql", "create") }}
+            {{ stage('Create Work Table', true, "sql", "create") }}
             CREATE OR REPLACE TABLE {{ nsNodeVariables.desObjectNameFullPath }}
             (
                 {%- for col in columns %}
                     `{{ col.name }}` {{ col.dataType }}
                     {%- if col.defaultValue %} DEFAULT {{ col.defaultValue }} {%- endif %}
                     {%- if col.nullable == false %} NOT NULL {%- endif %}
-                    {%- if col.description | trim | length > 0 %} OPTIONS(description = '{{ col.description | escape }}') {%- endif %}
+                    {%- if col.description | trim | length > 0 %} OPTIONS(description = '{{ col.description | trim | escape }}') {%- endif %}
                     {%- if not loop.last or nsConfigVariables.primaryKey | length > 0 -%}, {%- endif %}
                 {%- endfor %}
                 {%- if nsConfigVariables.primaryKey | length > 0 %}

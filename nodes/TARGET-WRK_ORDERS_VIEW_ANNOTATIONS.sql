@@ -1,5 +1,5 @@
 @id("65bc3924-ab7e-4271-adb2-f654460b8267")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Annotation test - orders view; writeMode, preSQL and postSQL are ignored on views and tests are disabled")
 @materializationType("view")
 @writeMode("append")

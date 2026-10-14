@@ -1,5 +1,5 @@
 @id("5f6344b2-797e-4df0-a57e-34c5f96c906a")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - changeTracking SCD Type 2 with zeroKey; integer-range partition (partitionExpirationDays must be ignored)")
 @mergeStrategy("changeTracking")
 @zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", true)

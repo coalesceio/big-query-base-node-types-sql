@@ -1,5 +1,5 @@
 @id("18cbd200-0418-4ddf-bd52-0db1b0dbf8ce")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - view materialization; table-only annotations below must be ignored")
 @materializationType("view")
 @partitionBy("DATE(last_modified)")

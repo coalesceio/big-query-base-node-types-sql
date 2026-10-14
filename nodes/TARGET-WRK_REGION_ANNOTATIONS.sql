@@ -1,5 +1,5 @@
 @id("8981e231-8d04-495b-a07c-4c534d3dfe21")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Annotation test - region with explicit truncateInsert, node-level tests, pre/post SQL and value-list column tests")
 @materializationType("table")
 @writeMode("truncateInsert")

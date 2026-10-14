@@ -1,5 +1,5 @@
 @id("0fb88ba4-1854-40cb-a593-1680782f0d4b")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - upsert; defaultRoundingMode on a NUMERIC column and two table tags")
 @mergeStrategy("upsert")
 @defaultRoundingMode("ROUND_HALF_EVEN")

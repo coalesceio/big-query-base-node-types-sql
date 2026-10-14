@@ -1,5 +1,5 @@
 @id("805fa3f4-c1ef-4c3b-b88d-d741437419a9")
-@nodeType("729")
+@nodeType("SQLFact")
 SELECT
     `N_NATIONKEY`                        AS `N_NATIONKEY`        @id("999933"),
     `N_NAME`                             AS `N_NAME`             @id("d7ee88"),

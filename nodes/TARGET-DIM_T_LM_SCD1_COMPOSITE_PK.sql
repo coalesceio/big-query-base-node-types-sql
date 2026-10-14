@@ -1,5 +1,5 @@
 @id("2082b8fc-7162-40d5-8c6c-81af94d1f468")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - lastModified SCD Type 1; composite primaryKey ordered by position, tableExpiration in days")
 @mergeStrategy("lastModified")
 @tableExpiration("30")

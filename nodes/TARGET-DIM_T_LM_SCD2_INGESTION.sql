@@ -1,5 +1,5 @@
 @id("d256060c-e14d-4ff1-b3c5-d2726612dad1")
-@nodeType("728")
+@nodeType("SQLDimension")
 @description("Test - lastModified SCD Type 2; ingestion-time partition, tableExpiration as a date")
 @mergeStrategy("lastModified")
 @partitionBy("_PARTITIONDATE")
