@@ -7,7 +7,6 @@ SELECT
     0                                        AS `DIM_T_CT_SCD2_PARTITION_KEY` @id("b20001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`                 @id("b20002") @isBusinessKey @not_null @uniqueness,
     `N_NAME`                                 AS `N_NAME`                      @id("b20003") @isChangeTracking,
-    `N_REGIONKEY`                            AS `N_REGIONKEY`                 @id("b20004") ,
     `N_REGIONKEY`                            AS `N_REGIONKEY`                 @id("b20004") @clusterKey(1),
     `N_COMMENT`                              AS `N_COMMENT`                   @id("b20005") @clusterKey(2),
     `last_modified`                          AS `last_modified`               @id("b20006"),

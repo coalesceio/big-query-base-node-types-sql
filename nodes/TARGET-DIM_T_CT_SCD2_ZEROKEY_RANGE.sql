@@ -4,7 +4,6 @@
 @mergeStrategy("changeTracking")
 @zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", true)
 @partitionBy("RANGE_BUCKET(N_NATIONKEY, GENERATE_ARRAY(-1, 100, 5))")
-@partitionExpirationDays(30)
 SELECT
     0                                        AS `DIM_T_CT_SCD2_ZEROKEY_RANGE_KEY` @id("b60001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`                     @id("b60002") @isBusinessKey @not_null @uniqueness @zeroKey("-1"),

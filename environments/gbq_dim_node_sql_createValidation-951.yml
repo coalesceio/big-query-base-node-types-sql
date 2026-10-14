@@ -1,5 +1,11 @@
 fileVersion: 1
 id: "951"
-mappingDefinitions: {}
+mappingDefinitions:
+  SRC:
+    database: cls-dev-bigquery
+    schema: DE_SRC
+  TARGET:
+    database: cls-dev-bigquery
+    schema: DE_QA_TAN
 name: gbq_dim_node_sql_createValidation
 type: Environment

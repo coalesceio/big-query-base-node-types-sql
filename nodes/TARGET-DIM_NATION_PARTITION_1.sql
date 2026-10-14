@@ -2,7 +2,6 @@
 @nodeType("SQLDimension")
 @description("Partition test - changeTracking SCD Type 2, partitioned by day of last_modified")
 @mergeStrategy("changeTracking")
-@partitionExpirationDays("365")
 SELECT
     0                                        AS `DIM_NATION_PARTITION_KEY` @id("a10001") @isSurrogateKey @description("Partition test - changeTracking SCD Type 2, partitioned by day of last_modified"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`              @id("a10002") @isBusinessKey @not_null @uniqueness @primaryKey,

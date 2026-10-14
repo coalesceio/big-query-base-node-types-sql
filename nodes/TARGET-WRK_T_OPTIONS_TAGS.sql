@@ -5,10 +5,12 @@
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")
+@partitionExpirationDays(30)
+@tableExpiration("30")
 SELECT
     `N_NATIONKEY`                      AS `N_NATIONKEY`,
     `N_NAME`                           AS `N_NAME`,
     `N_REGIONKEY`                      AS `N_REGIONKEY`,
     CAST(`N_NATIONKEY` / 7 AS NUMERIC) AS `N_NATIONKEY_RATIO`,
-    `last_modified`                    AS `last_modified`
+    `last_modified`                    AS `last_modified` @partitionBy
 FROM {{ ref('SRC', 'nation') }} `nation`
