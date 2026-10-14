@@ -1,5 +1,5 @@
 fileVersion: 1
-id: 42283611-9773-43ce-885f-238caa9c47cd
+id: 9e1ec5e8-e84a-40f4-a32a-26bf9d374f27
 name: Nation_Test_CamelCase
 operation:
   database: ""
@@ -13,8 +13,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: ddb20789-4f4c-44ba-9069-bd01e0d2411c
-          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
+          columnCounter: 9b8e0ca5-9a4f-45ea-a2cb-53806f2ef1a3
+          stepCounter: 9e1ec5e8-e84a-40f4-a32a-26bf9d374f27
         config: {}
         dataType: INT64
         defaultValue: ""
@@ -30,8 +30,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: fe2a7ab5-8722-4de8-9dd9-55f0caad3ab8
-          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
+          columnCounter: 275f8d73-283c-4074-b85d-b4fb24950a73
+          stepCounter: 9e1ec5e8-e84a-40f4-a32a-26bf9d374f27
         config: {}
         dataType: STRING
         defaultValue: ""
@@ -47,8 +47,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 3377ed32-d583-483f-9253-edfad9ffa418
-          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
+          columnCounter: e04b3b11-af58-46f4-b900-b53e0ef8b37f
+          stepCounter: 9e1ec5e8-e84a-40f4-a32a-26bf9d374f27
         config: {}
         dataType: INT64
         defaultValue: ""
@@ -64,8 +64,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 627fd7b2-6bf8-46f1-8ab8-83dc2063ebb3
-          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
+          columnCounter: 227382fa-e704-467b-8ae5-523be93d090a
+          stepCounter: 9e1ec5e8-e84a-40f4-a32a-26bf9d374f27
         config: {}
         dataType: STRING
         defaultValue: ""
@@ -81,8 +81,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 4a87a96b-6aff-494c-9884-46dfc2bd295d
-          stepCounter: 42283611-9773-43ce-885f-238caa9c47cd
+          columnCounter: 6e48e716-39a1-4cf1-a73e-1e6648704112
+          stepCounter: 9e1ec5e8-e84a-40f4-a32a-26bf9d374f27
         config: {}
         dataType: TIMESTAMP
         defaultValue: ""

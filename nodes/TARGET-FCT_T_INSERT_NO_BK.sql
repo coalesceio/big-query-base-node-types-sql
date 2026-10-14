@@ -1,5 +1,5 @@
 @id("e41b75e7-7910-4326-aed8-1a04c0280015")
-@nodeType("729")
+@nodeType("SQLFact")
 @description("Fact test - no business key, so a plain INSERT; ingestion-time partition with expiration")
 @partitionBy("_PARTITIONDATE")
 @partitionExpirationDays(7)

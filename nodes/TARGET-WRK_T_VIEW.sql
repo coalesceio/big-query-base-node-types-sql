@@ -1,5 +1,5 @@
 @id("167fa3a6-daa4-4786-99fa-aa82f4f7d8dd")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Work test - view; table-only annotations below must be ignored")
 @materializationType("view")
 @partitionBy("DATE(last_modified)")

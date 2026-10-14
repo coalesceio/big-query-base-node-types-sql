@@ -1,5 +1,5 @@
 @id("5750a7aa-1272-4da0-a77e-f50a6d311cdf")
-@nodeType("705")
+@nodeType("SQLWork")
 @description("Work test - plain table, append writeMode, pre/post SQL, hash and column tests")
 @writeMode("append")
 @preSQL("SELECT 1")

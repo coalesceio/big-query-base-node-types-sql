@@ -1,5 +1,5 @@
 @id("dbe27eb1-95d6-459d-a674-34a40c6cc65c")
-@nodeType("729")
+@nodeType("SQLFact")
 @description("Fact test - lastModified merge; primaryKey, tableExpiration as a datetime")
 @mergeStrategy("lastModified")
 @tableExpiration("2026-12-31 23:59:59")
