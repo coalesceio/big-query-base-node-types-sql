@@ -6,7 +6,7 @@
 SELECT
     0                                        AS `DIM_T_EXPIRATION_DATETIME_KEY` @id("c40001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`                   @id("c40002") @isBusinessKey @not_null @uniqueness,
-    `N_NAME`                                 AS `N_NAME`                        @id("c40003") @isChangeTracking,
+    `N_NAME`                                 AS `N_NAME`                        @id("c40003"),
     `N_REGIONKEY`                            AS `N_REGIONKEY`                   @id("c40004"),
     `N_COMMENT`                              AS `N_COMMENT`                     @id("c40005"),
     `last_modified`                          AS `last_modified`                 @id("c40006"),

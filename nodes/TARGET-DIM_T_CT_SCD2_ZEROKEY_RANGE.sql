@@ -2,17 +2,16 @@
 @nodeType("728")
 @description("Test - changeTracking SCD Type 2 with zeroKey; integer-range partition (partitionExpirationDays must be ignored)")
 @mergeStrategy("changeTracking")
-@zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", true)
 @partitionBy("RANGE_BUCKET(N_NATIONKEY, GENERATE_ARRAY(-1, 100, 5))")
 @partitionExpirationDays(30)
 SELECT
     0                                        AS `DIM_T_CT_SCD2_ZEROKEY_RANGE_KEY` @id("b60001") @isSurrogateKey,
-    `N_NATIONKEY`                            AS `N_NATIONKEY`                     @id("b60002") @isBusinessKey @not_null @uniqueness @zeroKey("-1"),
+    `N_NATIONKEY`                            AS `N_NATIONKEY`                     @id("b60002") @isBusinessKey @not_null @uniqueness ,
     `N_NAME`                                 AS `N_NAME`                          @id("b60003") @isChangeTracking,
-    `N_REGIONKEY`                            AS `N_REGIONKEY`                     @id("b60004") @zeroKey("-1"),
+    `N_REGIONKEY`                            AS `N_REGIONKEY`                     @id("b60004"),
     `N_COMMENT`                              AS `N_COMMENT`                       @id("b60005"),
     `last_modified`                          AS `last_modified`                   @id("b60006"),
-    `N_COMMENT`                              AS `N_COMMENT_DEFAULTED`             @id("b60007") @zeroKey("'N/A'"),
+    `N_COMMENT`                              AS `N_COMMENT_DEFAULTED`             @id("b60007"),
     1                                        AS `SYSTEM_VERSION`                  @id("b60008") @isSystemVersion,
     CAST('Y' AS STRING)                      AS `SYSTEM_CURRENT_FLAG`             @id("b60009") @isSystemCurrentFlag,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_CREATE_DATE`              @id("b6000a") @isSystemCreateDate,

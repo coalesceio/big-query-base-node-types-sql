@@ -9,6 +9,7 @@ SELECT
     `R_REGIONKEY`                             AS `R_REGIONKEY`                 @id("0ed802") @isBusinessKey @primaryKey @not_null @uniqueness @zeroKey("-1"),
     `R_NAME`                                  AS `R_NAME`                      @id("0ed803") @not_null @accepted_values("'AFRICA'") @accepted_values("'AMERICA'") @accepted_values("'ASIA'") @accepted_values("'EUROPE'") @accepted_values("'MIDDLE EAST'") @accepted_values("'UNKNOWN'"),
     `R_COMMENT`                               AS `R_COMMENT`                   @id("0ed804") @zeroKey("'N/A'") @description("Region comment"),
+    `R_COMMENT`                               AS `R_COMMENT_01`                   @id("0ed807"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)      AS `SYSTEM_CREATE_DATE`          @id("0ed805") @isSystemCreateDate,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)      AS `SYSTEM_UPDATE_DATE`          @id("0ed806") @isSystemUpdateDate
 FROM {{ ref('TARGET', 'WRK_REGION_ANNOTATIONS') }} `WRK_REGION_ANNOTATIONS`

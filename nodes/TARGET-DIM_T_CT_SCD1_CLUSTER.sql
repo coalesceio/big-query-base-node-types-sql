@@ -7,7 +7,7 @@ SELECT
     `N_NATIONKEY`                        AS `N_NATIONKEY`               @id("b10002") @isBusinessKey @not_null @uniqueness @primaryKey(1),
     `N_NAME`                             AS `N_NAME`                    @id("b10003") @clusterKey(2),
     `N_REGIONKEY`                        AS `N_REGIONKEY`               @id("b10004") @clusterKey(1),
-    `N_COMMENT`                          AS `N_COMMENT`                 @id("b10005") @clusterKey(3),
+    `N_COMMENT`                          AS `N_COMMENT`                 @id("b10005"),
     `last_modified`                      AS `last_modified`             @id("b10006"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_CREATE_DATE`        @id("b10007") @isSystemCreateDate,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE`        @id("b10008") @isSystemUpdateDate
