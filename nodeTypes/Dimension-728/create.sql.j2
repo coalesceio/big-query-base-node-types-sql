@@ -91,7 +91,8 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
             (
                 {%- for col in desiredState.columns %}
                     `{{ col.name }}` {{ col.dataType }}
-                    {%- if col.defaultValue %} DEFAULT {{ col.defaultValue }} {%- endif %}
+                    {%- if col.defaultValue %} DEFAULT {{ col.defaultValue }}
+                    {%- elif col.isSurrogateKey and col.dataType | upper == 'STRING' %} DEFAULT GENERATE_UUID() {%- endif %}
                     {%- if col.nullable == false %} NOT NULL {%- endif %}
                     {%- if col.description | trim | length > 0 %} OPTIONS(description = '{{ col.description | escape }}') {%- endif %}
                     {%- if not loop.last or nsConfigVariables.primaryKey | length > 0 -%}, {%- endif %}
