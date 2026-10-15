@@ -350,12 +350,12 @@ Inserts a default "zero key" record into the target — a placeholder row used t
 
 | **Parameter** | **Description** |
 |---|---|
-| **surrogateKeyValue** | **(required)** Value used for the zero record's surrogate key column only. |
+| **surrogateKeyValue** | **(required)** Value used for the zero record's surrogate key column only, pasted into the SQL verbatim — write it as a value of the key's type: a quoted string for a STRING (UUID) key, e.g. `"'-1'"`, or a number for an INT64 key, e.g. `"-1"`. |
 | **stringValue** | **(optional)** Default value for STRING columns, pasted into the SQL verbatim — include your own quotes. Default `"'UNKNOWN'"`. |
 | **timestampValue** | **(optional)** Default value for DATE/DATETIME/TIME/TIMESTAMP columns. Default `"1900-01-01 00:00:00"`. |
 | **booleanValue** | **(optional)** Default value for BOOL columns. Default `true`. |
 
-* Requires an `@isSurrogateKey` column — the zero record is matched against the target by its surrogate key value.
+* Requires an `@isSurrogateKey` column — the zero record is matched against the target by its surrogate key value. With the recommended `@defaultValue("GENERATE_UUID()")` key, quote the value (`@zeroKey("'-1'")`): real rows get a UUID and the zero record keeps `'-1'`.
 * Numeric columns always get `0`; override any column with a column-level `@zeroKey(value)`.
 * A value longer than its `STRING(n)` / `BYTES(n)` column raises a non-failing **Warning: Zero Key Value Too Long** test stage that lists each such column; BigQuery then rejects the value and the **Zero Key Record** stage fails. Set a shorter value on the column with `@zeroKey("'<value>'")`, or widen the column. Plain `STRING` has no length limit.
 * Quote every parameter (`@zeroKey("0")`) — an unquoted value is dropped by the loader.
@@ -365,7 +365,8 @@ Inserts a default "zero key" record into the target — a placeholder row used t
 **Example:**
 
 ```sql
-@zeroKey("0", "'UNKNOWN'", "1900-01-01 00:00:00", "true")
+@zeroKey("'-1'", "'UNKNOWN'", "1900-01-01 00:00:00", "true")   -- STRING (UUID) surrogate key
+@zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", "true")     -- INT64 surrogate key
 ```
 
 ##### `@isChangeTracking` (Dimension)
@@ -395,7 +396,7 @@ Adds a custom zero key value (ghost record) to this column, overriding the node-
 |---|---|
 | **value** | Zero key value for this column, pasted into the SQL verbatim. |
 
-* The value is pasted into the SQL verbatim, so quote it to match the column's data type.
+* The value is pasted into the SQL verbatim, so quote it to match the column's data type. It is not cast to the column's type: write a typed literal where BigQuery would otherwise infer a different type (e.g. `NUMERIC '0.5'`, `BIGNUMERIC '0.5'`).
 * A value longer than the column's declared `STRING(n)` / `BYTES(n)` length raises the non-failing **Warning: Zero Key Value Too Long** stage (see [`@zeroKey` (Dimension node)](#zerokey-dimension-node)).
 * **Note:** Ignored unless `@zeroKey` is enabled at the node level, and ignored on Views.
 
@@ -404,7 +405,7 @@ Adds a custom zero key value (ghost record) to this column, overriding the node-
 ```sql
 @zeroKey("'N/A'")                                          -- string: quotes inside the annotation
 @zeroKey("-1")                                             -- number
-@zeroKey("0.00")                                           -- decimal
+@zeroKey("NUMERIC '0.00'")                                -- decimal: type the literal - an untyped 0.00 is FLOAT64 and BigQuery will not write it to a NUMERIC column
 @zeroKey("DATE '1900-01-01'")                              -- date
 @zeroKey("TIMESTAMP '1900-01-01 00:00:00'")                -- timestamp
 @zeroKey("false")                                          -- boolean
@@ -1364,8 +1365,8 @@ BigQuery cannot set NOT NULL on an existing column or add a REQUIRED column to a
 * **Defaults Cannot Reference Columns**:  
 A BigQuery column DEFAULT can only use constants and functions such as `GENERATE_UUID()` or `CURRENT_TIMESTAMP()` — a default built from other columns (for example a hash of the business key) fails at create. This is why the Dimension surrogate key uses `GENERATE_UUID()`.
 
-* **Zero Key with a STRING Surrogate Key**:  
-The **Zero Key Record** stage writes the node-level `surrogateKeyValue` into the surrogate key column as a number. With a STRING surrogate key (`@defaultValue("GENERATE_UUID()")`) BigQuery rejects that value, so `@zeroKey` cannot be combined with a UUID surrogate key yet.
+* **Zero Key Values Are Not Cast to the Column Type**:  
+The **Zero Key Record** stage writes each zero-key value as written, without casting it to the column's type, so BigQuery infers the type from the literal. Give the surrogate key a value of its own type — `@zeroKey("'-1'")` for a STRING (UUID) key, `@zeroKey("-1")` for an INT64 key. A decimal override such as `@zeroKey("0.5")` is FLOAT64 and fails on a NUMERIC column — write `@zeroKey("NUMERIC '0.5'")`.
 
 * **Table Expiration After an Alter**:  
 An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**), and `COPY` does not carry the table expiration over, so **Edit Table Options** sets it again after every alter:
@@ -1766,7 +1767,7 @@ FROM {{ ref('SRC', 'CUSTOMER') }} `CUSTOMER`
 Adds a placeholder row for unmatched lookups. Needs a surrogate key column.
 
 ```sql
-@zeroKey("0")
+@zeroKey("'-1'")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_CUSTOMER_KEY`    @id("f10000") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `CUSTOMER_ID`                            AS `CUSTOMER_ID`         @id("f10001") @isBusinessKey,
@@ -1776,7 +1777,7 @@ SELECT
 FROM {{ ref('SRC', 'CUSTOMER') }} `CUSTOMER`
 ```
 
-> ⚠️ With a STRING (UUID) surrogate key the **Zero Key Record** stage currently fails — see [Zero Key with a STRING Surrogate Key](#known-limitations).
+* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use an unquoted number, e.g. `@zeroKey("-1")` — see [Zero Key Values Are Not Cast to the Column Type](#known-limitations).
 
 ##### Dimension as a View
 
