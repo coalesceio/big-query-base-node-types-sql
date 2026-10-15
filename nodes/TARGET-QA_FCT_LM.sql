@@ -1,14 +1,13 @@
 @id("35819892-5665-471d-814d-cc365479d8b4")
 @nodeType("SQLFact")
 @materializationType("table")
-@description("QA Fact - lastModified SCD1, node-level TIMESTAMP_TRUNC partition, relative table expiration, tags (phase 2: renamed from QA_FCT_LM - expiration and tags must carry over)")
+@description("QA Fact - lastModified SCD1, node-level TIMESTAMP_TRUNC partition, relative table expiration, tags")
 @mergeStrategy("lastModified")
 @partitionBy("TIMESTAMP_TRUNC(last_Modified, DAY)")
 @tableExpiration("90")
 @tag("env", "dev")
 @tag("cost_center", "finance")
-@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> 1 + (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
-@tests("SELECT 1 FROM {{ this }} WHERE (`n_NationKey` = 1 AND `n_Name` <> 'ARGENTINA') OR (`n_NationKey` = 3 AND `n_Name` <> 'CANADA_V2')")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("f3a001") @isBusinessKey,
     `F`.`n_Name`                             AS `n_Name`              @id("f3a002"),

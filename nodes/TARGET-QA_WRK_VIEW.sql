@@ -1,8 +1,8 @@
 @id("19d5596a-0763-4739-b64e-8f6a601e3e73")
 @nodeType("SQLWork")
 @materializationType("view")
-@description("QA Work view - tag, fixed expiration, column and node tests (repro: description-only change)")
-@tableExpiration("2027-09-30")
+@description("QA Work view - tag, fixed expiration, column and node tests")
+@tableExpiration("2027-06-30")
 @tag("env", "dev")
 @tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) = 0")
 SELECT

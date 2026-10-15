@@ -9,6 +9,5 @@ SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("f6a001") @isBusinessKey @not_null,
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("f6a002") @clusterKey(1),
     CAST(`F`.`n_NationKey` * 2 AS NUMERIC)   AS `AMOUNT`              @id("f6a003") @max_value("1000"),
-    CAST(DIV(`F`.`n_NationKey`, 10) AS INT64) AS `Key_Bucket`        @id("f6a004"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_CREATE_DATE`  @id("f6a008") @isSystemCreateDate
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`

@@ -6,7 +6,7 @@
 @tests("SELECT 1 FROM {{ this }} WHERE `Fact_HK` IS DISTINCT FROM TO_HEX(SHA1(IFNULL(CAST(`n_NationKey` AS STRING), 'null') || '||' || IFNULL(CAST(`n_RegionKey` AS STRING), 'null')))")
 @tests("SELECT 1 FROM {{ this }} WHERE `Amount_Hash` IS DISTINCT FROM TO_HEX(SHA256(IFNULL(CAST(`Amount` AS STRING), 'null')))")
 @tests("SELECT 1 FROM {{ this }} WHERE `No_Hash` IS NOT NULL")
-@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> 2 + (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     CAST({{ get_hash('FACT_HK') }} AS STRING) AS `Fact_HK`            @id("h2a001") @isBusinessKey @uniqueness,
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("h2a002") @inHash("FACT_HK", 1),

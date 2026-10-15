@@ -1,9 +1,9 @@
 @id("a50eadfd-c546-4834-be0b-f8ce08a48a71")
 @nodeType("SQLDimension")
 @materializationType("view")
-@description("QA Dimension view - system columns become typed NULLs; merge/table annotations are ignored (phase 2: renamed from QA_DIM_VIEW - tag and expiration must carry over)")
+@description("QA Dimension view - system columns become typed NULLs; merge/table annotations are ignored")
 @mergeStrategy("changeTracking")
-@tableExpiration("2027-01-31")
+@tableExpiration("60")
 @tag("env", "dev")
 @tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CREATE_DATE` IS NOT NULL OR `QA_DIM_VIEW_KEY` IS NOT NULL")
 SELECT
