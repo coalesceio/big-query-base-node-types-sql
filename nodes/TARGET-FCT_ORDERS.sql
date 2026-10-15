@@ -18,7 +18,7 @@ SELECT
     `o`.`O_ORDERDATE`                         AS `O_ORDERDATE`        @id("dd4a07") @partitionBy @notNull @not_null @description("Order date - partition column"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)      AS `SYSTEM_CREATE_DATE` @id("dd4a08") @isSystemCreateDate @description("Row create time"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)      AS `SYSTEM_UPDATE_DATE` @id("dd4a09") @isSystemUpdateDate @relative_time(">=", "SYSTEM_CREATE_DATE") @description("Row update time")
-FROM {{ ref('TARGET', 'WRK_ORDERS') }} `o`
+FROM {{ ref('TARGET', 'WRK_ORDERS1') }} `o`
 LEFT JOIN {{ ref('TARGET', 'DIM_CUSTOMER') }} `dc`
     ON `dc`.`C_CUSTKEY` = `o`.`O_CUSTKEY`
    AND `dc`.`SYSTEM_CURRENT_FLAG` = 'Y'
