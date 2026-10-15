@@ -18,7 +18,7 @@ WITH CUSTOMER_ORDERS AS (
 )
 SELECT
     `co`.`O_CUSTKEY`                       AS `C_CUSTKEY`          @id("44be01") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness @description("Customer key - business key"),
-    COALESCE(`dc`.`DIM_CUSTOMER_KEY`, '0') AS `DIM_CUSTOMER_KEY`   @id("44be02") @description("Current customer surrogate key"),
+    CAST(COALESCE(`dc`.`DIM_CUSTOMER_KEY`, '0') AS STRING) AS `DIM_CUSTOMER_KEY`   @id("44be02") @description("Current customer surrogate key"),
     `dc`.`C_MKTSEGMENT`                    AS `C_MKTSEGMENT`       @id("44be03") @description("Current market segment"),
     `dc`.`R_NAME`                          AS `R_NAME`             @id("44be04") @description("Current region name"),
     `co`.`ORDER_COUNT`                     AS `ORDER_COUNT`        @id("44be05") @min_value("1") @description("Number of orders"),

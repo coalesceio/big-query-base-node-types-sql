@@ -12,7 +12,7 @@ SELECT
     `l`.`L_ORDERKEY`                     AS `L_ORDERKEY`         @id("130101") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @description("Order key - business key part 1"),
     `l`.`L_LINENUMBER`                   AS `L_LINENUMBER`       @id("130102") @isBusinessKey @notNull @primaryKey(2) @clusterKey(2) @not_null @description("Line number - business key part 2"),
     `l`.`HK_LINEITEM`                    AS `HK_LINEITEM`        @id("130103") @not_null @uniqueness @description("Lineitem hash key from Work"),
-    COALESCE(`o`.`DIM_CUSTOMER_KEY`, '0') AS `DIM_CUSTOMER_KEY`  @id("130104") @description("Customer surrogate key via FCT_ORDERS"),
+    CAST(COALESCE(`o`.`DIM_CUSTOMER_KEY`, '0') AS STRING) AS `DIM_CUSTOMER_KEY`  @id("130104") @description("Customer surrogate key via FCT_ORDERS"),
     `sm`.`SHIP_MODE_ID`                  AS `SHIP_MODE_ID`       @id("130105") @not_null @description("Ship mode dimension key"),
     `l`.`L_PARTKEY`                      AS `L_PARTKEY`          @id("130106") @description("Part key"),
     `l`.`L_SUPPKEY`                      AS `L_SUPPKEY`          @id("130107") @description("Supplier key"),

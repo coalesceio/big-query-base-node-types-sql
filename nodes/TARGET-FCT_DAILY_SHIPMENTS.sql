@@ -9,7 +9,7 @@
 SELECT
     CURRENT_DATE()                         AS `SNAPSHOT_DATE`      @id("9fdd01") @notNull @not_null @freshness(1, "DAY") @description("Snapshot date - partition column"),
     `f`.`L_SHIPDATE`                       AS `L_SHIPDATE`         @id("9fdd02") @clusterKey(1) @not_null @description("Ship date"),
-    COALESCE(`sm`.`SHIP_MODE_GROUP`, 'OTHER') AS `SHIP_MODE_GROUP` @id("9fdd03") @clusterKey(2) @accepted_values("'AIR', 'GROUND', 'OTHER'") @description("Ship mode grouping"),
+    CAST(COALESCE(`sm`.`SHIP_MODE_GROUP`, 'OTHER') AS STRING) AS `SHIP_MODE_GROUP` @id("9fdd03") @clusterKey(2) @accepted_values("'AIR', 'GROUND', 'OTHER'") @description("Ship mode grouping"),
     COUNT(*)                               AS `LINE_COUNT`         @id("9fdd04") @min_value("1") @description("Lineitems shipped"),
     CAST(SUM(`f`.`L_QUANTITY`) AS NUMERIC) AS `TOTAL_QUANTITY`     @id("9fdd05") @min_value("0") @description("Quantity shipped"),
     CAST(SUM(`f`.`L_GROSS_PRICE`) AS NUMERIC) AS `TOTAL_GROSS_PRICE` @id("9fdd06") @min_value("0") @description("Gross price shipped"),

@@ -6,8 +6,8 @@
 @writeMode("append")
 @zeroKey("'0'")
 @tag("env", "dev")
-@tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_NATION') }} GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1 OR `N_NATIONKEY` IS NULL", false, "Before")
-@tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1", false, "After")
+@tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_NATION') }} GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1 OR `N_NATIONKEY` IS NULL", true, "Before")
+@tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1", true, "After")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_NATION_KEY`      @id("3c5701") @isSurrogateKey @defaultValue("GENERATE_UUID()") @description("Surrogate key"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @id("3c5702") @isBusinessKey @notNull @clusterKey(1) @not_null @zeroKey("-1") @description("Nation key - business key"),

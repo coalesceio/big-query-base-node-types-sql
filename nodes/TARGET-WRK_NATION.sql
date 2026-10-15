@@ -5,7 +5,7 @@
 @writeMode("truncateInsert")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
-@tests("SELECT 1 FROM {{ this }} GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1", false)
+@tests("SELECT 1 FROM {{ this }} GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1", true)
 SELECT
     `N_NATIONKEY`                                 AS `N_NATIONKEY`       @id("066201") @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness @min_max("0", "24") @description("Nation key"),
     `N_NAME`                                      AS `N_NAME`            @id("066202") @notNull @clusterKey(2) @not_null @empty @description("Nation name"),

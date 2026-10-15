@@ -8,14 +8,14 @@
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")
-@tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_CUSTOMER_GEO_V') }} GROUP BY `C_CUSTKEY` HAVING COUNT(*) > 1 OR `C_CUSTKEY` IS NULL", false, "Before")
-@tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `C_CUSTKEY` HAVING COUNT(*) > 1", false, "After")
+@tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_CUSTOMER_GEO_V') }} GROUP BY `C_CUSTKEY` HAVING COUNT(*) > 1 OR `C_CUSTKEY` IS NULL", true, "Before")
+@tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `C_CUSTKEY` HAVING COUNT(*) > 1", true, "After")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_CUSTOMER_KEY`    @id("6b8a01") @isSurrogateKey @defaultValue("GENERATE_UUID()") @description("Surrogate key"),
     CAST(`C_CUSTKEY` AS NUMERIC)                             AS `C_CUSTKEY`           @id("6b8a02") @isBusinessKey @notNull @clusterKey(1) @not_null @zeroKey("-1") @description("Customer key - business key"),
     CAST(`C_NAME` AS STRING)                                 AS `C_NAME`              @id("6b8a03") @description("Customer name - SCD1 overwrite"),
     CAST(`C_MKTSEGMENT` AS STRING)                           AS `C_MKTSEGMENT`        @id("6b8a04") @isChangeTracking @clusterKey(2) @description("Market segment - new version on change"),
-    CAST(`C_ACCTBAL` AS NUMERIC)                              AS `C_ACCTBAL`           @id("6b8a05") @zeroKey("0.00") @description("Account balance - SCD1 overwrite"),
+    CAST(`C_ACCTBAL` AS FLOAT64)                              AS `C_ACCTBAL`           @id("6b8a05") @zeroKey("0.00") @description("Account balance - SCD1 overwrite"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @id("6b8a06") @isChangeTracking @zeroKey("-1") @description("Nation key - new version on change"),
     `N_NAME`                                 AS `N_NAME`              @id("6b8a07") @isChangeTracking @description("Nation name - new version on change"),
     `R_REGIONKEY`                            AS `R_REGIONKEY`         @id("6b8a08") @zeroKey("-1") @description("Region key"),
