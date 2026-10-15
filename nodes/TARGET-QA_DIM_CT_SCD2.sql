@@ -9,7 +9,7 @@
 @tests("SELECT 1 FROM {{ this }} WHERE (`SYSTEM_CURRENT_FLAG` = 'Y') <> (`SYSTEM_END_DATE` = TIMESTAMP_SECONDS(32503593600))")
 SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_CT_SCD2_KEY`  @id("d2a000") @isSurrogateKey @defaultValue("GENERATE_UUID()") @uniqueness,
-    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d2a001") @isBusinessKey @not_null,
+    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d2a001") @isBusinessKey @clusterKey(1) @not_null,
     `F`.`n_Name`                             AS `n_Name`              @id("d2a002") @isChangeTracking,
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("d2a003") @isChangeTracking,
     `F`.`n_Comment`                          AS `n_Comment`           @id("d2a004"),

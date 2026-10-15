@@ -8,7 +8,7 @@
 @tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> 1 + (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     CAST(0 AS INT64)                         AS `QA_DIM_ZEROKEY_KEY`  @id("d6a000") @isSurrogateKey @defaultValue("0"),
-    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d6a001") @isBusinessKey @zeroKey("-1"),
+    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d6a001") @isBusinessKey @clusterKey(1) @zeroKey("-1"),
     `F`.`n_Name`                             AS `n_Name`              @id("d6a002") @zeroKey("'NO NATION'"),
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("d6a003") @zeroKey("-99"),
     `F`.`n_Comment`                          AS `n_Comment`           @id("d6a004"),

@@ -19,7 +19,7 @@ WITH `BASE` AS (
     SELECT `B`.* FROM `BASE` `B`
 )
 SELECT
-    CAST(`C`.`n_NationKey` AS INT64)        AS `n_NationKey`    @notNull @not_null @uniqueness @min_value("1") @inHash("NK_HASH", 1) @description("Nation key, unique after de-duplication"),
+    CAST(`C`.`n_NationKey` AS INT64)        AS `n_NationKey`    @clusterKey(1) @notNull @not_null @uniqueness @min_value("1") @inHash("NK_HASH", 1) @description("Nation key, unique after de-duplication"),
     CAST(`C`.`n_Name` AS STRING)            AS `n_Name`         @not_null @empty @inHash("ROW_HASH", 1),
     CAST(`C`.`n_RegionKey` AS INT64)        AS `n_RegionKey`    @accepted_values("-1, 0, 1, 2") @accepted_values("3, 4") @min_max("-1", "4") @inHash("ROW_HASH", 2),
     CAST(`C`.`n_Comment` AS STRING)         AS `n_Comment`      @rejected_values("'DELETED'") @inHash("ROW_HASH", 3),
