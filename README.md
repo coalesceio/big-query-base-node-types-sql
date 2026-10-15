@@ -199,6 +199,8 @@ The following stages are executed, in this order (each one only when needed):
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
 
+> ⚠️ **Case-only renames fail.** BigQuery column names are case-insensitive — see [Column Name Case](#known-limitations). Changing only the case of a column (e.g. `N_NAME` → `n_Name`) currently fails the alter with *"Column already exists"* (the table is left untouched).
+
 > **Note:** BigQuery only allows certain data type changes (for example widening `INT64` → `NUMERIC`, or `NUMERIC` → `BIGNUMERIC`). Other changes fail on the clone with BigQuery's error, leaving the live table untouched.
 
 #### Recreating the Work Tables
@@ -214,6 +216,8 @@ This happens when:
 * the materialization type changes (table ↔ view),
 * the partition (`@partitionBy`) or the cluster key (`@clusterKey`) changes,
 * the node moves to another project or dataset.
+
+> **Note:** The partition and cluster key are compared as text, so changing only the case of a partition or cluster column (e.g. `CLUSTER BY N_NATIONKEY` → `n_NationKey`) also drops and recreates the table, although BigQuery treats it as the same column — see [Column Name Case](#known-limitations).
 
 #### Altering and Recreating the Work Views
 
@@ -514,7 +518,7 @@ Every deployment of a Dimension Node first runs these checks before any change i
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
 | **Duplicate Tags Found: \<node\>** | The same tag key applied twice on the node — stops the deployment |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
-| **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Missing Business Key \| Invalid configuration: … \| Missing Required System Columns \| Surrogate Key Not Set/Using Custom Surrogate Key Logic \| Invalid configuration: Surrogate Key \| Warning: Surrogate Key Default \| Warning: Zero Key Value Too Long** | Dimension validation checks (table only), rendered only when the annotations have a problem — see [Dimension Load](#dimension-load). A required problem stops the deployment; a recommendation or warning does not. |
+| **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Missing Business Key \| Invalid configuration: … \| Missing Required System Columns \| Surrogate Key Not Set/Using Custom Surrogate Key Logic \| Invalid configuration: Surrogate Key \| Warning: Surrogate Key Default \| Warning: Zero Key Value Too Long \| Warning: Invalid configuration: mergeStrategy** | Dimension validation checks (table only), rendered only when the annotations have a problem — see [Dimension Load](#dimension-load). A required problem stops the deployment; a recommendation or a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (e.g. `@isChangeTracking` / `@lastModifiedTracking` under `upsert`) — it is ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
 
@@ -559,7 +563,7 @@ Every deployment of a Dimension Node of materialization type table runs its conf
 
 Redeployment works exactly like the Work node — see [Altering the Work Tables](#altering-the-work-tables), [Recreating the Work Tables](#recreating-the-work-tables) and [Altering and Recreating the Work Views](#altering-and-recreating-the-work-views); the create stages read **Create Dimension Table** / **Create Dimension View**. A metadata update is recorded when only tests, `@writeMode`, `@mergeStrategy`, `@zeroKey`, `@preSQL`/`@postSQL` or a transform or join on a table changed.
 
-> **Note:** Every Dimension column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data.
+> **Note:** Every Dimension column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data — except a case-only rename (e.g. `N_NAME` → `n_Name`), which currently fails with *"Column already exists"*; see [Column Name Case](#known-limitations).
 
 ### Removing a Dimension Node
 
@@ -716,7 +720,7 @@ Every deployment of a Fact Node first runs these checks before any change in Big
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
 | **Duplicate Tags Found: \<node\>** | The same tag key applied twice on the node — stops the deployment |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
-| **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Invalid configuration: No Business Key \| Invalid configuration: … \| Missing Required System Columns** | Fact validation checks (table only), rendered only when the annotations have a problem. A required problem stops the deployment; a warning does not. |
+| **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Invalid configuration: No Business Key \| Invalid configuration: … \| Missing Required System Columns \| Warning: Invalid configuration: mergeStrategy \| Warning: Invalid configuration: No Business Key** | Fact validation checks (table only), rendered only when the annotations have a problem. A required problem stops the deployment; a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (`@isBusinessKey` under `allColumnMatch`, `@lastModifiedTracking` under `changeTracking` / `upsert` / `allColumnMatch`); **Warning: Invalid configuration: No Business Key** flags `@lastModifiedTracking` on a plain-insert node. Both are ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
 
@@ -758,7 +762,7 @@ A Fact Node of materialization type view is a plain `CREATE OR REPLACE VIEW` ove
 
 Redeployment works exactly like the Work node — see [Altering the Work Tables](#altering-the-work-tables), [Recreating the Work Tables](#recreating-the-work-tables) and [Altering and Recreating the Work Views](#altering-and-recreating-the-work-views); the create stages read **Create Fact Table** / **Create Fact View**.
 
-> **Note:** Every Fact column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data.
+> **Note:** Every Fact column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data — except a case-only rename (e.g. `N_NAME` → `n_Name`), which currently fails with *"Column already exists"*; see [Column Name Case](#known-limitations).
 
 ### Removing a Fact Node
 
@@ -1129,7 +1133,7 @@ Marks a column as part of the table's primary key, at the given position (lowest
 
 ```sql
 <col_name> AS <col_name> @inHash("GH_COL", 1),
-{{ get_hash('GH_COL') }} AS `GH_COL`
+CAST({{ get_hash('GH_COL') }} AS STRING) AS `GH_COL`
 ```
 
 
@@ -1147,7 +1151,9 @@ Marks a column as part of the table's primary key, at the given position (lowest
 | `algo` | **(optional)** Hashing algorithm to use. Supported values are `SHA1`, `SHA256`, `SHA512` and `MD5`. Defaults to `SHA1`. |
 | `delimiter` | **(optional)** Delimiter used to separate column values when generating the hash. Defaults to `||` and can be customized. |
 
-* The columns are cast to STRING, a NULL becomes `'null'`, they are joined in `hashOrder` with the delimiter, hashed, and returned as a hex STRING (`TO_HEX(...)`) — so the hash column needs no extra cast.
+* The columns are cast to STRING, a NULL becomes `'null'`, they are joined in `hashOrder` with the delimiter, hashed, and returned as a hex STRING (`TO_HEX(...)`).
+* **Wrap the call in `CAST(... AS STRING)`.** The SQL parser can't infer a datatype through the macro, so a bare `{{ get_hash(...) }}` column resolves to `UNKNOWN` and fails at create.
+* `algo` is not case-sensitive (`'md5'` = `'MD5'`); only `SHA1`, `SHA256`, `SHA512` and `MD5` are valid. `delimiter=''` joins the values with no delimiter.
 * When no column is marked with the hash name, `get_hash()` returns `NULL`.
 
 **`get_hash()` examples:**
@@ -1155,36 +1161,42 @@ Marks a column as part of the table's primary key, at the given position (lowest
 Using hash macro(default-SHA1)
 ```sql
 <col_name> AS <col_name> @inHash("GH_COL", 1),
-{{ get_hash('GH_COL') }} AS `GH_COL`
+CAST({{ get_hash('GH_COL') }} AS STRING) AS `GH_COL`
 ```
 Using hash macro(MD5)
 ```sql
 <col_name> AS <col_name> @inHash("GH_COL", 1),
-{{ get_hash('GH_COL', 'MD5') }} AS `GH_COL`
+CAST({{ get_hash('GH_COL', 'MD5') }} AS STRING) AS `GH_COL`
 ```
 Using hash macro(SHA256)
 ```sql
 <col_name> AS <col_name> @inHash("GH_COL", 1),
-{{ get_hash('GH_COL', 'SHA256') }} AS `GH_COL`
+CAST({{ get_hash('GH_COL', 'SHA256') }} AS STRING) AS `GH_COL`
 ```
 Using hash macro(algo=SHA256, delimiter='~' )
 ```sql
 <col_name> AS <col_name> @inHash("GH_COL", 1),
-{{ get_hash('GH_COL', algo='SHA256', delimiter='~') }} AS `GH_COL`
+CAST({{ get_hash('GH_COL', algo='SHA256', delimiter='~') }} AS STRING) AS `GH_COL`
+```
+Using hash macro(SHA512, no delimiter)
+```sql
+<col_name1> AS <col_name1> @inHash("GH_COL", 1),
+<col_name2> AS <col_name2> @inHash("GH_COL", 2),
+CAST({{ get_hash('GH_COL', 'SHA512', '') }} AS STRING) AS `GH_COL`
 ```
 Using multiple keys hash macro
 ```sql
 <col_name1> AS <col_name1> @inHash("GH_COL", 1),
 <col_name2> AS <col_name2> @inHash("GH_COL", 2),
-{{ get_hash('GH_COL') }} AS `GH_COL_COMBINED`
+CAST({{ get_hash('GH_COL') }} AS STRING) AS `GH_COL_COMBINED`
 ```
 Using multiple hash macros
 ```sql
 <col_name1> AS <col_name1> @inHash("GH_COL1", 1) @inHash("GH_COL2", 2),
 <col_name2> AS <col_name2> @inHash("GH_COL1", 2),
 <col_name3> AS <col_name3> @inHash("GH_COL2", 1),
-{{ get_hash('GH_COL1') }} AS `GH_COL_COMBINED1`,
-{{ get_hash('GH_COL2', delimiter='~') }} AS `GH_COL_COMBINED2`
+CAST({{ get_hash('GH_COL1') }} AS STRING) AS `GH_COL_COMBINED1`,
+CAST({{ get_hash('GH_COL2', delimiter='~') }} AS STRING) AS `GH_COL_COMBINED2`
 ```
 Using explicit expression:
 ```sql
@@ -1334,6 +1346,12 @@ Avoid naming custom annotations after words that are reserved keywords in the pl
 * **Switching Between YAML and SQL Node Types**:  
 Converting an existing YAML (`.yml`) node to a SQL (`.sql`) node, or vice versa, is not supported.
 
+* **Column Name Case**:  
+BigQuery column names keep the case they were created with, but are **case-insensitive**: backticks only quote an identifier (for reserved words or special characters) — they do not make it case-sensitive, unlike double quotes in Snowflake. So `n_Name` and `N_NAME` are the same column: a table cannot hold both ("Duplicate column name"), and any casing in a query reads the same column. As a result:
+  * a **case-only column rename** (e.g. `N_NAME` → `n_Name`) currently fails the alter with *"Column already exists"* — BigQuery rejects `RENAME COLUMN N_NAME TO n_Name` and `ADD COLUMN n_Name` because the name already exists ignoring case. The failure happens on the internal copy, so the live table is untouched; to apply the new case, rename through a temporary name in two deployments, or recreate the table;
+  * a **case-only change in a partition or cluster column** drops and recreates the table (losing its data), although BigQuery treats it as the same column;
+  * BigQuery stores the clustering with the column's own case (`CLUSTER BY n_name` on a column `N_NAME` is stored as `CLUSTER BY N_NAME`).
+
 * **Partition, Cluster Key or Dataset Changes Recreate the Table**:  
 BigQuery cannot alter a table's partitioning or clustering, or move a table between datasets, so these redeploys drop the table and create it again. **The existing data is lost** — reload it with a run.
 
@@ -1432,7 +1450,7 @@ SELECT
     `LAST_MODIFIED`                          AS `L_M_1`               @freshness(7, "DAY") @relative_time("<", "L_M_2") @description("timestamp column"),
     `LAST_MODIFIED`                          AS `L_M_2`,
     CAST(`LAST_MODIFIED` AS DATE)            AS `N_LOAD_DATE`         @partitionBy,
-    {{ get_hash('GH_COL1') }}                AS `GH_COL1`             @description("Hash Column")
+    CAST({{ get_hash('GH_COL1') }} AS STRING)                AS `GH_COL1`             @description("Hash Column")
 FROM {{ ref('SOURCE_DATA', 'NATION') }} `NATION`
 ```
 
