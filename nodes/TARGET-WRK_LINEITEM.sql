@@ -28,3 +28,4 @@ SELECT
     `L_COMMENT`                        AS `L_COMMENT`       @id("a8d612") @defaultValue("'NA'") @description("Free-text comment"),
     CAST({{ get_hash('HK_LINEITEM', 'MD5') }} AS STRING) AS `HK_LINEITEM`   @id("a8d613") @not_null @uniqueness @description("Lineitem hash key (MD5 of order key and line number)")
 FROM {{ ref('SRC', 'lineitem') }} `lineitem`
+where `L_LINESTATUS` like '{{parameters.tests}}'
