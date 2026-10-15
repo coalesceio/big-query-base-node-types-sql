@@ -11,7 +11,7 @@
 @tests("SELECT 1 FROM {{ this }} WHERE `Name_Length` IS NULL OR `Name_Length` <> LENGTH(`n_Name`)")
 SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_CT_SCD1_KEY`  @id("d1a000") @isSurrogateKey @defaultValue("GENERATE_UUID()") @not_null @uniqueness @description("Surrogate key - filled by the GENERATE_UUID() default"),
-    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d1a001") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness,
+    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d1a001") @isBusinessKey @primaryKey(1) @clusterKey(1) @not_null @uniqueness,
     `F`.`n_Name`                             AS `n_Name`              @id("d1a002") @clusterKey(2),
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("d1a003") @min_max("-1", "4"),
     `F`.`n_Comment`                          AS `n_Comment`           @id("d1a004") @defaultValue("'NA'"),
