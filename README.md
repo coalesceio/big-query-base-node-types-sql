@@ -807,10 +807,23 @@ A BigQuery table has **one** partition. Set it **once**, either on the node or o
 
 | **Partition kind** | **Example** |
 |---|---|
-| Ingestion time | `@partitionBy("_PARTITIONDATE")`, `@partitionBy("DATE_TRUNC(_PARTITIONTIME, MONTH)")` |
-| DATE column | `@partitionBy("ORDER_DATE")`, `@partitionBy("DATE_TRUNC(ORDER_DATE, MONTH)")` |
-| TIMESTAMP / DATETIME column | `@partitionBy("DATE(LOADED_AT)")`, `@partitionBy("TIMESTAMP_TRUNC(LOADED_AT, HOUR)")` |
+| Ingestion time | `@partitionBy("_PARTITIONDATE")` (daily), `@partitionBy("TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH)")` (also `HOUR` / `DAY` / `YEAR`) |
+| DATE column | `@partitionBy("ORDER_DATE")`, `@partitionBy("DATE_TRUNC(ORDER_DATE, MONTH)")` (also `YEAR`) |
+| TIMESTAMP column | `@partitionBy("DATE(LOADED_AT)")`, `@partitionBy("TIMESTAMP_TRUNC(LOADED_AT, HOUR)")` (also `DAY` / `MONTH` / `YEAR`) |
+| DATETIME column | `@partitionBy("DATE(LOADED_DT)")`, `@partitionBy("DATETIME_TRUNC(LOADED_DT, MONTH)")` (also `HOUR` / `DAY` / `YEAR`) |
 | INT64 column (integer range) | `@partitionBy("RANGE_BUCKET(N_NATIONKEY, GENERATE_ARRAY(0, 100, 5))")` |
+
+BigQuery accepts only these forms, and the deployment does not check the expression itself — any other form fails at create with BigQuery's *"PARTITION BY expression must be …"* error. Forms that look valid but are **rejected**:
+
+| ❌ Rejected | ✅ Use instead |
+|---|---|
+| `DATE_TRUNC(DATE(LOADED_AT), MONTH)` — a function wrapped around another | `TIMESTAMP_TRUNC(LOADED_AT, MONTH)` |
+| `DATE_TRUNC(_PARTITIONDATE, MONTH)` | `TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH)` |
+| `_PARTITIONTIME` | `_PARTITIONDATE` or `DATE(_PARTITIONTIME)` |
+| A bare TIMESTAMP or DATETIME column, e.g. `LOADED_AT` | `DATE(LOADED_AT)` — or the column-level `@partitionBy`, which adds the `DATE(...)` |
+
+* `DATE_TRUNC(_PARTITIONTIME, MONTH)` is also accepted; BigQuery stores it as `TIMESTAMP_TRUNC(_PARTITIONTIME, MONTH)`.
+* `TIMESTAMP_TRUNC(<column>, DAY)` is stored by BigQuery as `DATE(<column>)`.
 
 **Column-level** — a bare `@partitionBy` on the column:
 
@@ -843,6 +856,7 @@ Number of days to keep each partition before BigQuery deletes it.
 
 * Requires a partition (`@partitionBy` on the node or on a column) — without one the deployment stops with **Invalid configuration: partitionExpirationDays**.
 * Applies only to time partitions. On an integer-range (`RANGE_BUCKET`) partition it is not applied and the non-failing **Warning: partitionExpirationDays Ignored** is raised; the deployment continues.
+* ⚠️ **Avoid it on a Dimension.** BigQuery deletes a whole partition once its partition date is older than the given days, whatever the rows in it. A Dimension row that is still current but hasn't changed for that long sits in an old partition and is deleted with it — under SCD Type 2 this can delete the active version of a key, leaving the key with no current row. It is safe only when every row is reloaded or rewritten within the window. See [Partition Expiration on a Dimension](#known-limitations).
 * **Note:** Ignored on Views.
 
 **Example:**
@@ -1323,6 +1337,9 @@ Converting an existing YAML (`.yml`) node to a SQL (`.sql`) node, or vice versa,
 * **Partition, Cluster Key or Dataset Changes Recreate the Table**:  
 BigQuery cannot alter a table's partitioning or clustering, or move a table between datasets, so these redeploys drop the table and create it again. **The existing data is lost** — reload it with a run.
 
+* **Partition Expiration on a Dimension**:  
+`@partitionExpirationDays` makes BigQuery delete each whole partition once its partition date (or ingestion date) is older than the given number of days — it does not look at the rows. A Dimension keeps rows that are still valid long after they were loaded: a current row that hasn't changed for that many days sits in an old partition and is deleted, and under SCD Type 2 the active version of a key can be deleted, leaving the key with no current row (and, if an older version survives in a newer partition, the wrong row looking current). Don't combine `@partitionExpirationDays` with a Dimension unless every row is reloaded or rewritten within the window; use `@tableExpiration` or a `@postSQL` clean-up for retention instead.
+
 * **NOT NULL on an Existing Table**:  
 BigQuery cannot set NOT NULL on an existing column or add a REQUIRED column to an existing table. A redeploy that adds `@notNull` raises the non-failing **Warning: NOT NULL Not Applied**; the column stays NULLABLE until the table is recreated.
 
@@ -1629,9 +1646,9 @@ A node-level test fails when its query returns any rows. `Before` tests usually 
 
 ```sql
 @tests("SELECT CUSTOMER_ID FROM {{ ref('SRC', 'CUSTOMER') }} GROUP BY CUSTOMER_ID HAVING COUNT(*) > 1", false, "Before")  -- runs Before the load, continueOnFailure=false
-@tests("SELECT 1 FROM {{ ref('SRC', 'CUSTOMER') }} HAVING COUNT(*) = 0", true, "Before")  -- runs Before the load, continueOnFailure=true
+@tests("SELECT COUNT(*) AS `N` FROM {{ ref('SRC', 'CUSTOMER') }} HAVING COUNT(*) = 0", true, "Before")  -- runs Before the load, continueOnFailure=true
 @tests("SELECT 1 FROM {{ this }} WHERE BALANCE < 0 AND STATUS = 'ACTIVE'")  -- runs After the load (default), continueOnFailure=true (default)
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('SRC', 'CUSTOMER') }})", true, "After")  -- runs After the load, continueOnFailure=true
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('SRC', 'CUSTOMER') }})", true, "After")  -- runs After the load, continueOnFailure=true
 SELECT
     `CUSTOMER_ID`                            AS `CUSTOMER_ID`,
     `BALANCE`                                AS `BALANCE`,
@@ -1639,6 +1656,7 @@ SELECT
 FROM {{ ref('SRC', 'CUSTOMER') }} `CUSTOMER`
 ```
 * Line 1 — duplicate keys in the source, before the load. Line 2 — an empty source. Line 3 — a business rule on the loaded rows (`After` by default). Line 4 — the target row count matches the source.
+* A `HAVING` without `GROUP BY` must have an aggregate in the SELECT list — BigQuery rejects `SELECT 1 FROM … HAVING COUNT(*) = 0` ("The HAVING clause only allows aggregation if GROUP BY or SELECT list aggregation is present"), so lines 2 and 4 select `COUNT(*)`.
 * `continueOnFailure` is the second argument.
 * `@disableTests` on the node skips every node-level and column-level test.
 
@@ -1664,7 +1682,7 @@ A change in a column marked `@isChangeTracking` keeps the old row and adds a new
 
 ```sql
 @mergeStrategy("changeTracking")
-@partitionBy("DATE_TRUNC(DATE(SYSTEM_CREATE_DATE), MONTH)")
+@partitionBy("TIMESTAMP_TRUNC(SYSTEM_CREATE_DATE, MONTH)")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_CUSTOMER_KEY`    @id("b10000") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `CUSTOMER_ID`                            AS `CUSTOMER_ID`         @id("b10001") @isBusinessKey @clusterKey(1),
