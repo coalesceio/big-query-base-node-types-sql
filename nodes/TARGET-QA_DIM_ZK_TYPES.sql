@@ -26,7 +26,7 @@ SELECT
     CAST(PARSE_JSON(CONCAT('{"k":', CAST(`F`.`n_NationKey` AS STRING), '}')) AS JSON) AS `Json_Col` @id("z1a00c"),
     CAST(`F`.`n_Comment` AS STRING)                         AS `Str_Ovr`       @id("z1a00d") @zeroKey("'OVR'"),
     CAST(`F`.`n_NationKey` AS INT64)                        AS `Int_Ovr`       @id("z1a00e") @zeroKey("-5"),
-    CAST(`F`.`n_NationKey` / 7 AS NUMERIC)                  AS `Num_Ovr`       @id("z1a00f") @zeroKey("-0.5"),
+    CAST(`F`.`n_NationKey` / 7 AS NUMERIC)                  AS `Num_Ovr`       @id("z1a00f") @zeroKey("NUMERIC '-0.5'"),
     CAST(`F`.`n_RegionKey` = 0 AS BOOL)                     AS `Bool_Ovr`      @id("z1a010") @zeroKey("true"),
     CAST(DATE(`F`.`last_Modified`) AS DATE)                 AS `Date_Ovr`      @id("z1a011") @zeroKey("DATE '1999-12-31'"),
     CAST(`F`.`last_Modified` AS TIMESTAMP)                  AS `Ts_Ovr`        @id("z1a012") @zeroKey("TIMESTAMP '1999-12-31 23:59:59'"),
