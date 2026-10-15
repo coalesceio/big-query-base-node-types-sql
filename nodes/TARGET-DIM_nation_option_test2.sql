@@ -2,6 +2,7 @@
 @nodeType("SQLDimension")
 @partitionBy("DATE_TRUNC(last_modified, MONTH)")
 @partitionExpirationDays(2)
+@defaultRoundingMode("ROUND_HALF_EVEN")
 @tableExpiration("30")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_nation_KEY`      @id("3f6a04") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
