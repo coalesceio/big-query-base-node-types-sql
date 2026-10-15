@@ -25,9 +25,10 @@ metadata:
             - name: type
               type: string
               isRequired: true
-              default: table
+              default: transient table
               options:
                 - table
+                - transient table
                 - view
 
         - name: partitionBy
@@ -134,8 +135,8 @@ metadata:
               type: string
               description: • Whether to 𝗧𝗥𝗨𝗡𝗖𝗔𝗧𝗘 the target table before inserting, or 𝗔𝗣𝗣𝗘𝗡𝗗 to it.
               isRequired: true
-              default: truncateInsert
-              example: append
+              default: append
+              example: truncateInsert
               options:
                 - truncateInsert
                 - append
