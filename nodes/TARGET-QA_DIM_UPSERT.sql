@@ -5,9 +5,9 @@
 @mergeStrategy("upsert")
 @tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
-    `F`.`N_NATIONKEY`                        AS `N_NATIONKEY`         @id("d5a001") @isBusinessKey @primaryKey(1),
-    `F`.`N_NAME`                             AS `N_NAME`              @id("d5a002") @isChangeTracking,
-    `F`.`N_REGIONKEY`                        AS `N_REGIONKEY`         @id("d5a003"),
-    CONCAT(`F`.`N_NAME`, ' / ', CAST(`F`.`N_REGIONKEY` AS STRING)) AS `N_LABEL` @id("d5a004") @not_null,
-    `F`.`LAST_MODIFIED`                      AS `LAST_MODIFIED`       @id("d5a005") @lastModifiedTracking("1")
+    `F`.`n_NationKey`                        AS `n_NationKey`         @id("d5a001") @isBusinessKey @primaryKey(1),
+    `F`.`n_Name`                             AS `n_Name`              @id("d5a002") @isChangeTracking,
+    `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("d5a003"),
+    CAST(CONCAT(`F`.`n_Name`, ' / ', CAST(`F`.`n_RegionKey` AS STRING)) AS STRING) AS `n_Label` @id("d5a004") @not_null,
+    `F`.`last_Modified`                      AS `last_Modified`       @id("d5a005") @lastModifiedTracking("1")
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`

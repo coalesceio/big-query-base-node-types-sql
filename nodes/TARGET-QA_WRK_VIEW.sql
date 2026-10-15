@@ -6,8 +6,8 @@
 @tag("env", "dev")
 @tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) = 0")
 SELECT
-    `F`.`N_NATIONKEY`                        AS `N_NATIONKEY`    @uniqueness @description("Nation key"),
-    UPPER(`F`.`N_NAME`)                      AS `N_NAME_UPPER`   @not_null @empty,
-    `F`.`N_REGIONKEY`                        AS `N_REGIONKEY`,
-    CASE WHEN `F`.`N_REGIONKEY` = -1 THEN 'UNKNOWN' ELSE 'KNOWN' END AS `REGION_STATUS` @accepted_values("'KNOWN', 'UNKNOWN'")
+    `F`.`n_NationKey`                        AS `n_NationKey`    @uniqueness @description("Nation key"),
+    UPPER(`F`.`n_Name`)                      AS `N_NAME_UPPER`   @not_null @empty,
+    `F`.`n_RegionKey`                        AS `n_RegionKey`,
+    CASE WHEN `F`.`n_RegionKey` = -1 THEN 'UNKNOWN' ELSE 'KNOWN' END AS `REGION_STATUS` @accepted_values("'KNOWN', 'UNKNOWN'")
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`
