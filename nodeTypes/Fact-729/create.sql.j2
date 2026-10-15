@@ -65,7 +65,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {%- set nsConfigVariables.partitionBy = get_partition_by_sql(config, columns) | trim %}
         {%- set nsConfigVariables.clusterBy = get_clusterby_sql(columns) | trim %}
         {%- set nsConfigVariables.primaryKey = get_primary_key_sql(columns) | trim %}
-        {%- set nsConfigVariables.options = get_table_options_sql(config, node.description, false, columns) | trim %}
+        {%- set nsConfigVariables.options = get_object_options_sql(config, node.description, false, columns) | trim %}
 
         {# BigQuery cannot alter these on an existing table: a dataset move, or a partition / cluster change recreates it #}
         {%- if currentState is defined and currentMatType == desiredMatType
