@@ -1,6 +1,7 @@
 fileVersion: 1
 id: "1"
 macroString: |2-
+
     {#===========================================================================
       SECTION 1: Shared setup (keep first: the aliases and nsNodeVariables are set up
       before any template code runs)
@@ -144,41 +145,10 @@ macroString: |2-
         {%- endif -%}
     {%- endmacro -%}
 
-    {#===================================================================================================
-    get_boolean_config(flag)
-
-    Description:
-        Extracts the boolean value of a configuration flag, supporting both
-        annotation formats:
-        - @flag
-        - @flag(true) / @flag(false)
-
-    Input:
-        flag: Name of the boolean configuration flag, e.g. "truncateBefore",
-            "testsEnabled", or "clusterDefined".
-
-    Examples:
-        @truncateBefore
-        -> config["truncateBefore"] = true
-        -> Output: true
-
-        @truncateBefore(true)
-        -> config["truncateBefore"] = { parameters: [true] }
-        -> Output: true
-
-        @truncateBefore(false)
-        -> config["truncateBefore"] = { parameters: [false] }
-        -> Output: false
-
-        No annotation
-        -> config["truncateBefore"] is not defined
-        -> Output: empty
-
-    Usage:
-        {%- if get_boolean_config("truncateBefore") | trim | lower == "true" -%}
-        ...
-        {%- endif -%}
-    ====================================================================================================#}
+    {#===========================================================================
+      get_boolean_config(flag): 'true' / 'false' for @flag, @flag(true) or @flag(false);
+      '' when absent. Usage: get_boolean_config('truncateBefore') | trim | lower == 'true'
+    ===========================================================================#}
     {%- macro get_boolean_config(flag) -%}
         {%- if config[flag] is defined -%}
             {%- if config[flag] is boolean -%}
@@ -209,7 +179,6 @@ macroString: |2-
 
             {%- if col.inHash is defined -%}
                 {%- for p in col.inHash -%}
-                    {%- set parts = p.parameters[0] -%}
                     {%- set position = p.parameters[1] | int -%}
                     {%- set hash = p.parameters[0] -%}
 
@@ -377,11 +346,10 @@ macroString: |2-
       validate_dimension_requirements(hardFail): Dimension checks (column ids, business key,
       mergeStrategy, system columns). hardFail = true from create.
     ===========================================================================#}
-   {%- macro validate_dimension_requirements(hardFail=false) -%}
+      {%- macro validate_dimension_requirements(hardFail=false) -%}
 
           {# Every Dimension column must carry its own @id annotation. #}
           {{ validate_column_ids(hardFail) }}
-
 
           {%- set hasBusinessKey = columns | selectattr("isBusinessKey") | list | length > 0 | default(false) -%}
           {%- if not hasBusinessKey %}
@@ -832,7 +800,7 @@ macroString: |2-
       is applied more than once — a BigQuery table can hold only one value per tag key, so any
       repeat of the same fully-qualified key is a duplicate, even with different values
       (e.g. "env" and "cls-dev-bigquery/env" on a node in that project). BigQuery has no
-      column-level tags, so any column @tag fails as well ("Column Tags Not Supported"). Call at the start of create, before any DDL.
+      column-level tags, so a column @tag only warns ("Warning: Column Tags Ignored") and is not applied. Call at the start of create, before any DDL.
     ===========================================================================#}
     {%- macro tag_check_duplicates(hardFail=true) -%}
         {%- set nodeDupeTags = find_duplicate_tag_names(config.tag) | trim -%}
@@ -844,17 +812,17 @@ macroString: |2-
 
         {%- set taggedColumns = columns | selectattr('tag', 'defined') | selectattr('tag') | map(attribute='name') | list -%}
         {%- if taggedColumns | length > 0 %}
-            {{ test_stage('Column Tags Not Supported: ' + node.name, false) }}
-            -- @tag is set on column(s) {{ taggedColumns | join(', ') }}. BigQuery has no column-level tags — tags apply to the whole table.
-            -- Move the @tag to the node, or remove it (column-level access control in BigQuery uses Data Catalog policy tags instead).
-            {{ fail_sql(hardFail) }}
+            {{ test_stage('Warning: Column Tags Ignored: ' + node.name, true) }}
+            -- @tag is set on column(s) {{ taggedColumns | join(', ') }}. BigQuery has no column-level tags, so these tags are not applied.
+            -- Move the @tag to the node to tag the whole table, or remove it (column-level access control in BigQuery uses Data Catalog policy tags instead).
+            SELECT 1
         {%- endif -%}
     {%- endmacro -%}
 
     {#===========================================================================
       validate_partition_cluster(hardFail): failing "Invalid configuration: partitionBy / partitionExpirationDays /
       clusterKey" checks — a BigQuery table has a single partition (node and column @partitionBy count together;
-      column-level is a bare flag on DATE / TIMESTAMP / DATETIME), partition expiration needs a time partition,
+      column-level is a bare flag on DATE / TIMESTAMP / DATETIME), partition expiration needs a partition (only warns on RANGE_BUCKET),
       and at most 4 plain cluster columns. Call in the table branch of create, before any DDL.
     ===========================================================================#}
     {%- macro validate_partition_cluster(hardFail=true) -%}
@@ -933,9 +901,11 @@ macroString: |2-
             -- @partitionExpirationDays is set on {{ node.name }}, but the table has no @partitionBy. partition_expiration_days only applies to a partitioned table — add @partitionBy (on the node or on a column), or remove @partitionExpirationDays.
             {{ fail_sql(hardFail) }}
             {%- elif part.exprs | length > 0 and 'RANGE_BUCKET' in (part.exprs[0] | upper) %}
-            {{ test_stage('Invalid configuration: partitionExpirationDays', false) }}
-            -- @partitionExpirationDays is set on {{ node.name }}, but the table is partitioned by integer range ({{ part.exprs[0] }}). partition_expiration_days only applies to time-partitioned tables — remove @partitionExpirationDays, or partition by a date/time column.
-            {{ fail_sql(hardFail) }}
+            {{ test_stage('Warning: partitionExpirationDays Ignored', true) }}
+            -- @partitionExpirationDays is set on {{ node.name }}, but the table is partitioned by integer range ({{ part.exprs[0] }}).
+            -- partition_expiration_days only applies to time-partitioned tables, so it is not applied; the create continues.
+            -- Remove @partitionExpirationDays, or partition by a date/time column to use it.
+            SELECT 1
             {%- endif -%}
         {%- endif -%}
 
@@ -1102,12 +1072,10 @@ macroString: |2-
         {%- endif -%}
     {%- endmacro -%}
 
-
     {#===========================================================================
       get_object_options_sql(nodeConfig, description, resetUnset, nodeColumns, forView): the single OPTIONS(...)
-      clause for a table or a view — same options as get_object_options_sql; forView=true leaves out the two
+      clause for a table or a view; forView=true leaves out the two
       table-only options (partition_expiration_days, default_rounding_mode). Used by the create templates;
-      get_object_options_sql stays for the alter macros until they move over.
     ===========================================================================#}
     {%- macro get_object_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[], forView=false) -%}
         {%- set opts = namespace(items=[]) -%}
@@ -1424,26 +1392,26 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===========================================================================
-      alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table when any
-      table option changed (description, table/partition expiration, rounding mode or tags), or
-      when the clone replaced the table and the node has @tableExpiration or @tag:
-      CREATE OR REPLACE ... COPY keeps the description, rounding mode and partition expiration,
-      but drops the table expiration and the tags, so those must be re-applied. Every option is
-      listed and a removed one is reset to NULL (tags to []). Call after alter_clone_swap_sql().
+        alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table when any
+        table option changed (description, table/partition expiration, rounding mode or tags), or
+        when the clone replaced the table and the node has @tableExpiration or @tag:
+        CREATE OR REPLACE ... COPY keeps the description, rounding mode and partition expiration,
+        but drops the table expiration and the tags, so those must be re-applied. Every option is
+        listed and a removed one is reset to NULL (tags to []). Call after alter_clone_swap_sql().
     ===========================================================================#}
-    {%- macro alter_table_options_sql() -%}
-        {%- set currentOptions = get_object_options_sql(currentState.config, currentState.node.description, false, currentState.columns) | trim -%}
-        {%- set desiredOptions = get_object_options_sql(config, node.description, false, columns) | trim -%}
-        {#- Options COPY does not carry over, set on this node #}
-        {%- set hasTableExpiration = config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 0 -%}
-        {%- set hasTags = config.tag | default([]) | length > 0 -%}
-        {%- if currentOptions != desiredOptions or (nsNodeVariables.tableReplaced and (hasTableExpiration or hasTags)) %}
-            {{ stage('Edit Table Options') }}
-            ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
-            SET {{ get_object_options_sql(config, node.description, true, columns) | trim }}
-            {%- set nsNodeVariables.metaDataChanged = true -%}
-        {%- endif %}
-    {%- endmacro -%}
+      {%- macro alter_table_options_sql() -%}
+          {%- set currentOptions = get_object_options_sql(currentState.config, currentState.node.description, false, currentState.columns) | trim -%}
+          {%- set desiredOptions = get_object_options_sql(config, node.description, false, columns) | trim -%}
+          {#- Options COPY does not carry over, set on this node #}
+          {%- set hasTableExpiration = config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 0 -%}
+          {%- set hasTags = config.tag | default([]) | length > 0 -%}
+          {%- if currentOptions != desiredOptions or (nsNodeVariables.tableReplaced and (hasTableExpiration or hasTags)) %}
+              {{ stage('Edit Table Options') }}
+              ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
+              SET {{ get_object_options_sql(config, node.description, true, columns) | trim }}
+              {%- set nsNodeVariables.metaDataChanged = true -%}
+          {%- endif %}
+      {%- endmacro -%}
 
     {#===========================================================================
       alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Replace
@@ -1513,19 +1481,9 @@ macroString: |2-
       SECTION 7: Run (data load)
     ===========================================================================#}
 
-    {# ========================================================================
-    Purpose          : Executes data quality tests associated with the node
-                        and its columns, based on the configured run order.
-                        Supports running tests either before or after data
-                        insertion, and respects the test continuation
-                        behavior on failure.
-    Input Parameters : runOrder (String)
-                        - Determines when the tests should be executed.
-                            Expected values: 'Before' or 'After'
-    Returns          : Rendered SQL statements for executing the applicable
-                        node-level and column-level data quality tests.
-                        No output is generated if tests are disabled.
-    ========================================================================= #}
+    {#===========================================================================
+      run_tests(runOrder): node and column data quality tests for 'Before' or 'After' the load.
+    ===========================================================================#}
     {%- macro run_tests(runOrder) -%}
 
       {%- set columnContinueOnFailure = true -%}
@@ -1534,8 +1492,6 @@ macroString: |2-
           {%- if runOrder == "After" -%}
               {%- for col in columns -%}
                   {%- set colName = '`' + col.name + '`' -%}
-                  {%- set accepted = col.accepted_values if (col.accepted_values is sequence and col.accepted_values is not mapping) else [] -%}
-                  {%- set rejected = col.rejected_values if (col.rejected_values is sequence and col.rejected_values is not mapping) else [] -%}
                   {%- set target = ref(node.location.name, node.name) -%}
                   {%- if col.not_null is defined -%}
                       {{ test_stage(col.name + ': not_null', columnContinueOnFailure) }}
@@ -1556,18 +1512,34 @@ macroString: |2-
                       FROM {{ target }}
                       WHERE {{ colName }} IS NOT NULL AND TRIM({{ colName }}) = ''
                   {%- endif -%}
-                  {%- if accepted | length > 0 -%}
+                    {%- set nsAccepted = namespace(values=[]) -%}
+                      {%- for v in col.accepted_values | default([]) -%}
+                          {%- for p in v.parameters | default([]) -%}
+                              {%- for val in (p | string).split(',') -%}
+                                  {%- set nsAccepted.values = nsAccepted.values + [val.strip()] -%}
+                              {%- endfor -%}
+                          {%- endfor -%}
+                      {%- endfor -%}
+                  {%- if nsAccepted.values | length > 0 -%}
                       {{ test_stage(col.name + ': accepted_values', columnContinueOnFailure) }}
                       SELECT {{ colName }}
                       FROM {{ target }}
                       WHERE {{ colName }} IS NOT NULL
-                      AND {{ colName }} NOT IN ({%- for v in accepted -%} {{ v.parameters[0] }} {%- if not loop.last -%}, {%- endif -%}{%- endfor -%})
+                          AND {{ colName }} NOT IN ({{ nsAccepted.values | join(', ') }})
                   {%- endif -%}
-                  {%- if rejected | length > 0 -%}
+                      {%- set nsRejected = namespace(values=[]) -%}
+                      {%- for v in col.rejected_values | default([]) -%}
+                          {%- for p in v.parameters | default([]) -%}
+                              {%- for val in (p | string).split(',') -%}
+                                  {%- set nsRejected.values = nsRejected.values + [val.strip()] -%}
+                              {%- endfor -%}
+                          {%- endfor -%}
+                      {%- endfor -%}
+                  {%- if nsRejected.values | length > 0 -%}
                       {{ test_stage(col.name + ': rejected_values', columnContinueOnFailure) }}
                       SELECT {{ colName }}
                       FROM {{ target }}
-                      WHERE {{ colName }} IN ({%- for v in rejected -%} {{ v.parameters[0] }} {%- if not loop.last -%}, {%- endif -%}{%- endfor -%})
+                      WHERE {{ colName }} IN ({{ nsRejected.values | join(', ') }})
                   {%- endif -%}
                   {%- if col.min_max is defined and col.min_max.parameters is defined -%}
                       {{ test_stage(col.name + ': min_max', columnContinueOnFailure) }}
@@ -1672,7 +1644,7 @@ macroString: |2-
               {%- elif col.dataType | upper in ('BOOL', 'BOOLEAN') -%}
                   {%- set ns.zk_type = 'boolean' -%}
                   {%- set ns.zk_value = zkParams[3] if zkParams | length > 3 else true -%}
-              {%- elif col.dataType[:4] | upper in ('DATE', 'TIME', 'TIMESTAMP') -%}
+              {%- elif col.dataType[:4] | upper in ('DATE', 'TIME') -%}
                   {%- set ns.zk_type = 'datetime' -%}
                   {%- set ns.zk_value = zkParams[2] if zkParams | length > 2 else '1900-01-01 00:00:00' -%}
               {%- endif -%}

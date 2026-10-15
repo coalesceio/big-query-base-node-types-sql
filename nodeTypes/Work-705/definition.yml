@@ -15,377 +15,391 @@ metadata:
     deployStrategy: advanced
 
     annotations:
-        node:
+            node:
 
-        - name: materializationType
-          description: |-
-            How the target object is created.
-          isRequired: false
-          parameters:
-            - name: type
-              type: string
-              isRequired: true
-              default: table
-              options:
-                - table
-                - view
-
-        - name: partitionBy
-          description: |-
-            Partitions the target table by the given column or expression, written into 𝗣𝗔𝗥𝗧𝗜𝗧𝗜𝗢𝗡 𝗕𝗬 as-is.
-            Examples:
-              _PARTITIONDATE or DATE_TRUNC(_PARTITIONTIME, MONTH) — partition by load time
-              ORDER_DATE, DATE(ts_col) or TIMESTAMP_TRUNC(ts_col, HOUR) — partition by a date/time column
-              RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10)) — partition by integer ranges
-            Can also be placed on a column instead of the node, e.g. on a DATE column:
-              CAST(DATE(last_modified) AS DATE) AS `LOAD_DATE` @partitionBy("LOAD_DATE")
-            or with an expression, e.g. monthly partitions:
-              CAST(DATE(last_modified) AS DATE) AS `LOAD_DATE` @partitionBy("DATE_TRUNC(LOAD_DATE, MONTH)")
-            A time-unit partition needs a DATE column, or DATE(...) / TIMESTAMP_TRUNC(...) over a TIMESTAMP column.
-            Use it on the node or on one column only — a table has a single partition.
-            ⚠️ On redeployment, partition changes drop and recreate the table.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: column/expression
-              type: string
-              description: Column name or partition expression.
-              isRequired: true
-              example: DATE_TRUNC(columnName, MONTH)
-
-        - name: partitionExpirationDays
-          description: |-
-            Number of days to keep each partition before BigQuery deletes it.
-            Applies only to ingestion-time and time-unit column partitions; ignored for an integer-range (RANGE_BUCKET) partition.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: days
-              type: number
-              description: Partition expiration in days.
-              isRequired: true
-              example: 30
-
-        - name: tableExpiration
-          description: |-
-            Sets when BigQuery deletes the target table.
-            A whole number expires the table that many days after it is created, e.g. 30;
-            a date or datetime expires it at that fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: value
-              type: string
-              description: Number of days from creation, or a date / datetime.
-              isRequired: true
-              example: "30"
-
-        - name: defaultRoundingMode
-          description: |-
-            Default rounding mode for NUMERIC and BIGNUMERIC values written to the table.
-            If not specified, BigQuery uses 𝗥𝗢𝗨𝗡𝗗_𝗛𝗔𝗟𝗙_𝗔𝗪𝗔𝗬_𝗙𝗥𝗢𝗠_𝗭𝗘𝗥𝗢.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: mode
-              type: string
-              description: Rounding mode applied to the table.
-              isRequired: true
-              default: ROUND_HALF_AWAY_FROM_ZERO
-              example: ROUND_HALF_EVEN
-              options:
-                - ROUND_HALF_AWAY_FROM_ZERO
-                - ROUND_HALF_EVEN
-
-        - name: tag
-          description: |-
-            Applies a Resource Manager tag to this table through its 𝗢𝗣𝗧𝗜𝗢𝗡𝗦(𝘁𝗮𝗴𝘀 = [...]).
-            Repeat the annotation to apply multiple tags; a tag key can only be used once per table.
-            BigQuery tag keys are namespaced by project (<project-id>/<key>): a bare tag name is qualified with the
-            project of this node's own location, and a name that already contains "/" (e.g. a key from another
-            project or an organization) is used as-is.
-            The tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          allowsMultiple: true
-          parameters:
-            - name: tagName
-              type: string
-              description: Short name of the tag key (must already exist in GCP), or a fully-qualified <project-or-org-id>/<key>.
-              isRequired: true
-              example: cost_center
-
-            - name: tagValue
-              type: string
-              description: Short name of an existing value of that tag key.
-              isRequired: true
-              example: finance
-
-        - name: writeMode
-          description: >-
-            Controls how data is written to the target table. 
-            𝘁𝗿𝘂𝗻𝗰𝗮𝘁𝗲𝗜𝗻𝘀𝗲𝗿𝘁 clears the table before loading, replacing its contents entirely;
-            𝗮𝗽𝗽𝗲𝗻𝗱 inserts the new rows alongside whatever is already there.
-            If not specified in the SQL, defaults to 𝘁𝗿𝘂𝗻𝗰𝗮𝘁𝗲𝗜𝗻𝘀𝗲𝗿𝘁. 
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: mode
-              type: string
-              description: Whether to 𝗧𝗥𝗨𝗡𝗖𝗔𝗧𝗘 the target table before inserting, or 𝗔𝗣𝗣𝗘𝗡𝗗 to it.
-              isRequired: true
-              default: truncateInsert
-              example: append
-              options:
-                - truncateInsert
-                - append
-
-        - name: disableTests
-          type: boolean
-          description: >-
-            Controls whether configured tests are skipped.
-            Useful while developing a node — skip node-level and column-level tests without deleting them, so you can iterate on the SQL first and turn tests back on once the logic is settled.
-          isRequired: false
-          default: false
-
-        - name: tests
-          description: >-
-            Node-level data quality test.
-            Runs the given 𝗾𝘂𝗲𝗿𝘆𝗦𝗤𝗟 against the target and fails the test if it returns any records — write the query so it selects only the rows that violate your condition.
-            Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or 𝗔𝗳𝘁𝗲𝗿 the load per 𝗿𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
-            Skipped entirely when 𝗱𝗶𝘀𝗮𝗯𝗹𝗲𝗧𝗲𝘀𝘁𝘀 is set.
-          allowsMultiple: true
-          parameters:
-            - name: querySQL
-              type: string
-              description: SQL statement to execute as a validation test.
-              isRequired: true
-              example: 'SELECT 1'
-
-            - name: continueOnFailure
-              type: boolean
-              description: Determines whether execution continues when the test fails.
+            - name: materializationType
+              description: |-
+                • How the target object is created.
               isRequired: false
-              default: true
               parameters:
-              options:
-                - true
-                - false
+                - name: type
+                  type: string
+                  isRequired: true
+                  default: table
+                  options:
+                    - table
+                    - view
 
-            - name: runOrder
-              type: string
-              description: Determines whether the test is executed before or after the load operation.
+            - name: partitionBy
+              description: |-
+                • Partitions the target table by the given column or expression, written into 𝗣𝗔𝗥𝗧𝗜𝗧𝗜𝗢𝗡 𝗕𝗬 as-is.
+                • Examples:
+                  • _PARTITIONDATE or DATE_TRUNC(_PARTITIONTIME, MONTH) — partition by load time
+                  • ORDER_DATE, DATE(ts_col) or TIMESTAMP_TRUNC(ts_col, HOUR) — partition by a date/time column
+                  • RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10)) — partition by integer ranges
+                • Can also be placed on a column instead of the node, e.g. on a DATE column:
+                  CAST(DATE(last_modified) AS DATE) AS `LOAD_DATE` @partitionBy
+                • A time-unit partition needs a DATE column, or DATE(...) / TIMESTAMP_TRUNC(...) over a TIMESTAMP column.
+                • Use it on the node or on one column only — a table has a single partition.
+                • ⚠️ On redeployment, partition changes drop and recreate the table.
+                • Ignored on views.
               isRequired: false
-              default: After
-              options:
-                - Before
-                - After
+              parameters:
+                - name: column/expression
+                  type: string
+                  description: • Column name or partition expression.
+                  isRequired: true
+                  example: DATE_TRUNC(columnName, MONTH)
 
-        - name: preSQL
-          description: >-
-            SQL statement to execute before the data load operation — e.g. staging setup, dropping temp tables, or capturing pre-load state.
-            Repeat the annotation to run multiple statements in the order they appear.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          allowsMultiple: true
-          parameters:
-          - name: querySQL
-            type: string
-            description: Query to be executed.
-            isRequired: true
-            example: 'SELECT 1'
+            - name: partitionExpirationDays
+              description: |-
+                • Number of days to keep each partition before BigQuery deletes it.
+                • Applies only to ingestion-time and time-unit column partitions.
+                • On an integer-range (RANGE_BUCKET) partition it is ignored and a warning is raised; the create continues.
+                • Without any partition (@partitionBy on the node or a column) the create stops.
+                • Ignored on views.
+              isRequired: false
+              parameters:
+                - name: days
+                  type: number
+                  description: • Partition expiration in days.
+                  isRequired: true
+                  example: 30
 
-        - name: postSQL
-          description: >-
-            SQL statement to execute after the data load operation — e.g. updating dependent tables, cleaning up temp objects, or logging load completion.
-                Repeat the annotation to run multiple statements in the order they appear.
-                𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          allowsMultiple: true
-          parameters:
-          - name: querySQL
-            type: string
-            description: Query to be executed.
-            isRequired: true
-            example: 'SELECT 1'
+            - name: tableExpiration
+              description: |-
+                • Sets when BigQuery deletes the target table or view.
+                • A whole number expires the table that many days after it is created, e.g. 30;
+                  a date or datetime expires it at that fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
+                • Applies to views as well as tables — on a view only the expiration, tags and description are set.
+              isRequired: false
+              parameters:
+                - name: value
+                  type: string
+                  description: • Number of days from creation, or a date / datetime.
+                  isRequired: true
+                  example: "30"
 
-        column:
+            - name: defaultRoundingMode
+              description: |-
+                • Default rounding mode for NUMERIC and BIGNUMERIC values written to the table.
+                • If not specified, BigQuery uses 𝗥𝗢𝗨𝗡𝗗_𝗛𝗔𝗟𝗙_𝗔𝗪𝗔𝗬_𝗙𝗥𝗢𝗠_𝗭𝗘𝗥𝗢.
+                • Ignored on views.
+              isRequired: false
+              parameters:
+                - name: mode
+                  type: string
+                  description: • Rounding mode applied to the table.
+                  isRequired: true
+                  default: ROUND_HALF_AWAY_FROM_ZERO
+                  example: ROUND_HALF_EVEN
+                  options:
+                    - ROUND_HALF_AWAY_FROM_ZERO
+                    - ROUND_HALF_EVEN
 
-        - name: primaryKey
-          description: |-
-            Marks this column as part of the table's primary key, at the given position
-            (lowest first), e.g. primaryKey(1).
-            Mark every key column to build a composite key, e.g. primaryKey(1) on one column and primaryKey(2) on another.
-            Presence enables the key — remove the annotation to drop the column from it.
-            𝗡𝗼𝘁 𝗲𝗻𝗳𝗼𝗿𝗰𝗲𝗱 — BigQuery does not validate uniqueness; pair with uniqueness / not_null to test it.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
-          isRequired: false
-          parameters:
-            - name: position
-              type: number
-              isRequired: true
-              example: 1
+            - name: tag
+              description: |-
+                • Applies a Resource Manager tag to this table or view through its OPTIONS(tags = [...]).
+                • Repeat the annotation to apply multiple tags; a tag key can only be used once per table or view.
+                • BigQuery tag keys are namespaced by project (<project-id>/<key>): a bare tag name is qualified with the
+                  project of this node's own location, and a name that already contains "/" (e.g. a key from another
+                  project or an organization) is used as-is.
+                • The tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
+                • Applies to views as well as tables.
+                • BigQuery has no column-level tags — a @tag on a column is not applied and only raises a warning.
+              allowsMultiple: true
+              parameters:
+                - name: tagName
+                  type: string
+                  description: • Short name of the tag key (must already exist in GCP), or a fully-qualified <project-or-org-id>/<key>.
+                  isRequired: true
+                  example: cost_center
 
-        - name: clusterKey
-          description: |-
-            Marks this column as part of the table's CLUSTER BY key, at the given position
-            (lowest first), e.g. clusterKey(1).
-            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
-            ⚠️ On redeployment, clustering changes drop and recreate the table.
-            Ignored on views.
-          parameters:
-            - name: position
-              type: number
-              isRequired: true
-              example: 1
+                - name: tagValue
+                  type: string
+                  description: • Short name of an existing value of that tag key.
+                  isRequired: true
+                  example: finance
 
-        - name: inHash
-          description: >-
-                Marks a column as an input to a generated hash key, grouped by 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲 and ordered within that group by 𝗵𝗮𝘀𝗵𝗢𝗿𝗱𝗲𝗿.
-                Mark every column that should feed a given hash with the same 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲, then call the 𝐠𝐞𝐭_𝐡𝐚𝐬𝐡("<hashName>") macro elsewhere in the SELECT to produce the actual hash column from those marked columns.
-                𝗦𝗲𝗲 𝗱𝗼𝗰𝘂𝗺𝗲𝗻𝘁𝗮𝘁𝗶𝗼𝗻 𝗳𝗼𝗿 𝗱𝗲𝘁𝗮𝗶𝗹𝘀.
-          allowsMultiple: true
-          parameters:
-            - name: hashName
-              isRequired: true
-              type: string
-              description: Group hash name shared by every column feeding the same hash.
-              example: GH_COL
-
-            - name: hashOrder
-              isRequired: true
-              type: number
-              description: Position of this column within its hash group, lowest first.
-              example: 1
-
-        - name: not_null
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows where the column is 𝗡𝗨𝗟𝗟.
-            Presence enables the test — remove the annotation to turn it off.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-
-        - name: uniqueness
-          description: >- 
-            🚦 Column-level data quality test.
-            Fails when a value appears on more than one row.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-
-        - name: empty
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows where the column trims to the empty string;
-            𝗡𝗨𝗟𝗟 values pass this test and are instead caught by not_null.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-
-        - name: accepted_values
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows whose value is outside the allow list.
-            Repeat the annotation once per permitted value.
-            Each value is pasted into the SQL verbatim, so quote it to match the column's data
-            type — a number as accepted_values("<num>"), a string as accepted_values("'<string>'").
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          allowsMultiple: true
-          parameters:
-            - name: value
-              type: string
-              isRequired: true
-
-        - name: rejected_values
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows whose value is in the deny list.
-            Repeat the annotation once per forbidden value. Each value is pasted into the SQL verbatim, so quote it to match the column's data type — a number as rejected_values("<num>"), a string as
-            rejected_values("'<string>'").
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          allowsMultiple: true
-          parameters:
-            - name: value
-              type: string
-              isRequired: true
-              example: "'<string>'"
-
-        - name: min_max
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows outside the inclusive range.
-            Both bounds are pasted into the SQL verbatim, so write a number as "0" and a date as "DATE '2026-01-01'".
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          parameters:
-            - name: min
-              type: string
-              description: Inclusive lower bound the column value must not fall below.
-              isRequired: true
-              example: "0"
-            - name: max
-              type: string
-              description: Inclusive upper bound the column value must not exceed.
-              isRequired: true
-              example: "100"
-
-        - name: min_value
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows below the bound.
-            Pasted into the SQL verbatim — see min_max.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          parameters:
-            - name: min
-              type: string
-              description: Inclusive lower bound the column value must not fall below.
-              isRequired: true
-              example: "0"
-
-        - name: max_value
-          description: >-
-            🚦 Column-level data quality test.
-            Fails on rows above the bound.
-            Pasted into the SQL verbatim — see min_max.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          parameters:
-            - name: max
-              type: string
-              description: Inclusive upper bound the column value must not exceed.
-              isRequired: true
-              example: "100"
-
-        - name: freshness
-          description: >-
-            🚦 Column-level data quality test.
-            Checks that the data is fresh — fails when the column's value is older than the given interval, or when the table has no rows at all.
-            𝗡𝗼𝘁𝗲: on a DATE column the value is truncated to midnight.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          parameters:
-            - name: interval
+            - name: writeMode
               description: >-
-                How far back from now the newest value is allowed to be, expressed in the unit given by 𝘂𝗻𝗶𝘁.
-              type: number
-              isRequired: true
-              example: 1
+                Controls how data is written to the target table. 
+                truncateInsert clears the table before loading, replacing its contents entirely;
+                append inserts the new rows alongside whatever is already there.
+                If not specified in the SQL, defaults to truncateInsert. 
+                Ignored on views.
+              isRequired: false
+              parameters:
+                - name: mode
+                  type: string
+                  description: • Whether to 𝗧𝗥𝗨𝗡𝗖𝗔𝗧𝗘 the target table before inserting, or 𝗔𝗣𝗣𝗘𝗡𝗗 to it.
+                  isRequired: true
+                  default: truncateInsert
+                  example: append
+                  options:
+                    - truncateInsert
+                    - append
 
-            - name: unit
-              type: string
-              options: [SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, YEAR]
-              default: DAY
+            - name: disableTests
+              type: boolean
+              description: >-
+                Controls whether configured tests are skipped.
+                Useful while developing a node — skip node-level and column-level tests without deleting them, so you can iterate on the SQL first and turn tests back on once the logic is settled.
+              isRequired: false
+              default: false
 
-        - name: relative_time
-          description: >-
-            🚦 Column-level data quality test.
-            Compares this column against another date/time column on the same node using the
-            given operator.
-            E.g. @relative_time("<=", "END_DATE") fails any row where this column's value is not less than or equal to END_DATE.
-            A row with either side 𝗡𝗨𝗟𝗟 is left out of the check and passes.
-            Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-          parameters:
-            - name: operator
-              type: string
-              description: Comparison operator used to compare this column against the other column.
-              isRequired: true
-              options: ["<", "<=", ">", ">=", "=", "<>"]
-              example: "="
+            - name: tests
+              description: >-
+                Node-level data quality test.
+                Runs the given 𝗾𝘂𝗲𝗿𝘆𝗦𝗤𝗟 against the target and fails the test if it returns any records — write the query so it selects only the rows that violate your condition.
+                Runs 𝗕𝗲𝗳𝗼𝗿𝗲 or After the load per 𝗿𝘂𝗻𝗢𝗿𝗱𝗲𝗿, and either halts or continues the run on failure per 𝗰𝗼𝗻𝘁𝗶𝗻𝘂𝗲𝗢𝗻𝗙𝗮𝗶𝗹𝘂𝗿𝗲.
+                Skipped entirely when 𝗱𝗶𝘀𝗮𝗯𝗹𝗲𝗧𝗲𝘀𝘁𝘀 is set.
+              allowsMultiple: true
+              parameters:
+                - name: querySQL
+                  type: string
+                  description: • SQL statement to execute as a validation test.
+                  isRequired: true
+                  example: 'SELECT 1'
 
-            - name: column
-              type: string
-              description: Name of the other date/time column on this node to compare against.
-              isRequired: true
-              example: "<other_column>"
+                - name: continueOnFailure
+                  type: boolean
+                  description: • Determines whether execution continues when the test fails.
+                  isRequired: false
+                  default: true
+                  parameters:
+                  options:
+                    - true
+                    - false
+
+                - name: runOrder
+                  type: string
+                  description: • Determines whether the test is executed before or after the load operation.
+                  isRequired: false
+                  default: After
+                  options:
+                    - Before
+                    - After
+
+            - name: preSQL
+              description: >-
+                SQL statement to execute before the data load operation — e.g. staging setup, dropping temp tables, or capturing pre-load state.
+                Repeat the annotation to run multiple statements in the order they appear.
+                Ignored on views.
+              allowsMultiple: true
+              parameters:
+              - name: querySQL
+                type: string
+                description: • Query to be executed.
+                isRequired: true
+                example: 'SELECT 1'
+
+            - name: postSQL
+              description: >-
+                SQL statement to execute after the data load operation — e.g. updating dependent tables, cleaning up temp objects, or logging load completion.
+                    Repeat the annotation to run multiple statements in the order they appear.
+                    Ignored on views.
+              allowsMultiple: true
+              parameters:
+              - name: querySQL
+                type: string
+                description: • Query to be executed.
+                isRequired: true
+                example: 'SELECT 1'
+
+            column:
+
+            - name: primaryKey
+              description: |-
+                • Marks this column as part of the table's primary key, at the given position
+                  (lowest first), e.g. primaryKey(1).
+                • Mark every key column to build a composite key, e.g. primaryKey(1) on one column and primaryKey(2) on another.
+                • Presence enables the key — remove the annotation to drop the column from it.
+                • 𝗡𝗼𝘁 𝗲𝗻𝗳𝗼𝗿𝗰𝗲𝗱 — BigQuery does not validate uniqueness; pair with uniqueness / not_null to test it.
+                • Ignored on views.
+              isRequired: false
+              parameters:
+                - name: position
+                  type: number
+                  isRequired: true
+                  example: 1
+
+            - name: clusterKey
+              description: |-
+                • Marks this column as part of the table's CLUSTER BY key, at the given position
+                  (lowest first), e.g. clusterKey(1).
+                • BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
+                • ⚠️ On redeployment, clustering changes drop and recreate the table.
+                • Ignored on views.
+              parameters:
+                - name: position
+                  type: number
+                  isRequired: true
+                  example: 1
+            
+            - name: partitionBy
+              description: |-
+                • Partitions the target table by this column — use it when the table is partitioned purely by one column.
+                • Takes no parameters — write a bare @partitionBy; passing any stops the create.
+                • A 𝗗𝗔𝗧𝗘 column is used as-is; a TIMESTAMP or DATETIME column is partitioned by day, as DATE(column).
+                • Any other type stops the create — BigQuery partitions only by DATE / TIMESTAMP / DATETIME, or by an INT64 column through RANGE_BUCKET.
+                • For an expression (DATE_TRUNC(...), TIMESTAMP_TRUNC(...), RANGE_BUCKET(...) on an INT64 column, _PARTITIONDATE), use the node-level @partitionBy instead.
+                • One partition per table — on more than one column, or together with the node-level @partitionBy, it stops the create.
+                • ⚠️ On redeployment, partition changes drop and recreate the table.
+                • Ignored on views.
+              isRequired: false    
+        	
+
+            - name: inHash
+              description: >-
+                    Marks a column as an input to a generated hash key, grouped by 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲 and ordered within that group by 𝗵𝗮𝘀𝗵𝗢𝗿𝗱𝗲𝗿.
+                    Mark every column that should feed a given hash with the same 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲, then call the 𝐠𝐞𝐭_𝐡𝐚𝐬𝐡("<hashName>") macro elsewhere in the SELECT to produce the actual hash column from those marked columns.
+                    See documentation for details.
+              allowsMultiple: true
+              parameters:
+                - name: hashName
+                  isRequired: true
+                  type: string
+                  description: • Group hash name shared by every column feeding the same hash.
+                  example: GH_COL
+
+                - name: hashOrder
+                  isRequired: true
+                  type: number
+                  description: • Position of this column within its hash group, lowest first.
+                  example: 1
+
+            - name: not_null
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows where the column is NULL.
+                Presence enables the test — remove the annotation to turn it off.
+                Runs After the load and continues the run on failure.
+
+            - name: uniqueness
+              description: >- 
+                🚦 Column-level data quality test.
+                Fails when a value appears on more than one row.
+                Runs After the load and continues the run on failure.
+
+            - name: empty
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows where the column trims to the empty string;
+                NULL values pass this test and are instead caught by not_null.
+                Runs After the load and continues the run on failure.
+
+            - name: accepted_values
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows whose value is outside the allow list.
+                Repeat the annotation once per permitted value.
+                Each value is pasted into the SQL verbatim, so quote it to match the column's data
+                type — a number as accepted_values("<num>"), a string as accepted_values("'<string>'").
+                Runs After the load and continues the run on failure.
+              allowsMultiple: true
+              parameters:
+                - name: value
+                  type: string
+                  isRequired: true
+
+            - name: rejected_values
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows whose value is in the deny list.
+                Repeat the annotation once per forbidden value. Each value is pasted into the SQL verbatim, so quote it to match the column's data type — a number as rejected_values("<num>"), a string as
+                rejected_values("'<string>'").
+                Runs After the load and continues the run on failure.
+              allowsMultiple: true
+              parameters:
+                - name: value
+                  type: string
+                  isRequired: true
+                  example: "'<string>'"
+
+            - name: min_max
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows outside the inclusive range.
+                Both bounds are pasted into the SQL verbatim, so write a number as "0" and a date as "DATE '2026-01-01'".
+                Runs After the load and continues the run on failure.
+              parameters:
+                - name: min
+                  type: string
+                  description: • Inclusive lower bound the column value must not fall below.
+                  isRequired: true
+                  example: "0"
+                - name: max
+                  type: string
+                  description: • Inclusive upper bound the column value must not exceed.
+                  isRequired: true
+                  example: "100"
+
+            - name: min_value
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows below the bound.
+                Pasted into the SQL verbatim — see min_max.
+                Runs After the load and continues the run on failure.
+              parameters:
+                - name: min
+                  type: string
+                  description: • Inclusive lower bound the column value must not fall below.
+                  isRequired: true
+                  example: "0"
+
+            - name: max_value
+              description: >-
+                🚦 Column-level data quality test.
+                Fails on rows above the bound.
+                Pasted into the SQL verbatim — see min_max.
+                Runs After the load and continues the run on failure.
+              parameters:
+                - name: max
+                  type: string
+                  description: • Inclusive upper bound the column value must not exceed.
+                  isRequired: true
+                  example: "100"
+
+            - name: freshness
+              description: >-
+                🚦 Column-level data quality test.
+                Checks that the data is fresh — fails when the column's value is older than the given interval, or when the table has no rows at all.
+                𝗡𝗼𝘁𝗲: on a DATE column the value is truncated to midnight.
+                Runs After the load and continues the run on failure.
+              parameters:
+                - name: interval
+                  description: >-
+                    How far back from now the newest value is allowed to be, expressed in the unit given by 𝘂𝗻𝗶𝘁.
+                  type: number
+                  isRequired: true
+                  example: 1
+
+                - name: unit
+                  type: string
+                  options: [SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, YEAR]
+                  default: DAY
+
+            - name: relative_time
+              description: >-
+                🚦 Column-level data quality test.
+                Compares this column against another date/time column on the same node using the
+                given operator.
+                E.g. @relative_time("<=", "END_DATE") fails any row where this column's value is not less than or equal to END_DATE.
+                A row with either side NULL is left out of the check and passes.
+                Runs After the load and continues the run on failure.
+              parameters:
+                - name: operator
+                  type: string
+                  description: • Comparison operator used to compare this column against the other column.
+                  isRequired: true
+                  options: ["<", "<=", ">", ">=", "=", "<>"]
+                  example: "="
+
+                - name: column
+                  type: string
+                  description: • Name of the other date/time column on this node to compare against.
+                  isRequired: true
+                  example: "<other_column>"
 name: Work
 type: NodeType
