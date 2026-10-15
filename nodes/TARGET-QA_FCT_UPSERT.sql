@@ -3,7 +3,7 @@
 @materializationType("table")
 @description("QA Fact - upsert, create date only (kept on update); lastModifiedTracking present only to raise the ignored warning")
 @mergeStrategy("upsert")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("f4a001") @isBusinessKey @clusterKey(1),
     `F`.`n_Name`                             AS `n_Name`              @id("f4a002"),

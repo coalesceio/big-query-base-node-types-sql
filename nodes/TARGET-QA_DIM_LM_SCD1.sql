@@ -3,7 +3,7 @@
 @materializationType("table")
 @description("QA Dimension - lastModified SCD1, column-level partition on the tracking TIMESTAMP")
 @mergeStrategy("lastModified")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("d3a001") @isBusinessKey @uniqueness,
     `F`.`n_Name`                             AS `n_Name`              @id("d3a002"),

@@ -2,7 +2,7 @@
 @nodeType("SQLWork")
 @materializationType("table")
 @description("QA feed over SRC.Nation_Test_CamelCase (mixed-case column names), one row per key. The CHANGES CTE is edited in each test phase to simulate source updates, inserts and deletes.")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) = 0", false, "After")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) = 0", false, "After")
 WITH `BASE` AS (
     SELECT
         `SRC`.`n_NationKey`                  AS `n_NationKey`,

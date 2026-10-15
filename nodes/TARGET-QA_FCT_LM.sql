@@ -7,7 +7,7 @@
 @tableExpiration("90")
 @tag("env", "dev")
 @tag("cost_center", "finance")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("f3a001") @isBusinessKey,
     `F`.`n_Name`                             AS `n_Name`              @id("f3a002"),

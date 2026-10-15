@@ -4,7 +4,7 @@
 @description("QA Fact - business key with no merge strategy (default changeTracking SCD1), truncateInsert, rounding, composite PK, NOT NULL")
 @writeMode("truncateInsert")
 @defaultRoundingMode("ROUND_HALF_EVEN")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("f2a001") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @uniqueness,
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("f2a002") @notNull @primaryKey(2),

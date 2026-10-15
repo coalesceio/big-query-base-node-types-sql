@@ -4,7 +4,7 @@
 @description("QA Work view - tag, fixed expiration, column and node tests")
 @tableExpiration("2027-06-30")
 @tag("env", "dev")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) = 0")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) = 0")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`    @uniqueness @description("Nation key"),
     UPPER(`F`.`n_Name`)                      AS `N_NAME_UPPER`   @not_null @empty,

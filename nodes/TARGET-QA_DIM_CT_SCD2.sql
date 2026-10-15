@@ -5,7 +5,7 @@
 @mergeStrategy("changeTracking")
 @partitionExpirationDays("365")
 @tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `n_NationKey` HAVING COUNT(*) > 1")
-@tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 @tests("SELECT 1 FROM {{ this }} WHERE (`SYSTEM_CURRENT_FLAG` = 'Y') <> (`SYSTEM_END_DATE` = TIMESTAMP_SECONDS(32503593600))")
 SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_CT_SCD2_KEY`  @id("d2a000") @isSurrogateKey @defaultValue("GENERATE_UUID()") @uniqueness,

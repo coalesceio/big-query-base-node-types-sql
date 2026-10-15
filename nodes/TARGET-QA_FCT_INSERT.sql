@@ -4,7 +4,7 @@
 @description("QA Fact - plain insert (no merge strategy, no business key), explicit append, column DATE partition + expiration, cluster")
 @writeMode("append")
 @partitionExpirationDays("365")
-@tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CREATE_DATE` = (SELECT MAX(`SYSTEM_CREATE_DATE`) FROM {{ this }}) HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} WHERE `SYSTEM_CREATE_DATE` = (SELECT MAX(`SYSTEM_CREATE_DATE`) FROM {{ this }}) HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("f1a001") @clusterKey(1),
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("f1a002") @clusterKey(2),

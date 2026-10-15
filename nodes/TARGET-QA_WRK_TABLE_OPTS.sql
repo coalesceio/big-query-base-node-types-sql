@@ -12,8 +12,8 @@
 @preSQL("INSERT INTO `cls-dev-bigquery.DE_QA_TAN.QA_AUDIT_LOG` VALUES ('QA_WRK_TABLE_OPTS', 'preSQL', CURRENT_TIMESTAMP())")
 @postSQL("UPDATE {{ this }} SET `n_Comment` = 'SET BY POSTSQL' WHERE `n_NationKey` = 1")
 @postSQL("INSERT INTO `cls-dev-bigquery.DE_QA_TAN.QA_AUDIT_LOG` VALUES ('QA_WRK_TABLE_OPTS', 'postSQL', CURRENT_TIMESTAMP())")
-@tests("SELECT 1 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} HAVING COUNT(*) = 0", false, "Before")
-@tests("SELECT 1 FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})", true, "After")
+@tests("SELECT COUNT(*) AS `N` FROM {{ ref('TARGET', 'QA_WRK_FEED') }} HAVING COUNT(*) = 0", false, "Before")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})", true, "After")
 @tests("SELECT 1 FROM {{ this }} WHERE `n_NationKey` = 1 AND `n_Comment` <> 'SET BY POSTSQL'", true, "After")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`    @notNull @primaryKey(1) @clusterKey(1) @description("Nation key"),

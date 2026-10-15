@@ -5,7 +5,7 @@
 @writeMode("append")
 @partitionBy("RANGE_BUCKET(n_NationKey, GENERATE_ARRAY(0, 100, 10))")
 @partitionExpirationDays("30")
-@tests("SELECT 1 FROM {{ this }} WHERE `LOADED_AT` = (SELECT MAX(`LOADED_AT`) FROM {{ this }}) HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})", true, "After")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} WHERE `LOADED_AT` = (SELECT MAX(`LOADED_AT`) FROM {{ this }}) HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})", true, "After")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`    @not_null,
     `F`.`n_Name`                             AS `n_Name`,
