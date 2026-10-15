@@ -9,7 +9,7 @@ SELECT
     `O_ORDERKEY`                             AS `O_ORDERKEY`           @id("d40002") @isBusinessKey @not_null @uniqueness,
     `O_CUSTKEY`                              AS `O_CUSTKEY`            @id("d40003"),
     `O_ORDERSTATUS`                          AS `O_ORDERSTATUS`        @id("d40004") @isChangeTracking,
-    `O_TOTALPRICE`                           AS `O_TOTALPRICE`         @id("d40005"),
+    CAST(`O_TOTALPRICE` AS NUMERIC)                AS `O_TOTALPRICE`         @id("d40005"),
     `O_ORDERDATE`                            AS `O_ORDERDATE`          @id("d40006"),
     `O_ORDERPRIORITY`                        AS `O_ORDERPRIORITY`      @id("d40007"),
     1                                        AS `SYSTEM_VERSION`       @id("d40008") @isSystemVersion,

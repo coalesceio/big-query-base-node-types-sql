@@ -8,7 +8,7 @@ SELECT
     `O_ORDERKEY`                             AS `O_ORDERKEY`           @id("df0002") @isBusinessKey @not_null @uniqueness,
     `O_CUSTKEY`                              AS `O_CUSTKEY`            @id("df0003"),
     `O_ORDERSTATUS`                          AS `O_ORDERSTATUS`        @id("df0004"),
-    `O_TOTALPRICE`                           AS `O_TOTALPRICE`         @id("df0005"),
+    CAST(`O_TOTALPRICE` AS NUMERIC)                AS `O_TOTALPRICE`         @id("df0005"),
     `O_ORDERDATE`                            AS `O_ORDERDATE`          @id("df0006"),
     `O_ORDERPRIORITY`                        AS `O_ORDERPRIORITY`      @id("df0007"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_CREATE_DATE`   @id("df0008") @isSystemCreateDate,
