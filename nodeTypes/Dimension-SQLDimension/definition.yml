@@ -9,9 +9,9 @@ metadata:
     short: DIM
     plural: Dimensions
     tagColor: '#1E339A'
+    description: '• A column level @id annotation is required for each column - it should be unique to the column and be six hexadecimal digits'
 
     enableCTESupport: true
-
     deployStrategy: advanced
 
     annotations:
