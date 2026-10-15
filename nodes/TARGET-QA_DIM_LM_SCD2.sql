@@ -10,7 +10,7 @@ SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_LM_SCD2_KEY`  @id("d4a000") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("d4a001") @isBusinessKey @clusterKey(1),
     `F`.`n_Name`                             AS `n_Name`              @id("d4a002"),
-    `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("d4a003"),
+    CAST(`F`.`n_RegionKey` AS NUMERIC)       AS `n_RegionKey`         @id("d4a003"),
     `F`.`last_Modified`                      AS `last_Modified`       @id("d4a004") @lastModifiedTracking("2"),
     1                                        AS `SYSTEM_VERSION`      @id("d4a005") @isSystemVersion,
     CAST('Y' AS STRING)                      AS `SYSTEM_CURRENT_FLAG` @id("d4a006") @isSystemCurrentFlag,
