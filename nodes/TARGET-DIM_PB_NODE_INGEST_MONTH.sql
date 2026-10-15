@@ -6,9 +6,9 @@
 SELECT
     CAST("0" AS STRING)                      AS `DIM_PB_NODE_INGEST_MONTH_KEY` @id("d20001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`          @id("d20002") @isBusinessKey @not_null @uniqueness,
-    `N_NAME`                                 AS `N_NAME`@id("d20003"),
-    `N_REGIONKEY`                            AS `N_REGIONKEY`@id("d20004"),
-    `N_COMMENT`                              AS `N_COMMENT`@id("d20005"),
+    `N_NAME`                                 AS `N_NAME`               @id("d20003"),
+    `N_REGIONKEY`                            AS `N_REGIONKEY`          @id("d20004"),
+    `N_COMMENT`                              AS `N_COMMENT`            @id("d20005"),
     `last_modified`                          AS `last_modified`        @id("d20006") @lastModifiedTracking(2) @not_null,
     1                                        AS `SYSTEM_VERSION`       @id("d20007") @isSystemVersion,
     CAST('Y' AS STRING)                      AS `SYSTEM_CURRENT_FLAG`  @id("d20008") @isSystemCurrentFlag,

@@ -6,9 +6,9 @@
 SELECT
     CAST("0" AS STRING)                      AS `DIM_PB_COL_TIMESTAMP_KEY` @id("d90001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`          @id("d90002") @isBusinessKey @not_null @uniqueness,
-    `N_NAME`                                 AS `N_NAME`@id("d90003"),
-    `N_REGIONKEY`                            AS `N_REGIONKEY`@id("d90004"),
-    `N_COMMENT`                              AS `N_COMMENT`@id("d90005"),
+    `N_NAME`                                 AS `N_NAME`               @id("d90003"),
+    `N_REGIONKEY`                            AS `N_REGIONKEY`          @id("d90004"),
+    `N_COMMENT`                              AS `N_COMMENT`            @id("d90005"),
     `last_modified`                          AS `last_modified`        @id("d90006") @lastModifiedTracking(2) @not_null @partitionBy,
     1                                        AS `SYSTEM_VERSION`       @id("d90007") @isSystemVersion,
     CAST('Y' AS STRING)                      AS `SYSTEM_CURRENT_FLAG`  @id("d90008") @isSystemCurrentFlag,
