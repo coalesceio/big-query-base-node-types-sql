@@ -26,5 +26,5 @@ SELECT
     `L_SHIPINSTRUCT`                   AS `L_SHIPINSTRUCT`  @id("a8d610") @empty @description("Ship instruction"),
     `L_SHIPMODE`                       AS `L_SHIPMODE`      @id("a8d611") @accepted_values("'AIR', 'FOB', 'MAIL', 'RAIL', 'REG AIR', 'SHIP', 'TRUCK'") @description("Ship mode"),
     `L_COMMENT`                        AS `L_COMMENT`       @id("a8d612") @defaultValue("'NA'") @description("Free-text comment"),
-    {{ get_hash('HK_LINEITEM', 'MD5') }} AS `HK_LINEITEM`   @id("a8d613") @not_null @uniqueness @description("Lineitem hash key (MD5 of order key and line number)")
+    CAST({{ get_hash('HK_LINEITEM', 'MD5') }} AS STRING) AS `HK_LINEITEM`   @id("a8d613") @not_null @uniqueness @description("Lineitem hash key (MD5 of order key and line number)")
 FROM {{ ref('SRC', 'lineitem') }} `lineitem`

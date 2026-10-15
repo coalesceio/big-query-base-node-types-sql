@@ -14,7 +14,7 @@ SELECT
     CAST(`C_ACCTBAL` AS NUMERIC)           AS `C_ACCTBAL`    @id("6740b6") @min_value("-999.99") @max_value("9999.99") @inHash("HD_CUSTOMER", 5) @description("Account balance"),
     `C_MKTSEGMENT`                         AS `C_MKTSEGMENT` @id("6740b7") @accepted_values("'AUTOMOBILE', 'BUILDING', 'FURNITURE', 'HOUSEHOLD', 'MACHINERY'") @rejected_values("'UNKNOWN'") @inHash("HD_CUSTOMER", 6) @description("Market segment"),
     `C_COMMENT`                            AS `C_COMMENT`    @id("6740b8") @defaultValue("'NA'") @description("Free-text comment"),
-    {{ get_hash('HK_CUSTOMER') }}                                 AS `HK_CUSTOMER` @id("6740b9") @not_null @description("Customer hash key (SHA1)"),
-    {{ get_hash('HD_CUSTOMER', algo='SHA256', delimiter='~') }}   AS `HD_CUSTOMER` @id("6740ba") @not_null @description("Customer hash diff (SHA256, ~ delimited)"),
+    CAST({{ get_hash('HK_CUSTOMER') }}  AS STRING)                              AS `HK_CUSTOMER` @id("6740b9") @not_null @description("Customer hash key (SHA1)"),
+    CAST({{ get_hash('HD_CUSTOMER', algo='SHA256', delimiter='~') }} AS STRING)   AS `HD_CUSTOMER` @id("6740ba") @not_null @description("Customer hash diff (SHA256, ~ delimited)"),
     CAST(CURRENT_TIMESTAMP() AS TIMESTAMP) AS `LOAD_TS`      @id("6740bb") @notNull @freshness(1, "DAY") @description("Load timestamp")
 FROM {{ ref('SRC', 'customer') }} `customer`

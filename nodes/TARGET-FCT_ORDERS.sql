@@ -10,7 +10,7 @@
 @tests("SELECT 1 FROM {{ this }} WHERE `DIM_CUSTOMER_KEY` = '0'", true, "After")
 SELECT
     `o`.`O_ORDERKEY`                          AS `O_ORDERKEY`         @id("dd4a01") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness @description("Order key - business key"),
-    COALESCE(`dc`.`DIM_CUSTOMER_KEY`, '0')    AS `DIM_CUSTOMER_KEY`   @id("dd4a02") @notNull @clusterKey(2) @not_null @description("Customer surrogate key, '0' (zero key) when unresolved"),
+    CAST(COALESCE(`dc`.`DIM_CUSTOMER_KEY`, '0') AS STRING)   AS `DIM_CUSTOMER_KEY`   @id("dd4a02") @notNull @clusterKey(2) @not_null @description("Customer surrogate key, '0' (zero key) when unresolved"),
     `o`.`O_CUSTKEY`                           AS `O_CUSTKEY`          @id("dd4a03") @not_null @description("Customer key"),
     `o`.`O_ORDERSTATUS`                       AS `O_ORDERSTATUS`      @id("dd4a04") @accepted_values("'F', 'O', 'P'") @description("Order status"),
     `o`.`O_ORDERPRIORITY`                     AS `O_ORDERPRIORITY`    @id("dd4a05") @description("Order priority"),
