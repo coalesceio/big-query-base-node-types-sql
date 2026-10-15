@@ -3,6 +3,7 @@
 @description("Table expiration test - tableExpiration as a number of days (30); changeTracking SCD Type 1")
 @mergeStrategy("changeTracking")
 @tableExpiration("30")
+@defaultRoundingMode("ROUND_HALF_EVEN")
 SELECT
     CAST("0" AS STRING)                  AS `DIM_TE_DAYS_KEY`    @id("a10001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `N_NATIONKEY`                        AS `N_NATIONKEY`        @id("a10002") @isBusinessKey @not_null @uniqueness,

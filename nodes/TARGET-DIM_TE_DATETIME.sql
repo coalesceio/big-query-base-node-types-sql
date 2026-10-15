@@ -7,7 +7,6 @@ SELECT
     CAST("0" AS STRING)                  AS `DIM_TE_DATETIME_KEY` @id("a30001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `O_ORDERKEY`                         AS `O_ORDERKEY`          @id("a30002") @isBusinessKey @not_null @uniqueness,
     `O_CUSTKEY`                          AS `O_CUSTKEY`           @id("a30003"),
-    `O_ORDERSTATUS`                      AS `O_ORDERSTATUS`       @id("a30004"),
     CAST(`O_TOTALPRICE` AS NUMERIC)      AS `O_TOTALPRICE`        @id("a30005"),
     `O_ORDERDATE`                        AS `O_ORDERDATE`         @id("a30006"),
     `O_ORDERPRIORITY`                    AS `O_ORDERPRIORITY`     @id("a30007"),

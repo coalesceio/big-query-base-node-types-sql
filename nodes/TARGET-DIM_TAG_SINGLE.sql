@@ -3,6 +3,7 @@
 @description("Tag test - one tag (env = dev), qualified with the node location's project; changeTracking SCD Type 2")
 @mergeStrategy("changeTracking")
 @tag("env", "dev")
+@tag("cost_center", "finance")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_TAG_SINGLE_KEY`  @id("a50001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @id("a50002") @isBusinessKey @not_null @uniqueness,

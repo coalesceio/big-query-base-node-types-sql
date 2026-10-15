@@ -2,7 +2,6 @@
 @nodeType("SQLDimension")
 @description("Table expiration test - tableExpiration as a date (expires 2027-12-31 23:59:59); lastModified SCD Type 2")
 @mergeStrategy("lastModified")
-@tableExpiration("2027-12-31")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_TE_DATE_KEY`     @id("a20001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @id("a20002") @isBusinessKey @not_null @uniqueness,

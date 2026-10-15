@@ -3,7 +3,6 @@
 @description("Tag test - two tags (env = dev, cost_center = finance); upsert")
 @mergeStrategy("upsert")
 @tag("env", "dev")
-@tag("cost_center", "finance")
 SELECT
     CAST("0" AS STRING)                  AS `DIM_TAG_MULTIPLE_KEY` @id("a60001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `O_ORDERKEY`                         AS `O_ORDERKEY`           @id("a60002") @isBusinessKey @not_null @uniqueness,
