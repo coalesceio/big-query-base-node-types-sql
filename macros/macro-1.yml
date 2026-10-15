@@ -708,6 +708,18 @@ macroString: |-
           {{ fail_sql(hardFail) }}
       {%- endif -%}
 
+      {# A Fact is always SCD Type 1, so @lastModifiedTracking takes no parameter (unlike the Dimension's scdType). Warn only — the parameter is ignored. #}
+      {%- set lmWithParams = namespace(items=[]) -%}
+      {%- for col in columns if col.lastModifiedTracking is mapping and col.lastModifiedTracking.parameters is defined and col.lastModifiedTracking.parameters | length > 0 -%}
+          {%- set lmWithParams.items = lmWithParams.items + [col.name ~ ' @lastModifiedTracking(' ~ (col.lastModifiedTracking.parameters | join(', ')) ~ ')'] -%}
+      {%- endfor -%}
+      {%- if lmWithParams.items | length > 0 %}
+          {{ test_stage('Warning: lastModifiedTracking Parameter Ignored', true) }}
+          -- {{ lmWithParams.items | join('; ') }}: a Fact is always SCD Type 1, so @lastModifiedTracking takes no parameter and it is ignored.
+          -- Use a bare @lastModifiedTracking. For SCD Type 2 versioning, use a Dimension node with @lastModifiedTracking(2).
+          SELECT 1
+      {%- endif -%}
+
       {# Collect every missing/misconfigured system column here so one run reports them all together instead of one at a time. #}
       {%- set missingSystemColumns = namespace(items=[]) %}
 
