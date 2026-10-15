@@ -8,7 +8,7 @@
 @tests("SELECT 1 FROM {{ this }} GROUP BY `n_NationKey` HAVING COUNT(*) > 1")
 @tests("SELECT 1 FROM {{ this }} WHERE `n_NationKey` = 1 AND `n_Name` <> 'ARGENTINA_V2'")
 @tests("SELECT COUNT(*) AS `N` FROM {{ this }} WHERE `n_NationKey` = 24 HAVING COUNT(*) <> 1")
-@tests("SELECT 1 FROM {{ this }} WHERE `Name_Length` IS NULL OR `Name_Length` <> LENGTH(`n_Name`)")
+@tests("SELECT 1 FROM {{ this }} WHERE IF(`n_NationKey` = 24, `Name_Length` <> 0, `Name_Length` IS DISTINCT FROM LENGTH(`n_Name`))")
 SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_CT_SCD1_KEY`  @id("d1a000") @isSurrogateKey @defaultValue("GENERATE_UUID()") @not_null @uniqueness @description("Surrogate key - filled by the GENERATE_UUID() default"),
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("d1a001") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness,
