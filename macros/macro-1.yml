@@ -144,41 +144,10 @@ macroString: |-
       {%- endif -%}
   {%- endmacro -%}
 
-  {#===================================================================================================
-  get_boolean_config(flag)
-
-  Description:
-      Extracts the boolean value of a configuration flag, supporting both
-      annotation formats:
-      - @flag
-      - @flag(true) / @flag(false)
-
-  Input:
-      flag: Name of the boolean configuration flag, e.g. "truncateBefore",
-          "testsEnabled", or "clusterDefined".
-
-  Examples:
-      @truncateBefore
-      -> config["truncateBefore"] = true
-      -> Output: true
-
-      @truncateBefore(true)
-      -> config["truncateBefore"] = { parameters: [true] }
-      -> Output: true
-
-      @truncateBefore(false)
-      -> config["truncateBefore"] = { parameters: [false] }
-      -> Output: false
-
-      No annotation
-      -> config["truncateBefore"] is not defined
-      -> Output: empty
-
-  Usage:
-      {%- if get_boolean_config("truncateBefore") | trim | lower == "true" -%}
-      ...
-      {%- endif -%}
-  ====================================================================================================#}
+  {#===========================================================================
+    get_boolean_config(flag): 'true' / 'false' for @flag, @flag(true) or @flag(false);
+    '' when absent. Usage: get_boolean_config('truncateBefore') | trim | lower == 'true'
+  ===========================================================================#}
   {%- macro get_boolean_config(flag) -%}
       {%- if config[flag] is defined -%}
           {%- if config[flag] is boolean -%}
@@ -209,7 +178,6 @@ macroString: |-
 
           {%- if col.inHash is defined -%}
               {%- for p in col.inHash -%}
-                  {%- set parts = p.parameters[0] -%}
                   {%- set position = p.parameters[1] | int -%}
                   {%- set hash = p.parameters[0] -%}
 
@@ -381,7 +349,6 @@ macroString: |-
 
         {# Every Dimension column must carry its own @id annotation. #}
         {{ validate_column_ids(hardFail) }}
-
 
         {%- set hasBusinessKey = columns | selectattr("isBusinessKey") | list | length > 0 | default(false) -%}
         {%- if not hasBusinessKey %}
@@ -854,7 +821,7 @@ macroString: |-
   {#===========================================================================
     validate_partition_cluster(hardFail): failing "Invalid configuration: partitionBy / partitionExpirationDays /
     clusterKey" checks — a BigQuery table has a single partition (node and column @partitionBy count together;
-    column-level is a bare flag on DATE / TIMESTAMP / DATETIME), partition expiration needs a time partition,
+    column-level is a bare flag on DATE / TIMESTAMP / DATETIME), partition expiration needs a partition (only warns on RANGE_BUCKET),
     and at most 4 plain cluster columns. Call in the table branch of create, before any DDL.
   ===========================================================================#}
   {%- macro validate_partition_cluster(hardFail=true) -%}
@@ -933,9 +900,11 @@ macroString: |-
           -- @partitionExpirationDays is set on {{ node.name }}, but the table has no @partitionBy. partition_expiration_days only applies to a partitioned table — add @partitionBy (on the node or on a column), or remove @partitionExpirationDays.
           {{ fail_sql(hardFail) }}
           {%- elif part.exprs | length > 0 and 'RANGE_BUCKET' in (part.exprs[0] | upper) %}
-          {{ test_stage('Invalid configuration: partitionExpirationDays', false) }}
-          -- @partitionExpirationDays is set on {{ node.name }}, but the table is partitioned by integer range ({{ part.exprs[0] }}). partition_expiration_days only applies to time-partitioned tables — remove @partitionExpirationDays, or partition by a date/time column.
-          {{ fail_sql(hardFail) }}
+          {{ test_stage('Warning: partitionExpirationDays Ignored', true) }}
+          -- @partitionExpirationDays is set on {{ node.name }}, but the table is partitioned by integer range ({{ part.exprs[0] }}).
+          -- partition_expiration_days only applies to time-partitioned tables, so it is not applied; the create continues.
+          -- Remove @partitionExpirationDays, or partition by a date/time column to use it.
+          SELECT 1
           {%- endif -%}
       {%- endif -%}
 
@@ -1511,19 +1480,9 @@ macroString: |-
     SECTION 7: Run (data load)
   ===========================================================================#}
 
-  {# ========================================================================
-  Purpose          : Executes data quality tests associated with the node
-                      and its columns, based on the configured run order.
-                      Supports running tests either before or after data
-                      insertion, and respects the test continuation
-                      behavior on failure.
-  Input Parameters : runOrder (String)
-                      - Determines when the tests should be executed.
-                          Expected values: 'Before' or 'After'
-  Returns          : Rendered SQL statements for executing the applicable
-                      node-level and column-level data quality tests.
-                      No output is generated if tests are disabled.
-  ========================================================================= #}
+  {#===========================================================================
+    run_tests(runOrder): node and column data quality tests for 'Before' or 'After' the load.
+  ===========================================================================#}
   {%- macro run_tests(runOrder) -%}
 
     {%- set columnContinueOnFailure = true -%}
@@ -1532,8 +1491,6 @@ macroString: |-
         {%- if runOrder == "After" -%}
             {%- for col in columns -%}
                 {%- set colName = '`' + col.name + '`' -%}
-                {%- set accepted = col.accepted_values if (col.accepted_values is sequence and col.accepted_values is not mapping) else [] -%}
-                {%- set rejected = col.rejected_values if (col.rejected_values is sequence and col.rejected_values is not mapping) else [] -%}
                 {%- set target = ref(node.location.name, node.name) -%}
                 {%- if col.not_null is defined -%}
                     {{ test_stage(col.name + ': not_null', columnContinueOnFailure) }}
@@ -1554,18 +1511,34 @@ macroString: |-
                     FROM {{ target }}
                     WHERE {{ colName }} IS NOT NULL AND TRIM({{ colName }}) = ''
                 {%- endif -%}
-                {%- if accepted | length > 0 -%}
+                  {%- set nsAccepted = namespace(values=[]) -%}
+                    {%- for v in col.accepted_values | default([]) -%}
+                        {%- for p in v.parameters | default([]) -%}
+                            {%- for val in (p | string).split(',') -%}
+                                {%- set nsAccepted.values = nsAccepted.values + [val.strip()] -%}
+                            {%- endfor -%}
+                        {%- endfor -%}
+                    {%- endfor -%}
+                {%- if nsAccepted.values | length > 0 -%}
                     {{ test_stage(col.name + ': accepted_values', columnContinueOnFailure) }}
                     SELECT {{ colName }}
                     FROM {{ target }}
                     WHERE {{ colName }} IS NOT NULL
-                    AND {{ colName }} NOT IN ({%- for v in accepted -%} {{ v.parameters[0] }} {%- if not loop.last -%}, {%- endif -%}{%- endfor -%})
+                        AND {{ colName }} NOT IN ({{ nsAccepted.values | join(', ') }})
                 {%- endif -%}
-                {%- if rejected | length > 0 -%}
+                    {%- set nsRejected = namespace(values=[]) -%}
+                    {%- for v in col.rejected_values | default([]) -%}
+                        {%- for p in v.parameters | default([]) -%}
+                            {%- for val in (p | string).split(',') -%}
+                                {%- set nsRejected.values = nsRejected.values + [val.strip()] -%}
+                            {%- endfor -%}
+                        {%- endfor -%}
+                    {%- endfor -%}
+                {%- if nsRejected.values | length > 0 -%}
                     {{ test_stage(col.name + ': rejected_values', columnContinueOnFailure) }}
                     SELECT {{ colName }}
                     FROM {{ target }}
-                    WHERE {{ colName }} IN ({%- for v in rejected -%} {{ v.parameters[0] }} {%- if not loop.last -%}, {%- endif -%}{%- endfor -%})
+                    WHERE {{ colName }} IN ({{ nsRejected.values | join(', ') }})
                 {%- endif -%}
                 {%- if col.min_max is defined and col.min_max.parameters is defined -%}
                     {{ test_stage(col.name + ': min_max', columnContinueOnFailure) }}
@@ -1670,7 +1643,7 @@ macroString: |-
             {%- elif col.dataType | upper in ('BOOL', 'BOOLEAN') -%}
                 {%- set ns.zk_type = 'boolean' -%}
                 {%- set ns.zk_value = zkParams[3] if zkParams | length > 3 else true -%}
-            {%- elif col.dataType[:4] | upper in ('DATE', 'TIME', 'TIMESTAMP') -%}
+            {%- elif col.dataType[:4] | upper in ('DATE', 'TIME') -%}
                 {%- set ns.zk_type = 'datetime' -%}
                 {%- set ns.zk_value = zkParams[2] if zkParams | length > 2 else '1900-01-01 00:00:00' -%}
             {%- endif -%}
