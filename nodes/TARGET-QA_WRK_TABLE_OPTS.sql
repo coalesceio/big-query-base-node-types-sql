@@ -17,7 +17,7 @@
 @tests("SELECT 1 FROM {{ this }} WHERE `Load_Batch` IS DISTINCT FROM 'P2'")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`    @notNull @primaryKey(1) @clusterKey(1) @description("Nation key"),
-    `F`.`n_Name`                             AS `n_Name`         @notNull @clusterKey(2) @description("Nation name - description changed in phase 2"),
+    `F`.`n_Name`                             AS `n_Name`         @clusterKey(2) @description("Nation name - description changed in phase 2"),
     `F`.`n_RegionKey`                        AS `n_RegionKey`    @notNull @clusterKey(3) @tag("env", "dev") @description("Region key - the column tag must only warn"),
     `F`.`n_Comment`                          AS `n_Comment`      @defaultValue("'NA'") @description("Comment, defaults to NA"),
     CAST(DATE(`F`.`last_Modified`) AS DATE)  AS `LOAD_DATE`      @notNull @description("Source of the monthly partition"),
