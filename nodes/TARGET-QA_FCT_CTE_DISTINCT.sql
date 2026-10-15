@@ -4,7 +4,7 @@
 @description("QA Fact - upsert on a composite business key; window function in a CTE, de-duplicated with SELECT DISTINCT")
 @mergeStrategy("upsert")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `n_RegionKey`, `Name_Initial` HAVING COUNT(*) > 1")
-@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(DISTINCT CONCAT(CAST(`n_RegionKey` AS STRING), '|', UPPER(SUBSTR(`n_Name`, 1, 1)))) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT `n_RegionKey`, UPPER(SUBSTR(`n_Name`, 1, 1)) FROM {{ ref('TARGET', 'QA_WRK_FEED') }} EXCEPT DISTINCT SELECT `n_RegionKey`, `Name_Initial` FROM {{ this }}")
 WITH `BASE` AS (
     SELECT
         `F`.`n_RegionKey`                    AS `n_RegionKey`,

@@ -15,8 +15,18 @@ WITH `BASE` AS (
     QUALIFY ROW_NUMBER() OVER (PARTITION BY `SRC`.`n_NationKey` ORDER BY `SRC`.`last_Modified` DESC) = 1
 ),
 `CHANGES` AS (
-    -- Phase 1: the source as-is
-    SELECT `B`.* FROM `BASE` `B`
+    -- Phase 2: key 1 renamed (last_Modified unchanged), key 2 comment changed, key 3 renamed + last_Modified bumped a day,
+    --          key 5 moved to region 3, key 24 deleted, key 99 added
+    SELECT
+        `B`.`n_NationKey`                                                                            AS `n_NationKey`,
+        CASE `B`.`n_NationKey` WHEN 1 THEN 'ARGENTINA_V2' WHEN 3 THEN 'CANADA_V2' ELSE `B`.`n_Name` END AS `n_Name`,
+        CASE WHEN `B`.`n_NationKey` = 5 THEN 3 ELSE `B`.`n_RegionKey` END                            AS `n_RegionKey`,
+        CASE WHEN `B`.`n_NationKey` = 2 THEN 'comment changed in phase 2' ELSE `B`.`n_Comment` END   AS `n_Comment`,
+        CASE WHEN `B`.`n_NationKey` = 3 THEN TIMESTAMP_SECONDS(UNIX_SECONDS(`B`.`last_Modified`) + 86400) ELSE `B`.`last_Modified` END AS `last_Modified`
+    FROM `BASE` `B`
+    WHERE `B`.`n_NationKey` <> 24
+    UNION ALL
+    SELECT 99, 'NEW_NATION', 2, 'added in phase 2', TIMESTAMP_SECONDS(1790000000)
 )
 SELECT
     CAST(`C`.`n_NationKey` AS INT64)        AS `n_NationKey`    @clusterKey(1) @notNull @not_null @uniqueness @min_value("1") @inHash("NK_HASH", 1) @description("Nation key, unique after de-duplication"),

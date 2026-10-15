@@ -6,6 +6,7 @@
 @writeMode("append")
 @tests("SELECT `n_NationKey` FROM {{ ref('TARGET', 'QA_WRK_FEED') }} GROUP BY `n_NationKey` HAVING COUNT(*) > 1 OR `n_NationKey` IS NULL", false, "Before")
 @tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `n_NationKey` HAVING COUNT(*) > 1")
+@tests("SELECT `n_NationKey` FROM {{ this }} WHERE `n_NationKey` IN (1, 3) GROUP BY `n_NationKey` HAVING COUNT(*) <> IF(`n_NationKey` = 3, 2, 1)")
 SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_LM_SCD2_KEY`  @id("d4a000") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("d4a001") @isBusinessKey @clusterKey(1),
