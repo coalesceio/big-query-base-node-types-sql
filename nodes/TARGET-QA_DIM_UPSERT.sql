@@ -3,7 +3,8 @@
 @materializationType("table")
 @description("QA Dimension - upsert with no system columns; tracking annotations present only to raise the ignored-annotation warnings")
 @mergeStrategy("upsert")
-@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> 1 + (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
+@tests("SELECT 1 FROM {{ this }} WHERE `n_NationKey` = 1 AND `n_Label` <> 'ARGENTINA_V2 / 0'")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("d5a001") @isBusinessKey @primaryKey(1),
     `F`.`n_Name`                             AS `n_Name`              @id("d5a002") @isChangeTracking,

@@ -20,8 +20,8 @@ WITH `REGION_COUNTS` AS (
 )
 SELECT DISTINCT
     CAST(`N`.`n_RegionKey` AS INT64)         AS `n_RegionKey`     @not_null,
-    CAST(`N`.`NAME_INITIAL` AS STRING)       AS `Name_Initial`    @not_null @empty,
-    CAST(`R`.`NATION_COUNT` AS INT64)        AS `Nation_Count`    @min_value("1")
+    CAST(`N`.`NAME_INITIAL` AS STRING)       AS `Name_Initial`    @notNull @not_null @empty,
+    CAST(`R`.`NATION_COUNT` AS NUMERIC)      AS `Nation_Count`    @min_value("1")
 FROM `NATIONS` `N`
 INNER JOIN `REGION_COUNTS` `R`
     ON `N`.`n_RegionKey` = `R`.`n_RegionKey`

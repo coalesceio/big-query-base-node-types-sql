@@ -9,7 +9,7 @@
 @tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `Nation_HK` HAVING COUNT(*) > 1")
 SELECT
     CAST('0' AS STRING)                      AS `QA_DIM_HASH_KEY`     @id("h1a000") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
-    CAST({{ get_hash('NATION_HK', algo='SHA256') }} AS STRING) AS `Nation_HK` @id("h1a001") @isBusinessKey @not_null @uniqueness,
+    CAST({{ get_hash('NATION_HK', algo='SHA256') }} AS STRING) AS `Nation_HK` @id("h1a001") @isBusinessKey @not_null,
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("h1a002") @inHash("NATION_HK", 1) @inHash("CONCAT_HASH", 2),
     `F`.`n_Name`                             AS `n_Name`              @id("h1a003") @inHash("ROW_HASH", 1),
     `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("h1a004") @inHash("ROW_HASH", 2) @inHash("CONCAT_HASH", 1),
