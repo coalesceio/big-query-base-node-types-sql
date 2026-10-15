@@ -396,7 +396,7 @@ Adds a custom zero key value (ghost record) to this column, overriding the node-
 |---|---|
 | **value** | Zero key value for this column, pasted into the SQL verbatim. |
 
-* The value is pasted into the SQL verbatim, so quote it to match the column's data type. It is not cast to the column's type: write a typed literal where BigQuery would otherwise infer a different type (e.g. `NUMERIC '0.5'`, `BIGNUMERIC '0.5'`).
+* The value is pasted into the SQL verbatim, so quote it to match the column's data type.
 * A value longer than the column's declared `STRING(n)` / `BYTES(n)` length raises the non-failing **Warning: Zero Key Value Too Long** stage (see [`@zeroKey` (Dimension node)](#zerokey-dimension-node)).
 * **Note:** Ignored unless `@zeroKey` is enabled at the node level, and ignored on Views.
 
@@ -405,7 +405,7 @@ Adds a custom zero key value (ghost record) to this column, overriding the node-
 ```sql
 @zeroKey("'N/A'")                                          -- string: quotes inside the annotation
 @zeroKey("-1")                                             -- number
-@zeroKey("NUMERIC '0.00'")                                -- decimal: type the literal - an untyped 0.00 is FLOAT64 and BigQuery will not write it to a NUMERIC column
+@zeroKey("0.00")                                           -- decimal
 @zeroKey("DATE '1900-01-01'")                              -- date
 @zeroKey("TIMESTAMP '1900-01-01 00:00:00'")                -- timestamp
 @zeroKey("false")                                          -- boolean
@@ -1365,9 +1365,6 @@ BigQuery cannot set NOT NULL on an existing column or add a REQUIRED column to a
 * **Defaults Cannot Reference Columns**:  
 A BigQuery column DEFAULT can only use constants and functions such as `GENERATE_UUID()` or `CURRENT_TIMESTAMP()` — a default built from other columns (for example a hash of the business key) fails at create. This is why the Dimension surrogate key uses `GENERATE_UUID()`.
 
-* **Zero Key Values Are Not Cast to the Column Type**:  
-The **Zero Key Record** stage writes each zero-key value as written, without casting it to the column's type, so BigQuery infers the type from the literal. Give the surrogate key a value of its own type — `@zeroKey("'-1'")` for a STRING (UUID) key, `@zeroKey("-1")` for an INT64 key. A decimal override such as `@zeroKey("0.5")` is FLOAT64 and fails on a NUMERIC column — write `@zeroKey("NUMERIC '0.5'")`.
-
 * **Table Expiration After an Alter**:  
 An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**), and `COPY` does not carry the table expiration over, so **Edit Table Options** sets it again after every alter:
   * a **relative** expiration (`@tableExpiration("30")`) is recomputed as `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)` — the table now expires 30 days after the alter, not 30 days after it was first created;
@@ -1777,7 +1774,7 @@ SELECT
 FROM {{ ref('SRC', 'CUSTOMER') }} `CUSTOMER`
 ```
 
-* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use an unquoted number, e.g. `@zeroKey("-1")` — see [Zero Key Values Are Not Cast to the Column Type](#known-limitations).
+* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use an unquoted number, e.g. `@zeroKey("-1")`.
 
 ##### Dimension as a View
 
