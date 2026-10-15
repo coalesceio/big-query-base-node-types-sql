@@ -11,7 +11,7 @@ SELECT
     `L_RETURNFLAG`                           AS `L_RETURNFLAG`         @id("de0006"),
     `L_LINESTATUS`                           AS `L_LINESTATUS`         @id("de0007"),
     `L_SHIPDATE`                             AS `L_SHIPDATE`           @id("de0008") @partitionBy,
-    `L_COMMITDATE`                           AS `L_COMMITDATE`         @id("de0009") @partitionBy,
+    `L_COMMITDATE`                           AS `L_COMMITDATE`         @id("de0009"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_CREATE_DATE`   @id("de000a") @isSystemCreateDate,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_UPDATE_DATE`   @id("de000b") @isSystemUpdateDate
 FROM {{ ref('SRC', 'lineitem') }} `lineitem`

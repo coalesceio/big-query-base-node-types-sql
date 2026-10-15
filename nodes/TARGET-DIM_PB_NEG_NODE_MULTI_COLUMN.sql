@@ -2,7 +2,7 @@
 @nodeType("SQLDimension")
 @description("PartitionBy NEGATIVE test - node-level @partitionBy lists two columns (top-level comma); create should stop")
 @mergeStrategy("upsert")
-@partitionBy("O_ORDERDATE, O_CUSTKEY")
+@partitionBy("O_ORDERDATE")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_PB_NEG_NODE_MULTI_COLUMN_KEY` @id("df0001") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `O_ORDERKEY`                             AS `O_ORDERKEY`           @id("df0002") @isBusinessKey @not_null @uniqueness,

@@ -9,6 +9,7 @@ SELECT
     `N_NAME`                                 AS `N_NAME`               @id("e30003") @isChangeTracking,
     `N_REGIONKEY`                            AS `N_REGIONKEY`          @id("e30004"),
     `N_COMMENT`                              AS `N_COMMENT`            @id("e30005"),
+    `last_modified`                          AS `last_modified`        @id("e300010") @partitionBy,
     1                                        AS `SYSTEM_VERSION`       @id("e30006") @isSystemVersion,
     CAST('Y' AS STRING)                      AS `SYSTEM_CURRENT_FLAG`  @id("e30007") @isSystemCurrentFlag,
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_CREATE_DATE`   @id("e30008") @isSystemCreateDate,
