@@ -377,7 +377,7 @@ macroString: |2-
       validate_dimension_requirements(hardFail): Dimension checks (column ids, business key,
       mergeStrategy, system columns). hardFail = true from create.
     ===========================================================================#}
-      {%- macro validate_dimension_requirements(hardFail=false) -%}
+   {%- macro validate_dimension_requirements(hardFail=false) -%}
 
           {# Every Dimension column must carry its own @id annotation. #}
           {{ validate_column_ids(hardFail) }}
@@ -495,9 +495,37 @@ macroString: |2-
               {%- set missingSystemColumns.items = missingSystemColumns.items + [{
                   'required': false,
                   'annotation': '@isSurrogateKey',
-                  'example': '0 AS `' ~ node.name ~ '_KEY` @isSurrogateKey',
+                  'example': 'CAST("0" AS STRING) AS `' ~ node.name ~ '_KEY` @id("<6 hex digits>") @isSurrogateKey @defaultValue("GENERATE_UUID()")',
                   'reason': 'Recommended for SCD Type 2, to give tables a stable per-version join key. Ignore this warning if you are managing your own surrogate key logic (e.g. a sequence NEXTVAL) instead of using @isSurrogateKey.'
               }] -%}
+          {%- endif -%}
+
+          {# The surrogate key is never written by the load (it is left out of every MERGE/INSERT column list), so BigQuery fills it from the column DEFAULT:
+             a missing @defaultValue fails (new rows would get a NULL key); a default other than GENERATE_UUID() only warns, since a BigQuery default
+             can not reference other columns and a constant gives every row the same key. #}
+          {%- set sk = namespace(missing=[], other=[]) -%}
+          {%- for col in columns if col.isSurrogateKey -%}
+              {%- set skDefault = col.defaultValue | default('', true) | string | trim -%}
+              {%- if skDefault | length == 0 -%}
+                  {%- set sk.missing = sk.missing + [col.name] -%}
+              {%- elif skDefault | upper | replace(' ', '') != 'GENERATE_UUID()' -%}
+                  {%- set sk.other = sk.other + [col.name ~ ' (DEFAULT ' ~ skDefault ~ ')'] -%}
+              {%- endif -%}
+          {%- endfor -%}
+          {%- if sk.missing | length > 0 %}
+              {{ test_stage('Invalid configuration: Surrogate Key', false) }}
+              -- @isSurrogateKey column {{ sk.missing | join(', ') }} has no @defaultValue.
+              -- The load never writes the surrogate key, so BigQuery fills it from the column DEFAULT; without one every new row would get a NULL key, so the node stops here.
+              -- Example: CAST("0" AS STRING) AS `{{ node.name }}_KEY` @id("<6 hex digits>") @isSurrogateKey @defaultValue("GENERATE_UUID()")
+              {{ fail_sql(hardFail) }}
+          {%- endif -%}
+          {%- if sk.other | length > 0 %}
+              {{ test_stage('Warning: Surrogate Key Default', true) }}
+              -- @isSurrogateKey column {{ sk.other | join(', ') }} is filled from that DEFAULT on every insert.
+              -- A constant default gives every row the same key.
+              -- A BigQuery default can not reference other columns, so a hash of the business key fails at create.
+              -- Use @defaultValue("GENERATE_UUID()") for a unique key per row.
+              SELECT 1
           {%- endif -%}
 
           {%- set hasSystemCreateDate = columns | selectattr("isSystemCreateDate") | list | length > 0 -%}
@@ -939,7 +967,7 @@ macroString: |2-
       Description:
         Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>)
         annotations — pass config.tag. BigQuery takes tags inside the table's single OPTIONS(...) clause,
-        so get_table_options_sql adds this entry there.
+        so get_object_options_sql adds this entry there.
 
       Output:
         tags = [('cls-dev-bigquery/cost_center', 'finance'), ('cls-dev-bigquery/env', 'prod')]
@@ -1075,7 +1103,7 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===================================================================================================
-    get_table_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[])
+    get_object_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[])
 
     Description:
         Builds the table OPTIONS(...) clause (BigQuery allows only one) from:
@@ -1098,7 +1126,7 @@ macroString: |2-
         No options, resetUnset=false
             -> empty
     ====================================================================================================#}
-    {%- macro get_table_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[]) -%}
+    {%- macro get_object_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[]) -%}
         {%- set opts = namespace(items=[]) -%}
 
         {# partition_expiration_days only applies to time-partitioned tables, i.e. any partition but an integer-range RANGE_BUCKET one #}
@@ -1158,9 +1186,9 @@ macroString: |2-
 
     {#===========================================================================
       get_object_options_sql(nodeConfig, description, resetUnset, nodeColumns, forView): the single OPTIONS(...)
-      clause for a table or a view — same options as get_table_options_sql; forView=true leaves out the two
+      clause for a table or a view — same options as get_object_options_sql; forView=true leaves out the two
       table-only options (partition_expiration_days, default_rounding_mode). Used by the create templates;
-      get_table_options_sql stays for the alter macros until they move over.
+      get_object_options_sql stays for the alter macros until they move over.
     ===========================================================================#}
     {%- macro get_object_options_sql(nodeConfig, description, resetUnset=false, nodeColumns=[], forView=false) -%}
         {%- set opts = namespace(items=[]) -%}
@@ -1485,15 +1513,15 @@ macroString: |2-
       listed and a removed one is reset to NULL (tags to []). Call after alter_clone_swap_sql().
     ===========================================================================#}
     {%- macro alter_table_options_sql() -%}
-        {%- set currentOptions = get_table_options_sql(currentState.config, currentState.node.description, false, currentState.columns) | trim -%}
-        {%- set desiredOptions = get_table_options_sql(config, node.description, false, columns) | trim -%}
+        {%- set currentOptions = get_object_options_sql(currentState.config, currentState.node.description, false, currentState.columns) | trim -%}
+        {%- set desiredOptions = get_object_options_sql(config, node.description, false, columns) | trim -%}
         {#- Options COPY does not carry over, set on this node #}
         {%- set hasTableExpiration = config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 0 -%}
         {%- set hasTags = config.tag | default([]) | length > 0 -%}
         {%- if currentOptions != desiredOptions or (nsNodeVariables.tableReplaced and (hasTableExpiration or hasTags)) %}
             {{ stage('Edit Table Options') }}
             ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
-            SET {{ get_table_options_sql(config, node.description, true, columns) | trim }}
+            SET {{ get_object_options_sql(config, node.description, true, columns) | trim }}
             {%- set nsNodeVariables.metaDataChanged = true -%}
         {%- endif %}
     {%- endmacro -%}

@@ -1,5 +1,6 @@
 @id("d17931d4-289b-47f5-96b8-43f56e746f34")
 @nodeType("728")
+@tag("cost_center", "finance")
 SELECT
     0                                        AS `DIM_nation_KEY`      @id("657e5a") @isSurrogateKey ,
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @id("36cec4") @isBusinessKey,
