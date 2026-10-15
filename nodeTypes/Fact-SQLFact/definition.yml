@@ -9,7 +9,7 @@ metadata:
     short: FCT
     plural: Facts
     tagColor: '#D9A438'
-    description: 'A column level @id annotation is required for each column - it should be unique to the column and be six hexadecimal digits'
+    description: '• A column level @id annotation is required for each column - it should be unique to the column and be six hexadecimal digits'
 
     deployStrategy: advanced
     enableCTESupport: true
@@ -35,15 +35,15 @@ metadata:
         - name: writeMode
           description: |-
             • Controls how data is written to the target table.
-            • 𝘁𝗿𝘂𝗻𝗰𝗮𝘁𝗲𝗜𝗻𝘀𝗲𝗿𝘁 clears the table before loading, replacing its contents entirely;
-            • 𝗮𝗽𝗽𝗲𝗻𝗱 inserts the new rows alongside whatever is already there.
-            • If not specified in the SQL, defaults to 𝗮𝗽𝗽𝗲𝗻𝗱.
+            • truncateInsert clears the table before loading, replacing its contents entirely;
+            • append inserts the new rows alongside whatever is already there.
+            • If not specified in the SQL, defaults to append.
             • Ignored on views.
           isRequired: false
           parameters:
             - name: mode
               type: string
-              description: Whether to 𝗧𝗥𝗨𝗡𝗖𝗔𝗧𝗘 the target table before inserting, or 𝗔𝗣𝗣𝗘𝗡𝗗 to it.
+              description: • Whether to 𝗧𝗥𝗨𝗡𝗖𝗔𝗧𝗘 the target table before inserting, or 𝗔𝗣𝗣𝗘𝗡𝗗 to it.
               isRequired: true
               default: append
               example: truncateInsert
@@ -54,58 +54,60 @@ metadata:
 
         - name: partitionBy
           description: |-
-            Partitions the target table by the given column or expression, written into 𝗣𝗔𝗥𝗧𝗜𝗧𝗜𝗢𝗡 𝗕𝗬 as-is.
-            Examples:
-              _PARTITIONDATE or DATE_TRUNC(_PARTITIONTIME, MONTH) — partition by load time
-              ORDER_DATE, DATE(ts_col) or TIMESTAMP_TRUNC(ts_col, HOUR) — partition by a date/time column
-              RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10)) — partition by integer ranges
-            ⚠️ On redeployment, partition changes drop and recreate the table.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Partitions the target table by the given column or expression, written into 𝗣𝗔𝗥𝗧𝗜𝗧𝗜𝗢𝗡 𝗕𝗬 as-is.
+            • Examples:
+              • _PARTITIONDATE or DATE_TRUNC(_PARTITIONTIME, MONTH) — partition by load time
+              • ORDER_DATE, DATE(ts_col) or TIMESTAMP_TRUNC(ts_col, HOUR) — partition by a date/time column
+              • RANGE_BUCKET(int_col, GENERATE_ARRAY(0, 100, 10)) — partition by integer ranges
+            • ⚠️ On redeployment, partition changes drop and recreate the table.
+            • Ignored on views.
           isRequired: false
           parameters:
             - name: column/expression
               type: string
-              description: Column name or partition expression.
+              description: • Column name or partition expression.
               isRequired: true
               example: DATE_TRUNC(columnName, MONTH)
 
         - name: partitionExpirationDays
           description: |-
-            Number of days to keep each partition before BigQuery deletes it.
-            Applies only to ingestion-time and time-unit column partitions; ignored for an integer-range (RANGE_BUCKET) partition.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Number of days to keep each partition before BigQuery deletes it.
+            • Applies only to ingestion-time and time-unit column partitions.
+            • On an integer-range (RANGE_BUCKET) partition it is ignored and a warning is raised; the create continues.
+            • Without any partition (@partitionBy on the node or a column) the create stops.
+            • Ignored on views.
           isRequired: false
           parameters:
             - name: days
               type: number
-              description: Partition expiration in days.
+              description: • Partition expiration in days.
               isRequired: true
               example: 30
 
         - name: tableExpiration
           description: |-
-            Sets when BigQuery deletes the target table.
-            A whole number expires the table that many days after it is created, e.g. 30;
-            a date or datetime expires it at that fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Sets when BigQuery deletes the target table or view.
+            • A whole number expires the table that many days after it is created, e.g. 30;
+              a date or datetime expires it at that fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
+            • Applies to views as well as tables — on a view only the expiration, tags and description are set.
           isRequired: false
           parameters:
             - name: value
               type: string
-              description: Number of days from creation, or a date / datetime.
+              description: • Number of days from creation, or a date / datetime.
               isRequired: true
               example: "30"
 
         - name: defaultRoundingMode
           description: |-
-            Default rounding mode for NUMERIC and BIGNUMERIC values written to the table.
-            If not specified, BigQuery uses 𝗥𝗢𝗨𝗡𝗗_𝗛𝗔𝗟𝗙_𝗔𝗪𝗔𝗬_𝗙𝗥𝗢𝗠_𝗭𝗘𝗥𝗢.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Default rounding mode for NUMERIC and BIGNUMERIC values written to the table.
+            • If not specified, BigQuery uses 𝗥𝗢𝗨𝗡𝗗_𝗛𝗔𝗟𝗙_𝗔𝗪𝗔𝗬_𝗙𝗥𝗢𝗠_𝗭𝗘𝗥𝗢.
+            • Ignored on views.
           isRequired: false
           parameters:
             - name: mode
               type: string
-              description: Rounding mode applied to the table.
+              description: • Rounding mode applied to the table.
               isRequired: true
               default: ROUND_HALF_AWAY_FROM_ZERO
               example: ROUND_HALF_EVEN
@@ -115,42 +117,43 @@ metadata:
 
         - name: tag
           description: |-
-            Applies a Resource Manager tag to this table through its 𝗢𝗣𝗧𝗜𝗢𝗡𝗦(𝘁𝗮𝗴𝘀 = [...]).
-            Repeat the annotation to apply multiple tags; a tag key can only be used once per table.
-            BigQuery tag keys are namespaced by project (<project-id>/<key>): a bare tag name is qualified with the
-            project of this node's own location, and a name that already contains "/" (e.g. a key from another
-            project or an organization) is used as-is.
-            The tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Applies a Resource Manager tag to this table or view through its OPTIONS(tags = [...]).
+            • Repeat the annotation to apply multiple tags; a tag key can only be used once per table or view.
+            • BigQuery tag keys are namespaced by project (<project-id>/<key>): a bare tag name is qualified with the
+              project of this node's own location, and a name that already contains "/" (e.g. a key from another
+              project or an organization) is used as-is.
+            • The tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
+            • Applies to views as well as tables.
+            • BigQuery has no column-level tags — a @tag on a column is not applied and only raises a warning.
           allowsMultiple: true
           parameters:
             - name: tagName
               type: string
-              description: Short name of the tag key (must already exist in GCP), or a fully-qualified <project-or-org-id>/<key>.
+              description: • Short name of the tag key (must already exist in GCP), or a fully-qualified <project-or-org-id>/<key>.
               isRequired: true
               example: cost_center
 
             - name: tagValue
               type: string
-              description: Short name of an existing value of that tag key.
+              description: • Short name of an existing value of that tag key.
               isRequired: true
               example: finance
 
         - name: mergeStrategy
           description: |-
             • Picks the change-detection method; different methods require different column annotations.
-            • If not specified: a node with an isBusinessKey column defaults to changeTracking - 𝗦𝗖𝗗 𝗧𝘆𝗽𝗲 𝟭; a node with no isBusinessKey column is loaded as a plain insert.
+            • If not specified: a node with an isBusinessKey column defaults to changeTracking - SCD Type 1; a node with no isBusinessKey column is loaded as a plain insert.
             • The value is not case-sensitive; any other value fails the run.
             • changeTracking, lastModified and upsert need the SELECT/CTE to return exactly one row per business key, with no NULL business key — a pre-load test can handle this. allColumnMatch uses no business key.
             • Always takes priority when set: changeTracking, lastModified and upsert merge on the business key, so the run fails if no column is marked isBusinessKey. allColumnMatch needs no isBusinessKey.
             • Ignored on views
 
             ◆ 𝗰𝗵𝗮𝗻𝗴𝗲𝗧𝗿𝗮𝗰𝗸𝗶𝗻𝗴
-              • Compares every plain attribute column to detect a change — 𝗦𝗖𝗗 𝗧𝘆𝗽𝗲 𝟭.
+              • Compares every plain attribute column to detect a change — SCD Type 1.
               • Requires no lastModifiedTracking column
 
             ◆ 𝗹𝗮𝘀𝘁𝗠𝗼𝗱𝗶𝗳𝗶𝗲𝗱
-              • Compares a single lastModifiedTracking timestamp column against the target's stored value — 𝗦𝗖𝗗 𝗧𝘆𝗽𝗲 𝟭.
+              • Compares a single lastModifiedTracking timestamp column against the target's stored value — SCD Type 1.
               • Requires exactly one column marked lastModifiedTracking — the run fails if none is present.
 
             ◆ 𝘂𝗽𝘀𝗲𝗿𝘁
@@ -166,15 +169,15 @@ metadata:
               • System columns are optional and excluded from the match; any that are present are written exactly as the SELECT/CTE computes them.
               • Requires no lastModifiedTracking column
 
-            Agentic creation — before writing a new Fact node's SELECT, ask the user (don't silently default):
-            1. Which merge strategy do they want — upsert, changeTracking, lastModified, or allColumnMatch? If they don't know, explain the four options above and let them choose — don't pick changeTracking just because it's the fallback default.
-            2. If they want a plain insert with no merge, leave out both this annotation and isBusinessKey — setting a strategy without a business key fails the run.
+            • Agentic creation — before writing a new Fact node's SELECT, ask the user (don't silently default):
+              1. Which merge strategy do they want — upsert, changeTracking, lastModified, or allColumnMatch? If they don't know, explain the four options above and let them choose — don't pick changeTracking just because it's the fallback default.
+              2. If they want a plain insert with no merge, leave out both this annotation and isBusinessKey — setting a strategy without a business key fails the run.
 
           isRequired: false
           parameters:
             - name: strategy
               type: string
-              description: Which change-detection method to use.
+              description: • Which change-detection method to use.
               isRequired: true
               default: changeTracking
               options:
@@ -198,19 +201,19 @@ metadata:
           parameters:
             - name: querySQL
               type: string
-              description: SQL statement to execute as a validation test.
+              description: • SQL statement to execute as a validation test.
               isRequired: true
               example: 'SELECT 1'
 
             - name: continueOnFailure
               type: boolean
-              description: Determines whether execution continues when the test fails.
+              description: • Determines whether execution continues when the test fails.
               isRequired: false
               default: true
 
             - name: runOrder
               type: string
-              description: Determines whether the test is executed before or after the load operation.
+              description: • Determines whether the test is executed before or after the load operation.
               isRequired: false
               default: After
               options:
@@ -226,7 +229,7 @@ metadata:
           parameters:
           - name: querySQL
             type: string
-            description: Query to be executed.
+            description: • Query to be executed.
             isRequired: true
             example: 'SELECT 1'
 
@@ -239,7 +242,7 @@ metadata:
           parameters:
           - name: querySQL
             type: string
-            description: Query to be executed.
+            description: • Query to be executed.
             isRequired: true
             example: 'SELECT 1'
 
@@ -248,12 +251,12 @@ metadata:
     	
         - name: primaryKey
           description: |-
-            Marks this column as part of the table's primary key, at the given position
-            (lowest first), e.g. primaryKey(1).
-            Mark every key column to build a composite key, e.g. primaryKey(1) on one column and primaryKey(2) on another.
-            Presence enables the key — remove the annotation to drop the column from it.
-            𝗡𝗼𝘁 𝗲𝗻𝗳𝗼𝗿𝗰𝗲𝗱 — BigQuery does not validate uniqueness; pair with uniqueness / not_null to test it.
-            𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Marks this column as part of the table's primary key, at the given position
+              (lowest first), e.g. primaryKey(1).
+            • Mark every key column to build a composite key, e.g. primaryKey(1) on one column and primaryKey(2) on another.
+            • Presence enables the key — remove the annotation to drop the column from it.
+            • 𝗡𝗼𝘁 𝗲𝗻𝗳𝗼𝗿𝗰𝗲𝗱 — BigQuery does not validate uniqueness; pair with uniqueness / not_null to test it.
+            • Ignored on views.
           isRequired: false
           parameters:
             - name: position
@@ -263,11 +266,11 @@ metadata:
 
         - name: clusterKey
           description: |-
-            Marks this column as part of the table's CLUSTER BY key, at the given position
-            (lowest first), e.g. clusterKey(1).
-            BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
-            ⚠️ On redeployment, clustering changes drop and recreate the table.
-            Ignored on views.
+            • Marks this column as part of the table's CLUSTER BY key, at the given position
+              (lowest first), e.g. clusterKey(1).
+            • BigQuery clusters by plain top-level columns only — no expressions — and allows at most 4 clustering columns.
+            • ⚠️ On redeployment, clustering changes drop and recreate the table.
+            • Ignored on views.
           parameters:
             - name: position
               type: number
@@ -276,33 +279,33 @@ metadata:
 
         - name: partitionBy
           description: |-
-            Partitions the target table by this column — use it when the table is partitioned purely by one column.
-                𝗧𝗮𝗸𝗲𝘀 𝗻𝗼 𝗽𝗮𝗿𝗮𝗺𝗲𝘁𝗲𝗿𝘀 — write a bare @partitionBy; passing any stops the create.
-                A 𝗗𝗔𝗧𝗘 column is used as-is; a 𝗧𝗜𝗠𝗘𝗦𝗧𝗔𝗠𝗣 or 𝗗𝗔𝗧𝗘𝗧𝗜𝗠𝗘 column is partitioned by day, as DATE(column).
-                Any other type stops the create — BigQuery partitions only by DATE / TIMESTAMP / DATETIME, or by an INT64 column through RANGE_BUCKET.
-                For an expression (DATE_TRUNC(...), TIMESTAMP_TRUNC(...), RANGE_BUCKET(...) on an INT64 column, _PARTITIONDATE), use the node-level @partitionBy instead.
-                𝗢𝗻𝗲 𝗽𝗮𝗿𝘁𝗶𝘁𝗶𝗼𝗻 𝗽𝗲𝗿 𝘁𝗮𝗯𝗹𝗲 — on more than one column, or together with the node-level @partitionBy, it stops the create.
-                ⚠️ On redeployment, partition changes drop and recreate the table.
-                𝗜𝗴𝗻𝗼𝗿𝗲𝗱 𝗼𝗻 𝘃𝗶𝗲𝘄𝘀.
+            • Partitions the target table by this column — use it when the table is partitioned purely by one column.
+            • Takes no parameters — write a bare @partitionBy; passing any stops the create.
+            • A 𝗗𝗔𝗧𝗘 column is used as-is; a TIMESTAMP or DATETIME column is partitioned by day, as DATE(column).
+            • Any other type stops the create — BigQuery partitions only by DATE / TIMESTAMP / DATETIME, or by an INT64 column through RANGE_BUCKET.
+            • For an expression (DATE_TRUNC(...), TIMESTAMP_TRUNC(...), RANGE_BUCKET(...) on an INT64 column, _PARTITIONDATE), use the node-level @partitionBy instead.
+            • One partition per table — on more than one column, or together with the node-level @partitionBy, it stops the create.
+            • ⚠️ On redeployment, partition changes drop and recreate the table.
+            • Ignored on views.
           isRequired: false    
     		  
         - name: inHash
           description: |-
                 • Marks a column as an input to a generated hash key, grouped by 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲 and ordered within that group by 𝗵𝗮𝘀𝗵𝗢𝗿𝗱𝗲𝗿.
                 • Mark every column that should feed a given hash with the same 𝗵𝗮𝘀𝗵𝗡𝗮𝗺𝗲, then call the 𝐠𝐞𝐭_𝐡𝐚𝐬𝐡("<hashName>") macro elsewhere in the SELECT to produce the actual hash column from those marked columns.
-                • 𝗦𝗲𝗲 𝗱𝗼𝗰𝘂𝗺𝗲𝗻𝘁𝗮𝘁𝗶𝗼𝗻 𝗳𝗼𝗿 𝗱𝗲𝘁𝗮𝗶𝗹𝘀.
+                • See documentation for details.
           allowsMultiple: true
           parameters:
             - name: hashName
               isRequired: true
               type: string
-              description: Group hash name shared by every column feeding the same hash.
+              description: • Group hash name shared by every column feeding the same hash.
               example: GH_COL
 
             - name: hashOrder
               isRequired: true
               type: number
-              description: Position of this column within its hash group, lowest first.
+              description: • Position of this column within its hash group, lowest first.
               example: 1
 
         - name: isBusinessKey
@@ -311,12 +314,12 @@ metadata:
             • If no column is marked and no mergeStrategy is set, there is no merge — every source row is simply inserted. An explicit changeTracking, lastModified or upsert without a business key fails the run.
             • Ignored on views.
 
-            Agentic creation — before writing the SELECT, ask the user which column(s) should be marked @isBusinessKey, or whether they want a plain insert with none. Don't guess based on column naming (e.g. assuming a "_ID"/"_KEY" column, or the first natural-looking key) — the business key is a domain decision only the user can make, and getting it wrong silently breaks change detection for every row. A business key can be more than one column; ask whether it's composite.
+            • Agentic creation — before writing the SELECT, ask the user which column(s) should be marked @isBusinessKey, or whether they want a plain insert with none. Don't guess based on column naming (e.g. assuming a "_ID"/"_KEY" column, or the first natural-looking key) — the business key is a domain decision only the user can make, and getting it wrong silently breaks change detection for every row. A business key can be more than one column; ask whether it's composite.
           isRequired: false
 
         - name: lastModifiedTracking
           description: |-
-            • Marks the column used to detect newer source rows for an 𝗶𝗻𝗰𝗿𝗲𝗺𝗲𝗻𝘁𝗮𝗹 𝗹𝗼𝗮𝗱.
+            • Marks the column used to detect newer source rows for an incremental load.
             • 𝗗𝗮𝘁𝗮𝘁𝘆𝗽𝗲 - DATE/TIME or any incrementing NUMERIC type.
             • Can only be applied to one column.
             • Must not be NULL in the source — a pre-load check fails the run if it is, since a NULL value can never compare as newer.
@@ -327,65 +330,65 @@ metadata:
           description: |-
             ⚙ This is a system column.
             • Marks this column as the timestamp a row was first created.
-            • 𝗥𝗲𝗾𝘂𝗶𝗿𝗲𝗱 𝘂𝗻𝗹𝗲𝘀𝘀 mergeStrategy 𝗶𝘀 𝘂𝗽𝘀𝗲𝗿𝘁 or 𝗮𝗹𝗹𝗖𝗼𝗹𝘂𝗺𝗻𝗠𝗮𝘁𝗰𝗵, or no column is marked isBusinessKey (these write it as computed).
+            • Required unless mergeStrategy 𝗶𝘀 𝘂𝗽𝘀𝗲𝗿𝘁 or 𝗮𝗹𝗹𝗖𝗼𝗹𝘂𝗺𝗻𝗠𝗮𝘁𝗰𝗵, or no column is marked isBusinessKey (these write it as computed).
             • Value written under changeTracking/lastModified: CURRENT_TIMESTAMP on first insert, then kept unchanged.
             • The expression in the SELECT is only used to derive the column's datatype — its value is ignored under changeTracking/lastModified (upsert writes it as computed).
             • To use different values (e.g. a source-supplied timestamp), use upsert and compute them in the SELECT/CTE.
 
-            Expected expression:
-            CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_CREATE_DATE" @isSystemCreateDate
+            • Expected expression:
+              CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_CREATE_DATE" @isSystemCreateDate
 
-            Agentic creation only — manual creation adds this column automatically.
+            • Agentic creation only — manual creation adds this column automatically.
           isRequired: false
 
         - name: isSystemUpdateDate
           description: |-
             ⚙ This is a system column.
             • Marks this column as the timestamp a row was last updated.
-            • 𝗥𝗲𝗾𝘂𝗶𝗿𝗲𝗱 𝘂𝗻𝗹𝗲𝘀𝘀 mergeStrategy 𝗶𝘀 𝘂𝗽𝘀𝗲𝗿𝘁 or 𝗮𝗹𝗹𝗖𝗼𝗹𝘂𝗺𝗻𝗠𝗮𝘁𝗰𝗵, or no column is marked isBusinessKey (these write it as computed) — recomputed to the current timestamp on every inserted or changed row, so every row change carries an audit trail of when it was last updated.
+            • Required unless mergeStrategy 𝗶𝘀 𝘂𝗽𝘀𝗲𝗿𝘁 or 𝗮𝗹𝗹𝗖𝗼𝗹𝘂𝗺𝗻𝗠𝗮𝘁𝗰𝗵, or no column is marked isBusinessKey (these write it as computed) — recomputed to the current timestamp on every inserted or changed row, so every row change carries an audit trail of when it was last updated.
             • Value written under changeTracking/lastModified: CURRENT_TIMESTAMP whenever the row is inserted or changed.
             • The expression in the SELECT is only used to derive the column's datatype — its value is ignored under changeTracking/lastModified (upsert writes it as computed).
             • To use different values (e.g. a source-supplied timestamp), use upsert and compute them in the SELECT/CTE.
 
-            Expected expression:
-            CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_UPDATE_DATE" @isSystemUpdateDate
+            • Expected expression:
+              CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS "SYSTEM_UPDATE_DATE" @isSystemUpdateDate
 
-            Agentic creation only — manual creation adds this column automatically.
+            • Agentic creation only — manual creation adds this column automatically.
           isRequired: false
 
         - name: not_null
           description: |-
            🚦 Column-level data quality test.
-            • Fails on rows where the column is 𝗡𝗨𝗟𝗟.
+            • Fails on rows where the column is NULL.
             • Presence enables the test — remove the annotation to turn it off.
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+            • Runs After the load and continues the run on failure.
 
         - name: uniqueness
           description: |- 
            🚦 Column-level data quality test.
             • Fails when a value appears on more than one row.
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+            • Runs After the load and continues the run on failure.
 
         - name: empty
           description: |-
            🚦 Column-level data quality test.
             • Fails on rows where the column trims to the empty string;
-            • 𝗡𝗨𝗟𝗟 values pass this test and are instead caught by not_null.
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+            • NULL values pass this test and are instead caught by not_null.
+            • Runs After the load and continues the run on failure.
 
         - name: accepted_values
           description: |-
            🚦 Column-level data quality test.
             • Fails on rows whose value is outside the allow list.
             • Repeatable — every occurrence on the column is merged into one list. Each call takes a comma-separated list or any number of separate arguments; every argument is itself comma-splittable.
-                accepted_values("0, 1, 2")
-                accepted_values("0", "1", "2")
-                accepted_values("0") accepted_values("1, 2")
+           • accepted_values("0, 1, 2")
+             accepted_values("0", "1", "2")
+             accepted_values("0") accepted_values("1, 2")
             • Each value is pasted into the SQL verbatim, so quote it to match the column's data type
-                positive number/float/decimal/bool as "<value>" or <value>
-                negative number/float/decimal as "-<value>"
-                string as "'<value>'"
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+           • positive number/float/decimal/bool as "<value>" or <value>
+             negative number/float/decimal as "-<value>"
+             string as "'<value>'"
+            • Runs After the load and continues the run on failure.
           allowsMultiple: true
           parameters:
             - name: value
@@ -397,14 +400,14 @@ metadata:
            🚦 Column-level data quality test.
             • Fails on rows whose value is in the deny list.
             • Repeatable — every occurrence on the column is merged into one list. Each call takes a comma-separated list or any number of separate arguments; every argument is itself comma-splittable.
-                rejected_values("0, 1, 2")
-                rejected_values("0", "1", "2")
-                rejected_values("0") rejected_values("1, 2")
+           • rejected_values("0, 1, 2")
+             rejected_values("0", "1", "2")
+             rejected_values("0") rejected_values("1, 2")
             • Each value is pasted into the SQL verbatim, so quote it to match the column's data type
-                positive number/float/decimal/bool as "<value>" or <value>
-                negative number/float/decimal as "-<value>"
-                string as "'<value>'"
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+           • positive number/float/decimal/bool as "<value>" or <value>
+             negative number/float/decimal as "-<value>"
+             string as "'<value>'"
+            • Runs After the load and continues the run on failure.
           allowsMultiple: true
           parameters:
             - name: value
@@ -417,19 +420,19 @@ metadata:
             • Fails on rows outside the inclusive range. NULL values pass.
             • Applies to numeric and temporal(date/time related) columns only.
             • Each bound is pasted into the SQL verbatim, so write it as a valid SQL value for the column's data type —
-                positive number/float/decimal as "<num>" or <num>
-                negative number/float/decimal as "-<num>"
-                date/time as "'date/time'" or "<date/time_expression>"
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+           • positive number/float/decimal as "<num>" or <num>
+             negative number/float/decimal as "-<num>"
+             date/time as "'date/time'" or "<date/time_expression>"
+            • Runs After the load and continues the run on failure.
           parameters:
             - name: min
               type: string
-              description: Inclusive lower bound the column value must not fall below.
+              description: • Inclusive lower bound the column value must not fall below.
               isRequired: true
               example: -5
             - name: max
               type: string
-              description: Inclusive upper bound the column value must not exceed.
+              description: • Inclusive upper bound the column value must not exceed.
               isRequired: true
               example: 0
 
@@ -439,11 +442,11 @@ metadata:
             • Fails on rows below the bound. NULL values pass.
             • Applies to numeric and temporal(date/time related) columns only.
             • Pasted into the SQL verbatim — see min_max.
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+            • Runs After the load and continues the run on failure.
           parameters:
             - name: min
               type: string
-              description: Inclusive lower bound the column value must not fall below.
+              description: • Inclusive lower bound the column value must not fall below.
               isRequired: true
               example: -5
 
@@ -453,11 +456,11 @@ metadata:
             • Fails on rows above the bound. NULL values pass.
             • Applies to numeric and temporal(date/time related) columns only.
             • Pasted into the SQL verbatim — see min_max.
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+            • Runs After the load and continues the run on failure.
           parameters:
             - name: max
               type: string
-              description: Inclusive upper bound the column value must not exceed.
+              description: • Inclusive upper bound the column value must not exceed.
               isRequired: true
               example: 0
 
@@ -465,12 +468,12 @@ metadata:
           description: |-
            🚦 Column-level data quality test.
             • Checks that the data is fresh — fails when the column's value is older than the given interval, or when the table has no rows at all. 
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
-            𝗡𝗼𝘁𝗲: on a DATE column the value is truncated to midnight.
+            • Runs After the load and continues the run on failure.
+           • 𝗡𝗼𝘁𝗲: on a DATE column the value is truncated to midnight.
           parameters:
             - name: interval
               description: |-
-                How far back from now the newest value is allowed to be, expressed in the unit given by 𝘂𝗻𝗶𝘁.
+                • How far back from now the newest value is allowed to be, expressed in the unit given by 𝘂𝗻𝗶𝘁.
               type: number
               isRequired: true
               example: 1
@@ -485,19 +488,19 @@ metadata:
            🚦 Column-level data quality test.
             • Compares this column against another date/time column on the same node using the given operator.
             • E.g. @relative_time("<=", "END_DATE") fails any row where this column's value is not less than or equal to END_DATE.
-            • A row with either side 𝗡𝗨𝗟𝗟 is left out of the check and passes.
-            • Runs 𝗔𝗳𝘁𝗲𝗿 the load and continues the run on failure.
+            • A row with either side NULL is left out of the check and passes.
+            • Runs After the load and continues the run on failure.
           parameters:
             - name: operator
               type: string
-              description: Comparison operator used to compare this column against the other column.
+              description: • Comparison operator used to compare this column against the other column.
               isRequired: true
               options: ["<", "<=", ">", ">=", "=", "<>"]
               example: "="
 
             - name: column
               type: string
-              description: Name of the other date/time column on this node to compare against.
+              description: • Name of the other date/time column on this node to compare against.
               isRequired: true
               example: <other_column>
 
