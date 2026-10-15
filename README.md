@@ -195,7 +195,7 @@ The following stages are executed, in this order (each one only when needed):
 | **Replace Table** | Copies the altered clone back over the live table (`CREATE OR REPLACE TABLE … COPY`) — or to the new name when the table is renamed |
 | **Delete Table** | Drops the old table after a rename |
 | **Delete Clone** | Drops the internal clone |
-| **Edit Table Options** | One `SET OPTIONS(...)` when the description, expirations, rounding mode or tags changed — and always after **Replace Table**, because `COPY` does not carry the table expiration over. Every option is listed; a removed one is reset (NULL, tags to `[]`). |
+| **Edit Table Options** | One `SET OPTIONS(...)` when the description, expirations, rounding mode or tags changed — and always after **Replace Table**, because the copied table loses its tags and table expiration, so they are re-attached here. Every option is listed; a removed one is reset (NULL, tags to `[]`). |
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
 
@@ -1365,10 +1365,11 @@ BigQuery cannot set NOT NULL on an existing column or add a REQUIRED column to a
 * **Defaults Cannot Reference Columns**:  
 A BigQuery column DEFAULT can only use constants and functions such as `GENERATE_UUID()` or `CURRENT_TIMESTAMP()` — a default built from other columns (for example a hash of the business key) fails at create. This is why the Dimension surrogate key uses `GENERATE_UUID()`.
 
-* **Table Expiration After an Alter**:  
-An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**), and `COPY` does not carry the table expiration over, so **Edit Table Options** sets it again after every alter:
-  * a **relative** expiration (`@tableExpiration("30")`) is recomputed as `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)` — the table now expires 30 days after the alter, not 30 days after it was first created;
-  * a **fixed** expiration (`@tableExpiration("2026-12-31")`) is set to the same timestamp again, so it does not move.
+* **Tags and Table Expiration After an Alter**:  
+An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels, rounding mode and partition expiration are kept), so every alter ends with an extra **Edit Table Options** stage that re-attaches them:
+  * a **fixed** expiration (`@tableExpiration("2026-12-31")`) is set to the same timestamp again, so it does not change;
+  * a **relative** expiration (`@tableExpiration("30")`) is recomputed from the time of the alter as `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)` — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
+  * a table rename goes through the same copy, so the renamed table gets its tags and expiration back the same way.
 
 * **Changing `@nodeType` on a Deployed Node**:  
 The switch deploys as a metadata update — the existing table is kept, not rebuilt for the new type. Drop and redeploy the table when changing a node's type.
