@@ -1274,8 +1274,8 @@ macroString: |2-
       A table is recreated (drop + create) when what BigQuery cannot alter changes: the
       materialization type, the dataset, the partitioning or the clustering. Any other change
       is applied to a clone: Clone Table -> alters -> Replace Table (the clone is copied back over
-      the table) -> Delete Clone. COPY drops the table expiration and the tags, so the Replace Table
-      copy sets them in its own OPTIONS(...).
+      the table) -> Edit Table Options -> Delete Clone. COPY drops the table expiration and the tags,
+      so "Edit Table Options" sets them again on the replaced table.
       Views are recreated when their definition changes.
     ===========================================================================#}
 
@@ -1509,10 +1509,10 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===========================================================================
-      get_copy_options_sql(): OPTIONS(...) for the Replace Table CREATE OR REPLACE ... COPY, with the table expiration
-      and the tags set on the node — COPY keeps every other option but drops these two, so they are
-      given on the copy itself. One removed from the node needs nothing, COPY already drops it.
-      '' when the node sets neither.
+      get_copy_options_sql(): OPTIONS(...) for the "Edit Table Options" stage after Replace Table, with the
+      table expiration and the tags set on the node — COPY keeps every other option but drops these
+      two, so they are set again on the replaced table. One removed from the node needs nothing, COPY
+      already drops it. '' when the node sets neither.
     ===========================================================================#}
     {%- macro get_copy_options_sql() -%}
         {%- set ns = namespace(items=[]) -%}
@@ -1531,12 +1531,12 @@ macroString: |2-
 
     {#===========================================================================
       alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Alter Table
-      Options -> Replace Table -> Delete Clone, the pattern the BigQuery YAML node types use: the
-      clone is copied back over the table (CREATE OR REPLACE ... COPY), so the table never disappears.
-      A table option change goes through the clone as well (see alter_clone_options_sql() and
-      table_options_dropped_by_copy_changed()). COPY drops the table expiration and the tags, so the
-      Replace Table copy sets them in its own OPTIONS(...) (get_copy_options_sql()); the clone is
-      deleted afterwards, so it needs neither.
+      Options -> Replace Table -> Edit Table Options -> Delete Clone, the pattern the BigQuery YAML
+      node types use: the clone is copied back over the table (CREATE OR REPLACE ... COPY), so the
+      table never disappears. A table option change goes through the clone as well (see
+      alter_clone_options_sql() and table_options_dropped_by_copy_changed()). COPY drops the table
+      expiration and the tags, so "Edit Table Options" sets them again on the replaced table
+      (get_copy_options_sql()); the clone is deleted afterwards, so it needs neither.
       COPY keeps the primary key, so it is only dropped / re-added on the clone when the key
       itself changes (a key column renamed or dropped is a key change). When the node was
       renamed the clone is copied to the new name and the old table deleted.
@@ -1579,7 +1579,13 @@ macroString: |2-
             {{ stage('Replace Table') }}
             CREATE OR REPLACE TABLE {{ desiredPath }}
             COPY {{ clonePath }}
-            {{ copyOptionsSql }}
+
+            {# Edit Table Options: COPY drops the table expiration and the tags, so set them again #}
+            {%- if copyOptionsSql | length > 0 %}
+                {{ stage('Edit Table Options') }}
+                ALTER TABLE {{ desiredPath }}
+                SET {{ copyOptionsSql }}
+            {%- endif %}
 
             {%- if pathChanged %}
                 {{ stage('Delete Table') }}
