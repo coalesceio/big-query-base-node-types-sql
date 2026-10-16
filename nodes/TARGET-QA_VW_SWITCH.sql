@@ -7,5 +7,5 @@
 @tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`,
-    `F`.`n_Name`                             AS `n_Name`
+    `F`.`n_Name`                             AS `N_NAME`
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`
