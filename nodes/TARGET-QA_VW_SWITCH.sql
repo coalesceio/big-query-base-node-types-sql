@@ -1,6 +1,6 @@
 @id("15f1b8dc-dbff-4ee9-ad7b-df9e3b447c09")
 @nodeType("SQLWork")
-@materializationType("view")
+@materializationType("table")
 @description("QA switch - deploy 1 table, deploy 2 view, deploy 3 table again")
 @tableExpiration("2027-06-30")
 @tag("env", "dev")

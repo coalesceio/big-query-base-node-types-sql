@@ -1,7 +1,6 @@
 @id("428d3442-b6fb-4812-b06a-48869db19846")
 @nodeType("SQLFact")
 @materializationType("view")
-@description("QA view - options-only changes: deploy 2 changes expiration only, deploy 3 removes the description")
 @tableExpiration("2027-09-30 12:00:00")
 @tag("env", "dev")
 SELECT
