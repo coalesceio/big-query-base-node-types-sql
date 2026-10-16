@@ -8,7 +8,7 @@
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")
-@tests("SELECT 1 FROM {{ this }} GROUP BY `O_ORDERKEY`, `O_CUSTKEY` HAVING COUNT(*) > 1", false)
+@tests("SELECT 1 FROM {{ this }} GROUP BY `O_ORDERKEY`, `O_CUSTKEY` HAVING COUNT(*) > 1", true)
 SELECT
     `O_ORDERKEY`                                  AS `O_ORDERKEY`       @id("be8401") @notNull @primaryKey(1) @clusterKey(1) @not_null @description("Order key - primary key part 1"),
     `O_CUSTKEY`                                   AS `O_CUSTKEY`        @id("be8402") @notNull @primaryKey(2) @clusterKey(2) @not_null @description("Customer key - primary key part 2"),
