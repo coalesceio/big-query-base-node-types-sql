@@ -7,13 +7,16 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 {# == Node Type Name           : Dimension  == #}
 {# == Node Type Description    : This node loads data into dimension table using options distinct and multi-source cte if specified == #}
 
-{# Validate: the materialization type must be table or view #}
+{# == Validate: the materialization type must be table, transient table or view == #}
 {{ validate_materialization_type() }}
+
+{# == Materialization type from the node, normalised (case and spaces): table / transient table / view == #}
+{%- set materializationType = get_materialization_type(node.materializationType) %}
 
 {# == To run data quality tests before data insertion == #}
 {{ run_tests('Before') }}
 
-{%- if node.materializationType == 'table' %}
+{%- if materializationType == 'table' %}
 
     {{ validate_dimension_requirements() }}
 
@@ -100,7 +103,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 
     {%- if config.zeroKey is defined and hasSurrogateKey %}
         {%- set zeroKeySurrogateValue = config.zeroKey.parameters[0] if (config.zeroKey.parameters is defined and config.zeroKey.parameters | length > 0) else '0' %}
-        {{ stage('Load ' + node.materializationType + ' Using Merge - Zero Key Record') }}
+        {{ stage('Load ' + materializationType + ' Using Merge - Zero Key Record') }}
             MERGE INTO {{ ref_no_link(node.location.name, node.name) }} `{{ node.name }}` USING
             (
                 SELECT
@@ -152,20 +155,20 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {%- endif %}
 
     {%- if isSimpleUpsert %}
-        {{ stage('Load ' + node.materializationType + ' Using Merge - Upsert') }}
+        {{ stage('Load ' + materializationType + ' Using Merge - Upsert') }}
     {%- elif lastModifiedComparison %}
         {#== Last Modified SCD ==#}
         {%- if type2Dimension %}
-            {{ stage('Load ' + node.materializationType + ' Using Merge - Last Modified Comparison - SCD2') }}
+            {{ stage('Load ' + materializationType + ' Using Merge - Last Modified Comparison - SCD2') }}
         {%- else %}
-            {{ stage('Load ' + node.materializationType + ' Using Merge - Last Modified Comparison - SCD1') }}
+            {{ stage('Load ' + materializationType + ' Using Merge - Last Modified Comparison - SCD1') }}
         {%- endif %}
     {%- else %}
         {#== Change Tracking SCD ==#}
         {%- if type2Dimension %}
-            {{ stage('Load ' + node.materializationType + ' Using Merge - Change Tracking - SCD2') }}
+            {{ stage('Load ' + materializationType + ' Using Merge - Change Tracking - SCD2') }}
         {%- else %}
-            {{ stage('Load ' + node.materializationType + ' Using Merge - Change Tracking - SCD1') }}
+            {{ stage('Load ' + materializationType + ' Using Merge - Change Tracking - SCD1') }}
         {%- endif %}
     {%- endif %}
 

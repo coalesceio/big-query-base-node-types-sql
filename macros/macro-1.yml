@@ -384,13 +384,13 @@ macroString: |-
 
         {# These cross-checks only apply when @mergeStrategy is set explicitly, since an inferred strategy can not conflict with itself. #}
         {%- if mergeStrategyExplicit and isSimpleUpsert and (lastModifiedCount > 0 or changeTrackingCount > 0) %}
-            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
             -- @mergeStrategy("upsert") performs no change detection, so @isChangeTracking/@lastModifiedTracking columns are never read. Remove them, or switch mergeStrategy to "changeTracking"/"lastModified" to use them.
             SELECT 1
         {%- endif -%}
 
         {%- if isChangeTrackingStrategy and lastModifiedCount > 0 %}
-            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
             -- @mergeStrategy("changeTracking") does not use @lastModifiedTracking — that column would be silently ignored. Remove it, or switch mergeStrategy to "lastModified".
             SELECT 1
         {%- endif -%}
@@ -411,7 +411,7 @@ macroString: |-
         {%- endif -%}
 
         {%- if isLastModifiedStrategy and changeTrackingCount > 0 %}
-            {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+            {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
             -- @mergeStrategy("lastModified") does not use @isChangeTracking — those columns would be silently ignored (the last-modified comparison takes priority). Remove them, or switch mergeStrategy to "changeTracking" to use them.
             SELECT 1
         {%- endif -%}
@@ -662,33 +662,33 @@ macroString: |-
 
       {# No @mergeStrategy and no business key = plain insert, so @lastModifiedTracking is never read. Warn only — the insert still runs. #}
       {%- if not hasBusinessKey and not mergeStrategyExplicit and lastModifiedCount > 0 %}
-          {{ test_stage('Invalid configuration: No Business Key', true) }}
+          {{ test_stage('Warning: Invalid configuration: No Business Key', true) }}
           -- No @mergeStrategy and no column marked @isBusinessKey, so this node is loaded as a plain insert — @lastModifiedTracking will be ignored. Mark the business key column(s) with @isBusinessKey and set @mergeStrategy("lastModified") to use it, or remove the annotation.
           SELECT 1
       {%- endif -%}
 
       {# allColumnMatch matches on every non-system column, so @isBusinessKey / @lastModifiedTracking are never read. Warn only — the merge still runs. #}
       {%- if isAllColumnMatch and hasBusinessKey %}
-          {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+          {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
           -- @mergeStrategy("allColumnMatch") matches on every non-system column, so @isBusinessKey is ignored — all columns are used as the business key for comparison. Remove @isBusinessKey, or switch mergeStrategy to use it.
           SELECT 1
       {%- endif -%}
 
       {%- if isAllColumnMatch and lastModifiedCount > 0 %}
-          {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+          {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
           -- @mergeStrategy("allColumnMatch") performs no change detection, so @lastModifiedTracking columns are never read. Remove them, or switch mergeStrategy to "lastModified" to use them.
           SELECT 1
       {%- endif -%}
 
       {# These cross-checks only apply when @mergeStrategy is set explicitly, since an inferred strategy can't conflict with itself. #}
       {%- if hasBusinessKey and mergeStrategyExplicit and isSimpleUpsert and lastModifiedCount > 0 %}
-          {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+          {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
           -- @mergeStrategy("upsert") performs no change detection, so @lastModifiedTracking columns are never read. Remove them, or switch mergeStrategy to "lastModified" to use them.
           SELECT 1
       {%- endif -%}
 
       {%- if hasBusinessKey and isChangeTrackingStrategy and lastModifiedCount > 0 %}
-          {{ test_stage('Invalid configuration: mergeStrategy', true) }}
+          {{ test_stage('Warning: Invalid configuration: mergeStrategy', true) }}
           -- @mergeStrategy("changeTracking") does not use @lastModifiedTracking — that column would be silently ignored. Remove it, or switch mergeStrategy to "lastModified".
           SELECT 1
       {%- endif -%}
@@ -706,6 +706,18 @@ macroString: |-
           {{ test_stage('Invalid configuration: Last Modified Column', false) }}
           -- {{ reason }}
           {{ fail_sql(hardFail) }}
+      {%- endif -%}
+
+      {# A Fact is always SCD Type 1, so @lastModifiedTracking takes no parameter (unlike the Dimension's scdType). Warn only — the parameter is ignored. #}
+      {%- set lmWithParams = namespace(items=[]) -%}
+      {%- for col in columns if col.lastModifiedTracking is mapping and col.lastModifiedTracking.parameters is defined and col.lastModifiedTracking.parameters | length > 0 -%}
+          {%- set lmWithParams.items = lmWithParams.items + [col.name ~ ' @lastModifiedTracking(' ~ (col.lastModifiedTracking.parameters | join(', ')) ~ ')'] -%}
+      {%- endfor -%}
+      {%- if lmWithParams.items | length > 0 %}
+          {{ test_stage('Warning: lastModifiedTracking Parameter Ignored', true) }}
+          -- {{ lmWithParams.items | join('; ') }}: a Fact is always SCD Type 1, so @lastModifiedTracking takes no parameter and it is ignored.
+          -- Use a bare @lastModifiedTracking. For SCD Type 2 versioning, use a Dimension node with @lastModifiedTracking(2).
+          SELECT 1
       {%- endif -%}
 
       {# Collect every missing/misconfigured system column here so one run reports them all together instead of one at a time. #}
@@ -1391,26 +1403,72 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
-      alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table when any
-      table option changed (description, table/partition expiration, rounding mode or tags), or
-      when the clone replaced the table and the node has @tableExpiration or @tag:
-      CREATE OR REPLACE ... COPY keeps the description, rounding mode and partition expiration,
-      but drops the table expiration and the tags, so those must be re-applied. Every option is
-      listed and a removed one is reset to NULL (tags to []). Call after alter_clone_swap_sql().
-  ===========================================================================#}
-    {%- macro alter_table_options_sql() -%}
-        {%- set currentOptions = get_object_options_sql(currentState.config, currentState.node.description, false, currentState.columns) | trim -%}
-        {%- set desiredOptions = get_object_options_sql(config, node.description, false, columns) | trim -%}
-        {#- Options COPY does not carry over, set on this node #}
-        {%- set hasTableExpiration = config.tableExpiration is defined and config.tableExpiration.parameters is defined and config.tableExpiration.parameters | length > 0 -%}
-        {%- set hasTags = config.tag | default([]) | length > 0 -%}
-        {%- if currentOptions != desiredOptions or (nsNodeVariables.tableReplaced and (hasTableExpiration or hasTags)) %}
-            {{ stage('Edit Table Options') }}
-            ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
-            SET {{ get_object_options_sql(config, node.description, true, columns) | trim }}
-            {%- set nsNodeVariables.metaDataChanged = true -%}
-        {%- endif %}
-    {%- endmacro -%}
+        alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table with only
+        the table options that changed between currentState and the node (partition expiration, table
+        expiration, rounding mode, tags, description); a removed one is reset (NULL, tags = []).
+        Options left out keep their value, so e.g. a rounding mode change does not restart a relative
+        @tableExpiration. When the clone replaced the table, the table expiration and tags set on the
+        node are re-applied even if unchanged: CREATE OR REPLACE ... COPY keeps the description,
+        rounding mode and partition expiration, but drops those two. Nothing when no option needs
+        setting. Call after alter_clone_swap_sql().
+    ===========================================================================#}
+      {%- macro alter_table_options_sql() -%}
+          {%- set ns = namespace(items=[]) -%}
+          {%- set tableReplaced = nsNodeVariables.tableReplaced -%}
+
+          {# partition_expiration_days only applies to time-partitioned tables; the partition itself is unchanged here (a partition change recreates the table) #}
+          {%- set partitionSql = get_partition_by_sql(config, columns) | trim -%}
+          {%- if partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
+              {%- set ped = namespace(current='', desired='') -%}
+              {%- if currentState.config.partitionExpirationDays is defined and currentState.config.partitionExpirationDays.parameters is defined and currentState.config.partitionExpirationDays.parameters | length > 0 -%}
+                  {%- set ped.current = currentState.config.partitionExpirationDays.parameters[0] | string | trim -%}
+              {%- endif -%}
+              {%- if config.partitionExpirationDays is defined and config.partitionExpirationDays.parameters is defined and config.partitionExpirationDays.parameters | length > 0 -%}
+                  {%- set ped.desired = config.partitionExpirationDays.parameters[0] | string | trim -%}
+              {%- endif -%}
+              {%- if ped.current != ped.desired -%}
+                  {%- set ns.items = ns.items + ['partition_expiration_days = ' ~ (ped.desired if ped.desired | length > 0 else 'NULL')] -%}
+              {%- endif -%}
+          {%- endif -%}
+
+          {# expiration_timestamp: also re-applied after the clone replaced the table (COPY drops it) #}
+          {%- set currentExpiration = get_expiration_timestamp_sql(currentState.config) | trim -%}
+          {%- set desiredExpiration = get_expiration_timestamp_sql(config) | trim -%}
+          {%- if currentExpiration != desiredExpiration or (tableReplaced and desiredExpiration | length > 0) -%}
+              {%- set ns.items = ns.items + ['expiration_timestamp = ' ~ (desiredExpiration if desiredExpiration | length > 0 else 'NULL')] -%}
+          {%- endif -%}
+
+          {%- set rm = namespace(current='', desired='') -%}
+          {%- if currentState.config.defaultRoundingMode is defined and currentState.config.defaultRoundingMode.parameters is defined and currentState.config.defaultRoundingMode.parameters | length > 0 -%}
+              {%- set rm.current = currentState.config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
+          {%- endif -%}
+          {%- if config.defaultRoundingMode is defined and config.defaultRoundingMode.parameters is defined and config.defaultRoundingMode.parameters | length > 0 -%}
+              {%- set rm.desired = config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
+          {%- endif -%}
+          {%- if rm.current != rm.desired -%}
+              {%- set ns.items = ns.items + [("default_rounding_mode = '" ~ rm.desired ~ "'") if rm.desired | length > 0 else 'default_rounding_mode = NULL'] -%}
+          {%- endif -%}
+
+          {# tags: also re-applied after the clone replaced the table (COPY drops them) #}
+          {%- set currentTags = get_tags_sql(currentState.config.tag) | trim -%}
+          {%- set desiredTags = get_tags_sql(config.tag) | trim -%}
+          {%- if currentTags != desiredTags or (tableReplaced and desiredTags | length > 0) -%}
+              {%- set ns.items = ns.items + [desiredTags if desiredTags | length > 0 else 'tags = []'] -%}
+          {%- endif -%}
+
+          {%- set currentDescription = currentState.node.description | default('', true) | trim -%}
+          {%- set desiredDescription = node.description | default('', true) | trim -%}
+          {%- if currentDescription != desiredDescription -%}
+              {%- set ns.items = ns.items + [("description = '" ~ (node.description | escape) ~ "'") if desiredDescription | length > 0 else 'description = NULL'] -%}
+          {%- endif -%}
+
+          {%- if ns.items | length > 0 %}
+              {{ stage('Edit Table Options') }}
+              ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
+              SET OPTIONS({{ ns.items | join(', ') }})
+              {%- set nsNodeVariables.metaDataChanged = true -%}
+          {%- endif %}
+      {%- endmacro -%}
 
   {#===========================================================================
     alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Replace
