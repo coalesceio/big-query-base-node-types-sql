@@ -82,12 +82,14 @@ macroString: |-
         (a column without @id has its name as id, so renaming it drops and re-adds it) #}
     {%- if currentState is defined and currentState and desiredState is defined and desiredState -%}
       {%- for curCol in currentState.columns -%}
-        {%- set idStillDesired = desiredState.columns | default([]) | selectattr('id', 'equalto', curCol.id) | list -%}
+        {%- set idMatch = namespace(items=[]) -%}
+        {{- match_columns_by_id(desiredState.columns, curCol.id, idMatch) -}}
+        {%- set idStillDesired = idMatch.items -%}
         {%- if not idStillDesired -%}
           {%- set nsNodeVariables.droppedColumns = nsNodeVariables.droppedColumns + ['`' ~ curCol.name ~ '`'] -%}
         {%- endif -%}
-        {#- Same id, new name: the column is renamed (old name recorded) #}
-        {%- if idStillDesired and (idStillDesired | first).name != curCol.name -%}
+        {#- Same id, new name: the column is renamed (old name recorded); a case-only change is not a rename #}
+        {%- if idStillDesired and ((idStillDesired | first).name | lower) != (curCol.name | lower) -%}
           {%- set nsNodeVariables.renamedColumns = nsNodeVariables.renamedColumns + ['`' ~ curCol.name ~ '`'] -%}
         {%- endif -%}
       {%- endfor -%}
@@ -790,35 +792,45 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
-    find_duplicate_tag_names(tagList): tag names whose fully-qualified key is used more than once,
-    comma-separated; '' when none. Used by tag_check_duplicates().
+    get_unique_tags(tagList, out): fills out.entries (pass a namespace(entries=[])) with the @tag list,
+    one entry per fully-qualified tag key — when a key is applied more than once the LAST @tag wins
+    (e.g. "env" and "cls-dev-bigquery/env" on a node in that project are the same key). Each entry is
+    {key, name, value, count}, count = times the key was applied. Used by get_tags_sql() and
+    tag_check_duplicates().
   ===========================================================================#}
-  {%- macro find_duplicate_tag_names(tagList) -%}
-      {%- set ns = namespace(entries=[], dupes=[]) -%}
+  {%- macro get_unique_tags(tagList, out) -%}
+      {%- set ns = namespace(entries=[]) -%}
       {%- for t in tagList | default([]) -%}
-          {%- set ns.entries = ns.entries + [{"key": get_tag_full_name(t.parameters[0]), "name": t.parameters[0]}] -%}
+          {%- set tagKey = get_tag_full_name(t.parameters[0]) -%}
+          {%- set previous = ns.entries | selectattr('key', 'equalto', tagKey) | list -%}
+          {%- set ns.entries = (ns.entries | rejectattr('key', 'equalto', tagKey) | list) + [{
+              "key": tagKey,
+              "name": t.parameters[0] | string | trim,
+              "value": t.parameters[1] | string | trim,
+              "count": (previous[0].count + 1) if previous | length > 0 else 1
+          }] -%}
       {%- endfor -%}
-      {%- for e in ns.entries -%}
-          {%- if (ns.entries | selectattr('key', 'equalto', e.key) | list | length) > 1 and e.name not in ns.dupes -%}
-              {%- set ns.dupes = ns.dupes + [e.name] -%}
-          {%- endif -%}
-      {%- endfor -%}
-      {{- ns.dupes | join(', ') -}}
+      {%- set out.entries = ns.entries -%}
   {%- endmacro -%}
 
   {#===========================================================================
-    tag_check_duplicates(hardFail): failing "Duplicate Tags Found: <node>" check when the same tag key
-    is applied more than once — a BigQuery table can hold only one value per tag key, so any
-    repeat of the same fully-qualified key is a duplicate, even with different values
-    (e.g. "env" and "cls-dev-bigquery/env" on a node in that project). BigQuery has no
-    column-level tags, so a column @tag only warns ("Warning: Column Tags Ignored") and is not applied. Call at the start of create, before any DDL.
+    tag_check_duplicates(): non-blocking "Warning: Duplicate Tags Found: <node>" check when the same tag
+    key is applied more than once — a BigQuery table or view holds one value per tag key, so the last
+    @tag for that key is the one applied (get_tags_sql drops the earlier ones). BigQuery has no
+    column-level tags, so a column @tag only warns ("Warning: Column Tags Ignored") and is not applied.
+    Call at the start of create, before any DDL.
   ===========================================================================#}
-  {%- macro tag_check_duplicates(hardFail=true) -%}
-      {%- set nodeDupeTags = find_duplicate_tag_names(config.tag) | trim -%}
-      {%- if nodeDupeTags | length > 0 %}
-          {{ test_stage('Duplicate Tags Found: ' + node.name, false) }}
-          -- {{ nodeDupeTags }} is applied multiple times on {{ node.name }}. A BigQuery table or view can carry only one value per tag key.
-          {{ fail_sql(hardFail) }}
+  {%- macro tag_check_duplicates() -%}
+      {%- set uniqueTags = namespace(entries=[]) -%}
+      {{- get_unique_tags(config.tag, uniqueTags) -}}
+      {%- set dupeTags = uniqueTags.entries | selectattr('count', 'gt', 1) | list -%}
+      {%- if dupeTags | length > 0 %}
+          {{ test_stage('Warning: Duplicate Tags Found: ' + node.name, true) }}
+          -- A BigQuery table or view holds one value per tag key, so the last @tag for each key below is applied and the earlier ones are ignored:
+          {%- for t in dupeTags %}
+          --   {{ t.key }} applied {{ t.count }} times; applied value: '{{ t.value }}'
+          {%- endfor %}
+          SELECT 1
       {%- endif -%}
 
       {%- set taggedColumns = columns | selectattr('tag', 'defined') | selectattr('tag') | map(attribute='name') | list -%}
@@ -947,8 +959,9 @@ macroString: |-
 
     Description:
       Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>)
-      annotations — pass config.tag. BigQuery takes tags inside the table's single OPTIONS(...) clause,
-      so get_object_options_sql adds this entry there.
+      annotations — pass config.tag. A tag key applied more than once keeps only its last @tag.
+      BigQuery takes tags inside the table's single OPTIONS(...) clause, so get_object_options_sql
+      adds this entry there.
 
     Output:
       tags = [('cls-dev-bigquery/cost_center', 'finance'), ('cls-dev-bigquery/env', 'prod')]
@@ -956,8 +969,10 @@ macroString: |-
   ####################################################################################################################################}
   {%- macro get_tags_sql(tagList) -%}
       {%- set ns = namespace(items=[]) -%}
-      {%- for t in tagList | default([]) -%}
-          {%- set ns.items = ns.items + ["('" ~ (get_tag_full_name(t.parameters[0]) | replace("'", "\\'")) ~ "', '" ~ (t.parameters[1] | string | trim | replace("'", "\\'")) ~ "')"] -%}
+      {%- set uniqueTags = namespace(entries=[]) -%}
+      {{- get_unique_tags(tagList, uniqueTags) -}}
+      {%- for t in uniqueTags.entries -%}
+          {%- set ns.items = ns.items + ["('" ~ (t.key | replace("'", "\\'")) ~ "', '" ~ (t.value | replace("'", "\\'")) ~ "')"] -%}
       {%- endfor -%}
       {%- if ns.items | length > 0 -%}
           tags = [{{ ns.items | join(', ') }}]
@@ -1137,28 +1152,79 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
+    get_expiration_value(nodeConfig): the trimmed @tableExpiration value; '' when not set.
+  ===========================================================================#}
+  {%- macro get_expiration_value(nodeConfig) -%}
+      {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 0 -%}
+          {{- nodeConfig.tableExpiration.parameters[0] | default('', true) | string | trim -}}
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===========================================================================
+    get_expiration_kind(exprnValue): how a @tableExpiration value is read —
+      'days'       a whole number (e.g. 30) — not supported, validate_table_expiration() stops the create
+      'datetime'   starts with a YYYY-MM-DD date, alone or followed by a time (e.g. 2026-12-31, 2026-12-31 23:59:59)
+      'expression' anything else, used as a SQL expression as-is (e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))
+    '' when the value is empty.
+  ===========================================================================#}
+  {%- macro get_expiration_kind(exprnValue) -%}
+      {%- set v = exprnValue | default('', true) | string | trim -%}
+      {%- set isDate = v | length >= 10 and v[4:5] == '-' and v[7:8] == '-'
+                       and (v[0:4] | int(-1)) >= 0 and (v[5:7] | int(-1)) >= 1 and (v[8:10] | int(-1)) >= 1
+                       and (v | length == 10 or v[10:11] in (' ', 'T')) -%}
+      {%- if v | length == 0 -%}
+      {%- elif (v | int(-1)) >= 0 and (v | int(-1)) | string == v -%}
+          days
+      {%- elif isDate -%}
+          datetime
+      {%- else -%}
+          expression
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===========================================================================
     get_expiration_timestamp_sql(nodeConfig): the expiration_timestamp value from @tableExpiration —
-    a whole number is a day count (TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <n> DAY)), anything else a
-    date / datetime (a date alone expires at 23:59:59); '' when not set.
+    a date / datetime becomes a TIMESTAMP literal (a date alone expires at 23:59:59 that day), an
+    expression is used as-is; '' when not set, or for a day count (rejected by validate_table_expiration()).
   ===========================================================================#}
   {%- macro get_expiration_timestamp_sql(nodeConfig) -%}
-      {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 0 -%}
-          {%- set exprnValue = nodeConfig.tableExpiration.parameters[0] | default('', true) | string | trim -%}
-          {%- if exprnValue | length > 0 -%}
-              {%- if (exprnValue | int(-1)) >= 0 and (exprnValue | int(-1)) | string == exprnValue -%}
-                  TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL {{ exprnValue }} DAY)
-              {%- else -%}
-                  TIMESTAMP "{{ exprnValue }}{{ '"' if exprnValue | length > 11 else ' 23:59:59"' }}
-              {%- endif -%}
-          {%- endif -%}
+      {%- set exprnValue = get_expiration_value(nodeConfig) | trim -%}
+      {%- set kind = get_expiration_kind(exprnValue) | trim -%}
+      {%- if kind == 'datetime' -%}
+          TIMESTAMP "{{ exprnValue }}{{ '"' if exprnValue | length > 10 else ' 23:59:59"' }}
+      {%- elif kind == 'expression' -%}
+          {{ exprnValue }}
+      {%- endif -%}
+  {%- endmacro -%}
+
+  {#===========================================================================
+    validate_table_expiration(hardFail): failing "Invalid configuration: tableExpiration" when
+    @tableExpiration is a number of days, which is not supported; non-failing
+    "Warning: tableExpiration Expression" when it is an expression rather than a fixed date / datetime.
+    Applies to tables and views. Call at the start of create, before any DDL.
+  ===========================================================================#}
+  {%- macro validate_table_expiration(hardFail=true) -%}
+      {%- set exprnValue = get_expiration_value(config) | trim -%}
+      {%- set kind = get_expiration_kind(exprnValue) | trim -%}
+      {%- if kind == 'days' %}
+          {{ test_stage('Invalid configuration: tableExpiration', false) }}
+          -- @tableExpiration("{{ exprnValue }}") is a number of days, which is not supported.
+          -- Give a fixed date or datetime instead, e.g. @tableExpiration("2026-12-31") (expires at 23:59:59 that day) or @tableExpiration("2026-12-31 23:59:59").
+          {{ fail_sql(hardFail) }}
+      {%- elif kind == 'expression' %}
+          {{ test_stage('Warning: tableExpiration Expression', true) }}
+          -- @tableExpiration("{{ exprnValue }}") is not a fixed date / datetime, so it is used as a SQL expression as-is.
+          -- It is evaluated each time the table is created or replaced, so an expression on CURRENT_TIMESTAMP() (e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))
+          -- moves the expiry forward on every such redeploy. Use a fixed date / datetime, e.g. @tableExpiration("2026-12-31 23:59:59"), for an expiry that does not move.
+          SELECT 1
       {%- endif -%}
   {%- endmacro -%}
 
   {#===========================================================================
     view_options_alter_sql(currentState, desiredState): OPTIONS(...) with only the view options that changed
     between the two states — expiration_timestamp, tags, description; a removed one is reset (NULL, tags = []).
-    '' when none changed. Options left out keep their value, so a tag change does not restart a relative
-    expiration. Used by the view branch of the create templates for ALTER VIEW ... SET.
+    '' when none changed. Options left out keep their value, so a tag change does not re-evaluate an expression
+    @tableExpiration. Used by the view branch of the create templates for ALTER VIEW ... SET.
   ===========================================================================#}
   {%- macro view_options_alter_sql(currentState, desiredState) -%}
       {%- set ns = namespace(items=[]) -%}
@@ -1225,7 +1291,7 @@ macroString: |-
     A table is recreated (drop + create) when what BigQuery cannot alter changes: the
     materialization type, the dataset, the partitioning or the clustering. Any other change
     is applied to a clone: Clone Table -> alters -> Replace Table (the clone is copied back over
-    the table) -> Delete Clone -> Edit Table Options (COPY drops the table expiration).
+    the table) -> Edit Table Options (COPY drops the table expiration and tags) -> Delete Clone.
     Views are recreated when their definition changes.
   ===========================================================================#}
 
@@ -1256,6 +1322,20 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
+    match_columns_by_id(cols, colId, out): fills out.items (pass a namespace(items=[])) with the
+    columns of cols whose id equals colId, ignoring case. BigQuery column names are
+    case-insensitive and a column without @id has its name as id, so N_NAME and n_name are the
+    same column — a case-only change must not look like a dropped and added column.
+  ===========================================================================#}
+  {%- macro match_columns_by_id(cols, colId, out) -%}
+      {%- set ns = namespace(items=[]) -%}
+      {%- for c in cols | default([]) if (c.id | string | lower) == (colId | string | lower) -%}
+          {%- set ns.items = ns.items + [c] -%}
+      {%- endfor -%}
+      {%- set out.items = ns.items -%}
+  {%- endmacro -%}
+
+  {#===========================================================================
     alter_column_warnings_sql(): non-failing "Warning: NOT NULL Not Applied" when a column
     becomes NOT NULL, or a NOT NULL column is added — BigQuery cannot SET NOT NULL or add a
     REQUIRED column to an existing table. The column stays NULLABLE until the table is
@@ -1264,7 +1344,9 @@ macroString: |-
   {%- macro alter_column_warnings_sql() -%}
       {%- set ns = namespace(items=[]) -%}
       {%- for desCol in columns if desCol.nullable == false -%}
-          {%- set curMatch = currentState.columns | default([]) | selectattr('id', 'equalto', desCol.id) | list -%}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(currentState.columns, desCol.id, idMatch) -}}
+          {%- set curMatch = idMatch.items -%}
           {%- if not curMatch -%}
               {%- set ns.items = ns.items + [desCol.name ~ ' (new column)'] -%}
           {%- elif (curMatch | first).nullable != false -%}
@@ -1291,7 +1373,9 @@ macroString: |-
   {%- macro alter_modify_columns_sql() -%}
       {%- set ns = namespace(typeActions=[], actions=[]) -%}
       {%- for curCol in currentState.columns -%}
-          {%- set matchingCols = columns | default([]) | selectattr('id', 'equalto', curCol.id) | list -%}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(columns, curCol.id, idMatch) -}}
+          {%- set matchingCols = idMatch.items -%}
 
           {%- if matchingCols -%}
               {%- set desCol = matchingCols | first -%}
@@ -1337,12 +1421,15 @@ macroString: |-
   {#===========================================================================
     alter_add_columns_sql(): "Add Column" — one ALTER for columns with a new id, with their
     description. BigQuery cannot add a column with a DEFAULT, so for each new column with a
-    default: "Set Default: <col>" then "Backfill Default: <col>" fills the existing rows.
+    default: "Set Default: <col>" after the add. Existing rows are not backfilled — they keep NULL;
+    the default applies to rows inserted from then on.
   ===========================================================================#}
   {%- macro alter_add_columns_sql() -%}
       {%- set ns = namespace(items=[]) -%}
       {%- for desCol in columns -%}
-          {%- set idAlreadyCurrent = currentState.columns | default([]) | selectattr('id', 'equalto', desCol.id) | list -%}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(currentState.columns, desCol.id, idMatch) -}}
+          {%- set idAlreadyCurrent = idMatch.items -%}
           {%- if not idAlreadyCurrent -%}
               {%- set ns.items = ns.items + [desCol] -%}
           {%- endif -%}
@@ -1362,11 +1449,6 @@ macroString: |-
               {{ stage('Set Default: ' + desCol.name) }}
               ALTER TABLE {{ nsNodeVariables.alterObjectNameFullPath }}
               ALTER COLUMN `{{ desCol.name }}` SET DEFAULT {{ desCol.defaultValue }}
-
-              {{ stage('Backfill Default: ' + desCol.name) }}
-              UPDATE {{ nsNodeVariables.alterObjectNameFullPath }}
-              SET `{{ desCol.name }}` = {{ desCol.defaultValue }}
-              WHERE TRUE
           {%- endfor %}
       {%- endif %}
   {%- endmacro -%}
@@ -1374,11 +1456,15 @@ macroString: |-
   {#===========================================================================
     alter_rename_columns_sql(): "Rename Column" per column whose id is kept but name
     changed. A column without @id has its name as id, so renaming it drops and re-adds it.
+    Names are compared ignoring case: BigQuery column names are case-insensitive, so a case-only
+    change (n_name -> N_NAME) is no rename — the column keeps its current spelling in BigQuery.
   ===========================================================================#}
   {%- macro alter_rename_columns_sql() -%}
       {%- for curCol in currentState.columns -%}
-          {%- set idMatches = columns | default([]) | selectattr('id', 'equalto', curCol.id) | list -%}
-          {%- if idMatches and (idMatches | first).name != curCol.name %}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(columns, curCol.id, idMatch) -}}
+          {%- set idMatches = idMatch.items -%}
+          {%- if idMatches and ((idMatches | first).name | lower) != (curCol.name | lower) %}
               {{ stage('Rename Column') }}
               ALTER TABLE {{ nsNodeVariables.alterObjectNameFullPath }}
               RENAME COLUMN `{{ curCol.name }}` TO `{{ (idMatches | first).name }}`
@@ -1406,7 +1492,7 @@ macroString: |-
         alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table with only
         the table options that changed between currentState and the node (partition expiration, table
         expiration, rounding mode, tags, description); a removed one is reset (NULL, tags = []).
-        Options left out keep their value, so e.g. a rounding mode change does not restart a relative
+        Options left out keep their value, so e.g. a rounding mode change does not re-evaluate an expression
         @tableExpiration. When the clone replaced the table, the table expiration and tags set on the
         node are re-applied even if unchanged: CREATE OR REPLACE ... COPY keeps the description,
         rounding mode and partition expiration, but drops those two. Nothing when no option needs
@@ -1472,8 +1558,9 @@ macroString: |-
 
   {#===========================================================================
     alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Replace
-    Table -> Delete Clone, the pattern the BigQuery YAML node types use: the clone is copied
-    back over the table (CREATE OR REPLACE ... COPY), so the table never disappears.
+    Table, the pattern the BigQuery YAML node types use: the clone is copied back over the
+    table (CREATE OR REPLACE ... COPY), so the table never disappears. The clone is kept:
+    alter_delete_clone_sql() drops it as the last stage, after Edit Table Options.
     COPY keeps the primary key, so it is only dropped / re-added on the clone when the key
     itself changes (a key column renamed or dropped is a key change). When the node was
     renamed the clone is copied to the new name and the old table deleted.
@@ -1486,7 +1573,8 @@ macroString: |-
       {%- set pathChanged = currentPath != desiredPath -%}
       {%- set currentPrimaryKey = get_primary_key_sql(currentState.columns) | trim -%}
       {%- set desiredPrimaryKey = get_primary_key_sql(columns) | trim -%}
-      {%- set primaryKeyChanged = currentPrimaryKey != desiredPrimaryKey -%}
+      {#- Column names are case-insensitive: a case-only change to a key column is no key change #}
+      {%- set primaryKeyChanged = (currentPrimaryKey | lower) != (desiredPrimaryKey | lower) -%}
 
       {%- if alterSql | trim | length > 0 or pathChanged or primaryKeyChanged %}
           {{ stage('Clone Table') }}
@@ -1516,10 +1604,20 @@ macroString: |-
               DROP TABLE IF EXISTS {{ currentPath }}
           {%- endif %}
 
-          {{ stage('Delete Clone') }}
-          DROP TABLE IF EXISTS {{ clonePath }}
           {%- set nsNodeVariables.tableReplaced = true -%}
           {%- set nsNodeVariables.metaDataChanged = true -%}
+      {%- endif %}
+  {%- endmacro -%}
+
+  {#===========================================================================
+    alter_delete_clone_sql(): "Delete Clone" — drops the clone once the alter is complete, as the
+    last stage (after Replace Table and Edit Table Options). Nothing when alter_clone_swap_sql()
+    made no clone.
+  ===========================================================================#}
+  {%- macro alter_delete_clone_sql() -%}
+      {%- if nsNodeVariables.tableReplaced %}
+          {{ stage('Delete Clone') }}
+          DROP TABLE IF EXISTS {{ nsNodeVariables.cloneObjectNameFullPath }}
       {%- endif %}
   {%- endmacro -%}
 

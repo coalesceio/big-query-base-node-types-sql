@@ -140,8 +140,10 @@ Every deployment of a Work node first runs these checks before any change in Big
 | **Stage** | **Description** |
 |-----------|----------------|
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` (BigQuery has no transient table) |
-| **Duplicate Tags Found: \<node\>** | The same tag key applied more than once on the node — a BigQuery table or view holds one value per tag key |
+| **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; a BigQuery table or view holds one value per tag key, so the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — more than one partition, an invalid column-level `@partitionBy`, partition expiration without any partition, more than 4 cluster columns or a cluster expression. See [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
 
@@ -188,18 +190,18 @@ The following stages are executed, in this order (each one only when needed):
 | **Alter Column Data Type** | Changes data types (BigQuery runs SET DATA TYPE on its own) |
 | **Alter Column** | Drops NOT NULL, sets or drops defaults and changes column descriptions, in one statement |
 | **Add Column** | Adds new columns, with their descriptions |
-| **Set Default: \<column\> \| Backfill Default: \<column\>** | BigQuery cannot add a column with a DEFAULT: the default is set after the add and the existing rows are filled with it |
+| **Set Default: \<column\>** | BigQuery cannot add a column with a DEFAULT: the default is set after the add. Existing rows are not backfilled — they keep NULL |
 | **Rename Column** | Renames a column whose `@id` is unchanged |
 | **Delete Column** | Drops removed columns |
 | **Add Primary Key** | Adds the new primary key on the clone |
 | **Replace Table** | Copies the altered clone back over the live table (`CREATE OR REPLACE TABLE … COPY`) — or to the new name when the table is renamed |
 | **Delete Table** | Drops the old table after a rename |
-| **Delete Clone** | Drops the internal clone |
-| **Edit Table Options** | One `SET OPTIONS(...)` when the description, expirations, rounding mode or tags changed — and always after **Replace Table**, because the copied table loses its tags and table expiration, so they are re-attached here. Every option is listed; a removed one is reset (NULL, tags to `[]`). |
+| **Edit Table Options** | One `SET OPTIONS(...)` on the table with only the options that changed (description, expirations, rounding mode, tags); a removed one is reset (NULL, tags to `[]`). After **Replace Table** the table expiration and tags are always re-attached, because the copied table loses them. |
+| **Delete Clone** | Last stage — drops the internal clone once the table is replaced and its options are set |
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
 
-> ⚠️ **Case-only renames fail.** BigQuery column names are case-insensitive — see [Column Name Case](#known-limitations). Changing only the case of a column (e.g. `N_NAME` → `n_Name`) currently fails the alter with *"Column already exists"* (the table is left untouched).
+> **Note:** BigQuery column names are case-insensitive — see [Column Name Case](#known-limitations). A case-only change (e.g. `N_NAME` → `n_Name`) is not treated as a rename, drop or add: no alter stage runs for it, and the column keeps its current spelling in BigQuery.
 
 > **Note:** BigQuery only allows certain data type changes (for example widening `INT64` → `NUMERIC`, or `NUMERIC` → `BIGNUMERIC`). Other changes fail on the clone with BigQuery's error, leaving the live table untouched.
 
@@ -217,7 +219,7 @@ This happens when:
 * the partition (`@partitionBy`) or the cluster key (`@clusterKey`) changes,
 * the node moves to another project or dataset.
 
-> **Note:** The partition and cluster key are compared as text, so changing only the case of a partition or cluster column (e.g. `CLUSTER BY N_NATIONKEY` → `n_NationKey`) also drops and recreates the table, although BigQuery treats it as the same column — see [Column Name Case](#known-limitations).
+> **Note:** The partition and cluster key are compared ignoring case, so changing only the case of a partition or cluster column (e.g. `CLUSTER BY N_NATIONKEY` → `n_NationKey`) does not recreate the table — see [Column Name Case](#known-limitations).
 
 #### Altering and Recreating the Work Views
 
@@ -517,8 +519,10 @@ Every deployment of a Dimension Node first runs these checks before any change i
 | **Stage** | **Description** |
 |-----------|----------------|
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
-| **Duplicate Tags Found: \<node\>** | The same tag key applied twice on the node — stops the deployment |
+| **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Missing Business Key \| Invalid configuration: … \| Missing Required System Columns \| Surrogate Key Not Set/Using Custom Surrogate Key Logic \| Invalid configuration: Surrogate Key \| Warning: Surrogate Key Default \| Warning: Zero Key Value Too Long \| Warning: Invalid configuration: mergeStrategy** | Dimension validation checks (table only), rendered only when the annotations have a problem — see [Dimension Load](#dimension-load). A required problem stops the deployment; a recommendation or a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (e.g. `@isChangeTracking` / `@lastModifiedTracking` under `upsert`) — it is ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
@@ -564,7 +568,7 @@ Every deployment of a Dimension Node of materialization type table runs its conf
 
 Redeployment works exactly like the Work node — see [Altering the Work Tables](#altering-the-work-tables), [Recreating the Work Tables](#recreating-the-work-tables) and [Altering and Recreating the Work Views](#altering-and-recreating-the-work-views); the create stages read **Create Dimension Table** / **Create Dimension View**. A metadata update is recorded when only tests, `@writeMode`, `@mergeStrategy`, `@zeroKey`, `@preSQL`/`@postSQL` or a transform or join on a table changed.
 
-> **Note:** Every Dimension column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data — except a case-only rename (e.g. `N_NAME` → `n_Name`), which currently fails with *"Column already exists"*; see [Column Name Case](#known-limitations).
+> **Note:** Every Dimension column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data. A case-only change (e.g. `N_NAME` → `n_Name`) is not a rename: nothing runs, and the column keeps its current spelling — see [Column Name Case](#known-limitations).
 
 ### Removing a Dimension Node
 
@@ -719,8 +723,10 @@ Every deployment of a Fact Node first runs these checks before any change in Big
 | **Stage** | **Description** |
 |-----------|----------------|
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
-| **Duplicate Tags Found: \<node\>** | The same tag key applied twice on the node — stops the deployment |
+| **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Invalid configuration: No Business Key \| Invalid configuration: … \| Missing Required System Columns \| Warning: Invalid configuration: mergeStrategy \| Warning: Invalid configuration: No Business Key** | Fact validation checks (table only), rendered only when the annotations have a problem. A required problem stops the deployment; a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (`@isBusinessKey` under `allColumnMatch`, `@lastModifiedTracking` under `changeTracking` / `upsert` / `allColumnMatch`); **Warning: Invalid configuration: No Business Key** flags `@lastModifiedTracking` on a plain-insert node. Both are ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
@@ -763,7 +769,7 @@ A Fact Node of materialization type view is a plain `CREATE OR REPLACE VIEW` ove
 
 Redeployment works exactly like the Work node — see [Altering the Work Tables](#altering-the-work-tables), [Recreating the Work Tables](#recreating-the-work-tables) and [Altering and Recreating the Work Views](#altering-and-recreating-the-work-views); the create stages read **Create Fact Table** / **Create Fact View**.
 
-> **Note:** Every Fact column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data — except a case-only rename (e.g. `N_NAME` → `n_Name`), which currently fails with *"Column already exists"*; see [Column Name Case](#known-limitations).
+> **Note:** Every Fact column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data. A case-only change (e.g. `N_NAME` → `n_Name`) is not a rename: nothing runs, and the column keeps its current spelling — see [Column Name Case](#known-limitations).
 
 ### Removing a Fact Node
 
@@ -874,19 +880,25 @@ Number of days to keep each partition before BigQuery deletes it.
 
 `@tableExpiration("<value>")`
 
-Sets when BigQuery deletes the target table or view. Accepts either:
+Sets when BigQuery deletes the target table or view.
 
-* **A whole number** — expires it that many days after it is created, e.g. `"30"` → `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)`.
-* **A date or datetime** — expires it at that fixed point, e.g. `"2026-12-31"` or `"2026-12-31 23:59:59"`. A date alone expires at 23:59:59 that day.
+| **Value** | **Result** |
+|-----------|------------|
+| **A date** — `"2999-12-31"` | Expires at 23:59:59 that day → `TIMESTAMP "2999-12-31 23:59:59"` |
+| **A datetime** — `"2999-12-31 00:00:00"` | Expires at that fixed point → `TIMESTAMP "2999-12-31 00:00:00"` |
+| **A SQL expression** — `"TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)"` | Used as-is, with the non-failing **Warning: tableExpiration Expression** (see below) |
+| **A number of days** — `"30"` | ❌ Not supported — stops the deploy with **Invalid configuration: tableExpiration**. Write the expression above instead |
 
-* A day count restarts on every create, and on every redeploy that rebuilds or alters the table.
+* A date / datetime is a **fixed** expiry: it does not move on redeploy.
+* An expression is **evaluated each time the table is created or replaced** — on the first create, on a recreate (partition / cluster change), and on every alter, which rebuilds the table through a copy and re-applies the expiration. An expression on `CURRENT_TIMESTAMP()` therefore **moves the expiry forward on every such redeploy**; a redeploy that changes nothing on the table leaves it as it is.
 * Applies to tables and views.
 
 **Example:**
 
 ```sql
-@tableExpiration("30")
-@tableExpiration("2026-12-31 23:59:59")
+@tableExpiration("2999-12-31")
+@tableExpiration("2999-12-31 00:00:00")
+@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")   -- warns: moves forward on every create / alter
 ```
 
 ##### `@defaultRoundingMode`
@@ -915,7 +927,7 @@ Sets the table's `default_rounding_mode`, used when values are written to NUMERI
 | **tagValue** | Short name of an existing value of that tag key. |
 
 * **Prerequisite:** the tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
-* A table or view holds **one value per tag key**. The same key twice — even with different values, or written once as `env` and once as `<project>/env` — stops the deploy with **Duplicate Tags Found**.
+* A table or view holds **one value per tag key**. When the same key is applied more than once — even with different values, or written once as `env` and once as `<project>/env` — the **last** `@tag` for that key is applied, the earlier ones are ignored, and the non-failing **Warning: Duplicate Tags Found** lists each repeated key with the value applied. The deployment continues.
 * BigQuery has **no column-level tags** — a `@tag` on a column is not applied and raises the non-failing **Warning: Column Tags Ignored**; the deployment continues. Move the tag to the node to tag the whole table (column-level access control in BigQuery uses Data Catalog policy tags instead).
 * On a table, tag changes are applied with **Edit Table Options**; on a view, with **Edit View Options** (only the changed options are sent).
 
@@ -1071,7 +1083,7 @@ Adds a column DEFAULT.
 
 * Quote to match the column's data type — number: `@defaultValue("<num>")`, string: `@defaultValue("'<string>'")`, function: `@defaultValue("GENERATE_UUID()")`.
 * A BigQuery default **cannot reference other columns** — the create fails with "Default value expressions cannot reference columns".
-* A column added on redeploy gets its default afterwards (**Set Default**) and existing rows are filled with it (**Backfill Default**).
+* A column added on redeploy gets its default afterwards (**Set Default**). **Existing rows are not backfilled** — they keep NULL in the new column; the default applies to rows inserted from then on. Fill them yourself if needed (e.g. a one-off `@postSQL` UPDATE, or a reload with `@writeMode("truncateInsert")`).
 * **Note:** Ignored on Views.
 
 **Example:**
@@ -1349,8 +1361,8 @@ Converting an existing YAML (`.yml`) node to a SQL (`.sql`) node, or vice versa,
 
 * **Column Name Case**:  
 BigQuery column names keep the case they were created with, but are **case-insensitive**: backticks only quote an identifier (for reserved words or special characters) — they do not make it case-sensitive, unlike double quotes in Snowflake. So `n_Name` and `N_NAME` are the same column: a table cannot hold both ("Duplicate column name"), and any casing in a query reads the same column. As a result:
-  * a **case-only column rename** (e.g. `N_NAME` → `n_Name`) currently fails the alter with *"Column already exists"* — BigQuery rejects `RENAME COLUMN N_NAME TO n_Name` and `ADD COLUMN n_Name` because the name already exists ignoring case. The failure happens on the internal copy, so the live table is untouched; to apply the new case, rename through a temporary name in two deployments, or recreate the table;
-  * a **case-only change in a partition or cluster column** drops and recreates the table (losing its data), although BigQuery treats it as the same column;
+  * a **case-only column change** (e.g. `N_NAME` → `n_Name`) is ignored on redeploy — the alter compares column names (and ids) ignoring case, so no Rename / Delete / Add Column stage runs and the column **keeps the spelling it was created with** in BigQuery. To change the stored spelling, rename through a temporary name in two deployments, or recreate the table;
+  * a **case-only change in a partition, cluster or primary key column** is no change either — the partition, clustering and key are compared ignoring case, so the table is not recreated and the key is not dropped and re-added;
   * BigQuery stores the clustering with the column's own case (`CLUSTER BY n_name` on a column `N_NAME` is stored as `CLUSTER BY N_NAME`).
 
 * **Partition, Cluster Key or Dataset Changes Recreate the Table**:  
@@ -1368,7 +1380,7 @@ A BigQuery column DEFAULT can only use constants and functions such as `GENERATE
 * **Tags and Table Expiration After an Alter**:  
 An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels, rounding mode and partition expiration are kept), so every alter ends with an extra **Edit Table Options** stage that re-attaches them:
   * a **fixed** expiration (`@tableExpiration("2026-12-31")`) is set to the same timestamp again, so it does not change;
-  * a **relative** expiration (`@tableExpiration("30")`) is recomputed from the time of the alter as `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)` — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
+  * an **expression** expiration (`@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")`) is evaluated again at the time of the alter — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
   * a table rename goes through the same copy, so the renamed table gets its tags and expiration back the same way.
 
 * **Changing `@nodeType` on a Deployed Node**:  
@@ -1439,7 +1451,7 @@ Common ways to use the SQL nodes. The SQL patterns under Work Examples (CTEs, wi
 @description("Table description")
 @preSQL("DELETE FROM {{ this }} WHERE N_LOAD_DATE < DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)")
 @postSQL("INSERT INTO {{ ref('AUDIT', 'LOAD_LOG') }} (TABLE_NAME, LOAD_TS) VALUES ('WRK_NATION', CURRENT_TIMESTAMP())")
-@tableExpiration("90")
+@tableExpiration("2999-12-31")
 @tag("env", "dev")
 SELECT
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @not_null @uniqueness @min_value(0) @max_value(100) @accepted_values("1, 2, 3") @inHash("GH_COL1", 2) @clusterKey(1),
@@ -1784,7 +1796,7 @@ No business key or system columns needed; nothing is merged. The view carries a 
 ```sql
 @materializationType("view")
 @tag("env", "dev")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 SELECT
     `CUSTOMER_ID`                            AS `CUSTOMER_ID`         @id("0a0001") @description("Customer id"),
     `NAME`                                   AS `NAME`                @id("0a0002")
@@ -1932,7 +1944,7 @@ Every BigQuery table option in one node — they work the same on Work, Dimensio
 @materializationType("table")
 @description("Nation table with every table option")
 @partitionExpirationDays("365")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")

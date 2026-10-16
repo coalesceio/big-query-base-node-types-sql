@@ -83,18 +83,18 @@ metadata:
               example: 30
 
         - name: tableExpiration
-          description: |-
-            • Sets when BigQuery deletes the target table or view.
-            • A whole number expires the table that many days after it is created, e.g. 30;
-              a date or datetime expires it at that fixed point, e.g. 2026-12-31 or 2026-12-31 23:59:59 — a date alone expires at 23:59:59 that day.
-            • Applies to views as well as tables — on a view only the expiration, tags and description are set.
+          description: |-            
+            • Sets the fixed date and time when BigQuery deletes the target table or view.
+            • Takes a date or datetime
+              Ex. 2026-12-31 A date alone expires at 23:59:59 that day
+              Ex. 2026-12-31 23:59:59
           isRequired: false
-          parameters:
+          parameters:            
             - name: value
               type: string
-              description: • Number of days from creation, or a date / datetime.
+              description: • A fixed date or datetime (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).
               isRequired: true
-              example: "30"
+              example: "2026-12-31"
 
         - name: defaultRoundingMode
           description: |-
