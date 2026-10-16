@@ -3,7 +3,7 @@
 @materializationType("table")
 @description("QA Work table - OPTIONS CHANGED: partition expiration 180, table expiration 2028-06-30, ROUND_HALF_EVEN, tags env=prod + cost_center=finance")
 @partitionBy("DATE_TRUNC(LOAD_DATE, MONTH)")
-@partitionExpirationDays("400")
+@partitionExpirationDays("500")
 @tableExpiration("2028-06-30")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
 @tag("env", "prod")

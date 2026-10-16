@@ -194,10 +194,10 @@ The following stages are executed, in this order (each one only when needed):
 | **Rename Column** | Renames a column whose `@id` is unchanged |
 | **Delete Column** | Drops removed columns |
 | **Add Primary Key** | Adds the new primary key on the clone |
-| **Alter Table Options** | One `SET OPTIONS(...)` on the clone with only the table options that changed (description, table / partition expiration, rounding mode, tags); a removed one is reset (NULL, tags to `[]`) |
+| **Alter Table Options** | One `SET OPTIONS(...)` on the clone with only the table options that changed (description, table expiration, rounding mode, tags); a removed one is reset (NULL, tags to `[]`). Partition expiration is not set here — see **Edit Table Options** |
 | **Replace Table** | Copies the altered clone back over the live table (`CREATE OR REPLACE TABLE … COPY`) — or to the new name when the table is renamed |
 | **Delete Table** | Drops the old table after a rename |
-| **Edit Table Options** | One `SET OPTIONS(...)` on the live table with only the **table expiration** and the **tags** set on the node — the copy in **Replace Table** drops those two, so they are re-attached here. Every other option was set on the clone and carried over by the copy. |
+| **Edit Table Options** | One `SET OPTIONS(...)` on the live table with: the **partition expiration** when it changed (NULL when removed) — the copy in **Replace Table** keeps the live table's own partition expiration, so it cannot be set on the clone; and, after **Replace Table**, the **table expiration** and the **tags** set on the node, which the copy drops. A change to only the partition expiration runs just this stage, without a clone. |
 | **Delete Clone** | Last stage — drops the internal clone once the table is replaced and its options are set |
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
@@ -1414,7 +1414,7 @@ BigQuery cannot set NOT NULL on an existing column or add a REQUIRED column to a
 A BigQuery column DEFAULT can only use constants and functions such as `GENERATE_UUID()` or `CURRENT_TIMESTAMP()` — a default built from other columns (for example a hash of the business key) fails at create. This is why the Dimension surrogate key uses `GENERATE_UUID()`.
 
 * **Tags and Table Expiration After an Alter**:  
-An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels, rounding mode and partition expiration are kept), so every alter ends with an extra **Edit Table Options** stage on the live table that re-attaches those two (every other option change is made on the clone, in **Alter Table Options**, and carried over by the copy):
+An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels and rounding mode come from the copy; the partition expiration stays whatever the live table had — a changed one is set by **Edit Table Options** too), so every alter ends with an extra **Edit Table Options** stage on the live table that re-attaches those two (every other option change is made on the clone, in **Alter Table Options**, and carried over by the copy):
   * a **fixed** expiration (`@tableExpiration("2026-12-31")`) is set to the same timestamp again, so it does not change;
   * an **expression** expiration (`@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")`) is evaluated again at the time of the alter — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
   * a table rename goes through the same copy, so the renamed table gets its tags and expiration back the same way.
