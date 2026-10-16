@@ -14,8 +14,8 @@
 SELECT
     `o`.`O_ORDERKEY`                          AS `O_ORDERKEY`         @id("039b01") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness @description("Order key - business key"),
     `o`.`O_CUSTKEY`                           AS `O_CUSTKEY`          @id("039b02") @notNull @clusterKey(2) @not_null @description("Customer key"),
-    CAST(COALESCE(`c`.`C_MKTSEGMENT`, 'UNKNOWN') AS STRING) AS `C_MKTSEGMENT` @id("039b03") @clusterKey(3) @description("Customer market segment, UNKNOWN when unresolved"),
-    `o`.`O_ORDERSTATUS`                       AS `O_ORDERSTATUS`      @id("039b04") @accepted_values("'F', 'O', 'P'") @description("Order status"),
+    CAST(COALESCE(`c`.`C_MKTSEGMENT`, 'UNKNOWN') AS STRING) AS `C_MKTSEGMENT` @id("039b03") @description("Customer market segment, UNKNOWN when unresolved"),
+    `o`.`O_ORDERSTATUS`                       AS `O_ORDERSTATUS`      @id("039b04") @accepted_values("'F', 'O', 'P'"),
     `o`.`O_TOTALPRICE`                        AS `O_TOTALPRICE`       @id("039b05") @min_value("0") @description("Order total price"),
     CAST(`o`.`O_TOTALPRICE` * NUMERIC '0.075' AS NUMERIC) AS `O_TAX_AMOUNT`     @id("039b06") @description("7.5% tax, rounded with the table default_rounding_mode"),
     `o`.`O_ORDERDATE`                         AS `O_ORDERDATE`        @id("039b07") @notNull @not_null @description("Order date - partitioned by month"),

@@ -6,6 +6,7 @@
 @writeMode("append")
 @tag("env", "dev")
 @tag("cost_center", "finance")
+@defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
 @tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_ORDERS') }} GROUP BY `O_ORDERKEY` HAVING COUNT(*) > 1 OR `O_ORDERKEY` IS NULL", false, "Before")
 @tests("SELECT 1 FROM {{ this }} WHERE `DIM_CUSTOMER_KEY` = '0'", true, "After")
 SELECT

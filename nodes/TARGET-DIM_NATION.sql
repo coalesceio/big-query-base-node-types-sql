@@ -6,6 +6,8 @@
 @writeMode("append")
 @zeroKey("'0'")
 @tag("env", "dev")
+@tag("cost_center", "finance")
+@defaultRoundingMode("ROUND_HALF_EVEN")
 @tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_NATION') }} GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1 OR `N_NATIONKEY` IS NULL", true, "Before")
 @tests("SELECT 1 FROM {{ this }} WHERE `SYSTEM_CURRENT_FLAG` = 'Y' GROUP BY `N_NATIONKEY` HAVING COUNT(*) > 1", true, "After")
 SELECT

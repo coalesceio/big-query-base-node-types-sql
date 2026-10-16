@@ -6,6 +6,8 @@
 @writeMode("truncateInsert")
 @partitionBy("DATE_TRUNC(L_SHIPDATE, MONTH)")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `L_ORDERKEY`, `L_LINENUMBER` HAVING COUNT(*) > 1", false, "After")
 @tests("SELECT 1 FROM {{ this }} WHERE `L_NET_PRICE` > `L_GROSS_PRICE`")
 SELECT

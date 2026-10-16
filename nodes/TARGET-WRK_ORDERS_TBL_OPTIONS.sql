@@ -4,7 +4,7 @@
 @description("Work - orders from SRC with every table option: column partition + partition expiration, clustering, composite primary key, fixed table expiration, rounding mode, tags")
 @writeMode("truncateInsert")
 @partitionExpirationDays("365")
-@tableExpiration("2999-12-31")
+@tableExpiration("2030-06-30 18:00:00")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")
@@ -12,7 +12,7 @@
 SELECT
     `O_ORDERKEY`                                  AS `O_ORDERKEY`       @id("be8401") @notNull @primaryKey(1) @clusterKey(1) @not_null @description("Order key - primary key part 1"),
     `O_CUSTKEY`                                   AS `O_CUSTKEY`        @id("be8402") @notNull @primaryKey(2) @clusterKey(2) @not_null @description("Customer key - primary key part 2"),
-    `O_ORDERSTATUS`                               AS `O_ORDERSTATUS`    @id("be8403") @clusterKey(3) @accepted_values("'F', 'O', 'P'") @description("Order status"),
+    `O_ORDERSTATUS`                               AS `O_ORDERSTATUS`    @id("be8403") @accepted_values("'F', 'O', 'P'") @description("Order status"),
     CAST(`O_TOTALPRICE` AS NUMERIC)               AS `O_TOTALPRICE`     @id("be8404") @min_value("0") @description("Order total price"),
     CAST(`O_TOTALPRICE` / 3 AS NUMERIC)           AS `O_PRICE_THIRD`    @id("be8405") @description("A third of the total price, rounded with the table default_rounding_mode"),
     `O_ORDERDATE`                                 AS `O_ORDERDATE`      @id("be8406") @partitionBy @notNull @not_null @description("Order date - partition column"),

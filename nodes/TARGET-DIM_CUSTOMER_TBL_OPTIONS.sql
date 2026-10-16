@@ -5,14 +5,14 @@
 @mergeStrategy("changeTracking")
 @writeMode("append")
 @partitionBy("TIMESTAMP_TRUNC(SYSTEM_CREATE_DATE, MONTH)")
-@tableExpiration("2999-12-31 23:59:59")
+@tableExpiration("2031-12-31")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ ref('SRC', 'customer') }} GROUP BY `C_CUSTKEY` HAVING COUNT(*) > 1 OR `C_CUSTKEY` IS NULL", true, "Before")
 SELECT
     `C_CUSTKEY`                              AS `C_CUSTKEY`           @id("4c1901") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness @description("Customer key - business key"),
-    `C_NAME`                                 AS `C_NAME`              @id("4c1902") @description("Customer name"),
+    `C_NAME`                                 AS `C_NAME`              @id("4c1902"),
     `C_NATIONKEY`                            AS `C_NATIONKEY`         @id("4c1903") @clusterKey(2) @description("Nation key"),
     `C_MKTSEGMENT`                           AS `C_MKTSEGMENT`        @id("4c1904") @clusterKey(3) @description("Market segment"),
     CAST(`C_ACCTBAL` AS NUMERIC)             AS `C_ACCTBAL`           @id("4c1905") @description("Account balance"),
