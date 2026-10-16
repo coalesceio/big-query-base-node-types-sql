@@ -1289,7 +1289,7 @@ macroString: |-
     A table is recreated (drop + create) when what BigQuery cannot alter changes: the
     materialization type, the dataset, the partitioning or the clustering. Any other change
     is applied to a clone: Clone Table -> alters -> Replace Table (the clone is copied back over
-    the table) -> Delete Clone -> Edit Table Options (COPY drops the table expiration).
+    the table) -> Edit Table Options (COPY drops the table expiration and tags) -> Delete Clone.
     Views are recreated when their definition changes.
   ===========================================================================#}
 
@@ -1532,8 +1532,9 @@ macroString: |-
 
   {#===========================================================================
     alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Replace
-    Table -> Delete Clone, the pattern the BigQuery YAML node types use: the clone is copied
-    back over the table (CREATE OR REPLACE ... COPY), so the table never disappears.
+    Table, the pattern the BigQuery YAML node types use: the clone is copied back over the
+    table (CREATE OR REPLACE ... COPY), so the table never disappears. The clone is kept:
+    alter_delete_clone_sql() drops it as the last stage, after Edit Table Options.
     COPY keeps the primary key, so it is only dropped / re-added on the clone when the key
     itself changes (a key column renamed or dropped is a key change). When the node was
     renamed the clone is copied to the new name and the old table deleted.
@@ -1576,10 +1577,20 @@ macroString: |-
               DROP TABLE IF EXISTS {{ currentPath }}
           {%- endif %}
 
-          {{ stage('Delete Clone') }}
-          DROP TABLE IF EXISTS {{ clonePath }}
           {%- set nsNodeVariables.tableReplaced = true -%}
           {%- set nsNodeVariables.metaDataChanged = true -%}
+      {%- endif %}
+  {%- endmacro -%}
+
+  {#===========================================================================
+    alter_delete_clone_sql(): "Delete Clone" — drops the clone once the alter is complete, as the
+    last stage (after Replace Table and Edit Table Options). Nothing when alter_clone_swap_sql()
+    made no clone.
+  ===========================================================================#}
+  {%- macro alter_delete_clone_sql() -%}
+      {%- if nsNodeVariables.tableReplaced %}
+          {{ stage('Delete Clone') }}
+          DROP TABLE IF EXISTS {{ nsNodeVariables.cloneObjectNameFullPath }}
       {%- endif %}
   {%- endmacro -%}
 

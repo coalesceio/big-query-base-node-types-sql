@@ -196,8 +196,8 @@ The following stages are executed, in this order (each one only when needed):
 | **Add Primary Key** | Adds the new primary key on the clone |
 | **Replace Table** | Copies the altered clone back over the live table (`CREATE OR REPLACE TABLE … COPY`) — or to the new name when the table is renamed |
 | **Delete Table** | Drops the old table after a rename |
-| **Delete Clone** | Drops the internal clone |
-| **Edit Table Options** | One `SET OPTIONS(...)` when the description, expirations, rounding mode or tags changed — and always after **Replace Table**, because the copied table loses its tags and table expiration, so they are re-attached here. Every option is listed; a removed one is reset (NULL, tags to `[]`). |
+| **Edit Table Options** | One `SET OPTIONS(...)` on the table with only the options that changed (description, expirations, rounding mode, tags); a removed one is reset (NULL, tags to `[]`). After **Replace Table** the table expiration and tags are always re-attached, because the copied table loses them. |
+| **Delete Clone** | Last stage — drops the internal clone once the table is replaced and its options are set |
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
 
