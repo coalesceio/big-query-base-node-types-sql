@@ -1512,24 +1512,40 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===========================================================================
-      alter_clone_options_sql(): "Alter Table Options" — one SET OPTIONS(...) on the clone with only the
-      table options that changed between currentState and the node (table expiration, rounding mode,
-      tags, description); a removed one is reset (NULL, tags = []). Options left out keep their value.
-      CREATE OR REPLACE ... COPY onto the existing live table carries the description and rounding mode
-      over, but drops the table expiration and the tags, and keeps the live table's own partition
-      expiration — so alter_table_options_sql() sets those on the live table. '' when none changed.
-      Called by alter_clone_swap_sql(); a non-empty result alone sends the redeploy through the clone.
+      get_option_change_sql(option): the SET OPTIONS entry for one table option when it differs
+      between currentState and the node ('' when unchanged); a removed one is reset (NULL, tags = []).
+      option: partition_expiration_days, expiration_timestamp, tags, default_rounding_mode, description.
+      partition_expiration_days only applies to a time-partitioned table (not RANGE_BUCKET); the
+      partition itself is unchanged here (a partition change recreates the table).
     ===========================================================================#}
-    {%- macro alter_clone_options_sql() -%}
-            {%- set ns = namespace(items=[]) -%}
-
-            {# expiration_timestamp and tags are set here too; COPY drops them, so Edit Table Options re-attaches them after Replace Table #}
+    {%- macro get_option_change_sql(option) -%}
+        {%- if option == 'partition_expiration_days' -%}
+            {%- set partitionSql = get_partition_by_sql(config, columns) | trim -%}
+            {%- if partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
+                {%- set ped = namespace(current='', desired='') -%}
+                {%- if currentState.config.partitionExpirationDays is defined and currentState.config.partitionExpirationDays.parameters is defined and currentState.config.partitionExpirationDays.parameters | length > 0 -%}
+                    {%- set ped.current = currentState.config.partitionExpirationDays.parameters[0] | string | trim -%}
+                {%- endif -%}
+                {%- if config.partitionExpirationDays is defined and config.partitionExpirationDays.parameters is defined and config.partitionExpirationDays.parameters | length > 0 -%}
+                    {%- set ped.desired = config.partitionExpirationDays.parameters[0] | string | trim -%}
+                {%- endif -%}
+                {%- if ped.current != ped.desired -%}
+                    partition_expiration_days = {{ ped.desired if ped.desired | length > 0 else 'NULL' }}
+                {%- endif -%}
+            {%- endif -%}
+        {%- elif option == 'expiration_timestamp' -%}
             {%- set currentExpiration = get_expiration_timestamp_sql(currentState.config) | trim -%}
             {%- set desiredExpiration = get_expiration_timestamp_sql(config) | trim -%}
             {%- if currentExpiration != desiredExpiration -%}
-                {%- set ns.items = ns.items + ['expiration_timestamp = ' ~ (desiredExpiration if desiredExpiration | length > 0 else 'NULL')] -%}
+                expiration_timestamp = {{ desiredExpiration if desiredExpiration | length > 0 else 'NULL' }}
             {%- endif -%}
-
+        {%- elif option == 'tags' -%}
+            {%- set currentTags = get_tags_sql(currentState.config.tag) | trim -%}
+            {%- set desiredTags = get_tags_sql(config.tag) | trim -%}
+            {%- if currentTags != desiredTags -%}
+                {{ desiredTags if desiredTags | length > 0 else 'tags = []' }}
+            {%- endif -%}
+        {%- elif option == 'default_rounding_mode' -%}
             {%- set rm = namespace(current='', desired='') -%}
             {%- if currentState.config.defaultRoundingMode is defined and currentState.config.defaultRoundingMode.parameters is defined and currentState.config.defaultRoundingMode.parameters | length > 0 -%}
                 {%- set rm.current = currentState.config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
@@ -1538,56 +1554,57 @@ macroString: |2-
                 {%- set rm.desired = config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
             {%- endif -%}
             {%- if rm.current != rm.desired -%}
-                {%- set ns.items = ns.items + [("default_rounding_mode = '" ~ rm.desired ~ "'") if rm.desired | length > 0 else 'default_rounding_mode = NULL'] -%}
+                {{ ("default_rounding_mode = '" ~ rm.desired ~ "'") if rm.desired | length > 0 else 'default_rounding_mode = NULL' }}
             {%- endif -%}
-
-                      {%- set currentTags = get_tags_sql(currentState.config.tag) | trim -%}
-            {%- set desiredTags = get_tags_sql(config.tag) | trim -%}
-            {%- if currentTags != desiredTags -%}
-                {%- set ns.items = ns.items + [desiredTags if desiredTags | length > 0 else 'tags = []'] -%}
-            {%- endif -%}
-
+        {%- elif option == 'description' -%}
             {%- set currentDescription = currentState.node.description | default('', true) | trim -%}
             {%- set desiredDescription = node.description | default('', true) | trim -%}
             {%- if currentDescription != desiredDescription -%}
-                {%- set ns.items = ns.items + [("description = '" ~ (node.description | escape) ~ "'") if desiredDescription | length > 0 else 'description = NULL'] -%}
+                {{ ("description = '" ~ (node.description | escape) ~ "'") if desiredDescription | length > 0 else 'description = NULL' }}
             {%- endif -%}
-
-            {%- if ns.items | length > 0 %}
-                {{ stage('Alter Table Options') }}
-                ALTER TABLE {{ nsNodeVariables.cloneObjectNameFullPath }}
-                SET OPTIONS({{ ns.items | join(', ') }})
-            {%- endif %}
-        {%- endmacro -%}
+        {%- endif -%}
+    {%- endmacro -%}
 
     {#===========================================================================
-      alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the live table with:
-        * partition_expiration_days when it changed between currentState and the node (NULL when
-          removed), with or without a clone: CREATE OR REPLACE ... COPY onto an existing table keeps
-          the live table's own partition expiration, so it cannot be set on the clone;
-        * after the clone replaced the live table, the table expiration and the tags set on the node,
-          the two options the copy drops (a removed one needs nothing, the copy already dropped it).
-      Every other option was set on the clone ("Alter Table Options") and carried over by the copy.
-      Nothing when none of these applies. Call after alter_clone_swap_sql(), before alter_delete_clone_sql().
+      alter_clone_options_sql(): "Alter Table Options" — one SET OPTIONS(...) on the clone with the
+      description and the rounding mode when they changed (a removed one is reset to NULL).
+      CREATE OR REPLACE ... COPY onto the live table carries these two over. The table expiration,
+      tags and partition expiration are never set here: the copy drops the first two and keeps the
+      live table's own partition expiration, so alter_table_options_sql() sets all three on the live
+      table. '' when neither changed. Called by alter_clone_swap_sql(); a change here (like a column
+      change) sends the redeploy through the clone.
+    ===========================================================================#}
+    {%- macro alter_clone_options_sql() -%}
+        {%- set ns = namespace(items=[]) -%}
+        {%- for option in ['default_rounding_mode', 'description'] -%}
+            {%- set item = get_option_change_sql(option) | trim -%}
+            {%- if item | length > 0 -%}
+                {%- set ns.items = ns.items + [item] -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if ns.items | length > 0 %}
+            {{ stage('Alter Table Options') }}
+            ALTER TABLE {{ nsNodeVariables.cloneObjectNameFullPath }}
+            SET OPTIONS({{ ns.items | join(', ') }})
+        {%- endif %}
+    {%- endmacro -%}
+
+    {#===========================================================================
+      alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the live table with
+      only these three options, never any other:
+        * no clone (only these three changed, in any combination): the ones that changed — no table
+          copy for a metadata change; a removed one is reset (NULL, tags = []);
+        * after the clone replaced the live table (any other change): the table expiration and the
+          tags set on the node (the copy drops them), plus the partition expiration when it changed
+          (the copy keeps the live table's own value).
+      Nothing when none applies. Call after alter_clone_swap_sql(), before alter_delete_clone_sql().
     ===========================================================================#}
     {%- macro alter_table_options_sql() -%}
         {%- set ns = namespace(items=[]) -%}
-
-        {# partition_expiration_days, when changed: only on time-partitioned tables; the partition itself is unchanged here (a partition change recreates the table) #}
-        {%- set partitionSql = get_partition_by_sql(config, columns) | trim -%}
-        {%- if partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
-            {%- set ped = namespace(current='', desired='') -%}
-            {%- if currentState.config.partitionExpirationDays is defined and currentState.config.partitionExpirationDays.parameters is defined and currentState.config.partitionExpirationDays.parameters | length > 0 -%}
-                {%- set ped.current = currentState.config.partitionExpirationDays.parameters[0] | string | trim -%}
-            {%- endif -%}
-            {%- if config.partitionExpirationDays is defined and config.partitionExpirationDays.parameters is defined and config.partitionExpirationDays.parameters | length > 0 -%}
-                {%- set ped.desired = config.partitionExpirationDays.parameters[0] | string | trim -%}
-            {%- endif -%}
-            {%- if ped.current != ped.desired -%}
-                {%- set ns.items = ns.items + ['partition_expiration_days = ' ~ (ped.desired if ped.desired | length > 0 else 'NULL')] -%}
-            {%- endif -%}
+        {%- set partitionExpiration = get_option_change_sql('partition_expiration_days') | trim -%}
+        {%- if partitionExpiration | length > 0 -%}
+            {%- set ns.items = ns.items + [partitionExpiration] -%}
         {%- endif -%}
-
         {%- if nsNodeVariables.tableReplaced -%}
             {%- set expiration = get_expiration_timestamp_sql(config) | trim -%}
             {%- if expiration | length > 0 -%}
@@ -1597,8 +1614,14 @@ macroString: |2-
             {%- if tagsOption | length > 0 -%}
                 {%- set ns.items = ns.items + [tagsOption] -%}
             {%- endif -%}
+        {%- else -%}
+            {%- for option in ['expiration_timestamp', 'tags'] -%}
+                {%- set item = get_option_change_sql(option) | trim -%}
+                {%- if item | length > 0 -%}
+                    {%- set ns.items = ns.items + [item] -%}
+                {%- endif -%}
+            {%- endfor -%}
         {%- endif -%}
-
         {%- if ns.items | length > 0 %}
             {{ stage('Edit Table Options') }}
             ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}

@@ -1,7 +1,7 @@
 @id("4c194b5c-ab25-4b63-a22e-c3dd7e3e932b")
 @nodeType("SQLDimension")
 @materializationType("table")
-@description("Dimension - customer master from SRC: changeTracking SCD Type 1, monthly partition on create date, clustering, primary key on the customer key, fixed table expiration, rounding mode, tags")
+@description("Dimension12 - customer master from SRC: changeTracking SCD Type 1, monthly partition on create date, clustering, primary key on the customer key, fixed table expiration, rounding mode, tags")
 @mergeStrategy("changeTracking")
 @writeMode("append")
 @partitionBy("TIMESTAMP_TRUNC(SYSTEM_CREATE_DATE, MONTH)")
