@@ -201,7 +201,7 @@ The following stages are executed, in this order (each one only when needed):
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
 
-> ⚠️ **Case-only renames fail.** BigQuery column names are case-insensitive — see [Column Name Case](#known-limitations). Changing only the case of a column (e.g. `N_NAME` → `n_Name`) currently fails the alter with *"Column already exists"* (the table is left untouched).
+> **Note:** BigQuery column names are case-insensitive — see [Column Name Case](#known-limitations). A case-only change (e.g. `N_NAME` → `n_Name`) is not treated as a rename, drop or add: no alter stage runs for it, and the column keeps its current spelling in BigQuery.
 
 > **Note:** BigQuery only allows certain data type changes (for example widening `INT64` → `NUMERIC`, or `NUMERIC` → `BIGNUMERIC`). Other changes fail on the clone with BigQuery's error, leaving the live table untouched.
 
@@ -219,7 +219,7 @@ This happens when:
 * the partition (`@partitionBy`) or the cluster key (`@clusterKey`) changes,
 * the node moves to another project or dataset.
 
-> **Note:** The partition and cluster key are compared as text, so changing only the case of a partition or cluster column (e.g. `CLUSTER BY N_NATIONKEY` → `n_NationKey`) also drops and recreates the table, although BigQuery treats it as the same column — see [Column Name Case](#known-limitations).
+> **Note:** The partition and cluster key are compared ignoring case, so changing only the case of a partition or cluster column (e.g. `CLUSTER BY N_NATIONKEY` → `n_NationKey`) does not recreate the table — see [Column Name Case](#known-limitations).
 
 #### Altering and Recreating the Work Views
 
@@ -568,7 +568,7 @@ Every deployment of a Dimension Node of materialization type table runs its conf
 
 Redeployment works exactly like the Work node — see [Altering the Work Tables](#altering-the-work-tables), [Recreating the Work Tables](#recreating-the-work-tables) and [Altering and Recreating the Work Views](#altering-and-recreating-the-work-views); the create stages read **Create Dimension Table** / **Create Dimension View**. A metadata update is recorded when only tests, `@writeMode`, `@mergeStrategy`, `@zeroKey`, `@preSQL`/`@postSQL` or a transform or join on a table changed.
 
-> **Note:** Every Dimension column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data — except a case-only rename (e.g. `N_NAME` → `n_Name`), which currently fails with *"Column already exists"*; see [Column Name Case](#known-limitations).
+> **Note:** Every Dimension column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data. A case-only change (e.g. `N_NAME` → `n_Name`) is not a rename: nothing runs, and the column keeps its current spelling — see [Column Name Case](#known-limitations).
 
 ### Removing a Dimension Node
 
@@ -769,7 +769,7 @@ A Fact Node of materialization type view is a plain `CREATE OR REPLACE VIEW` ove
 
 Redeployment works exactly like the Work node — see [Altering the Work Tables](#altering-the-work-tables), [Recreating the Work Tables](#recreating-the-work-tables) and [Altering and Recreating the Work Views](#altering-and-recreating-the-work-views); the create stages read **Create Fact Table** / **Create Fact View**.
 
-> **Note:** Every Fact column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data — except a case-only rename (e.g. `N_NAME` → `n_Name`), which currently fails with *"Column already exists"*; see [Column Name Case](#known-limitations).
+> **Note:** Every Fact column carries a required `@id`, so renaming a column (same `@id`) is a true RENAME COLUMN that keeps its data. A case-only change (e.g. `N_NAME` → `n_Name`) is not a rename: nothing runs, and the column keeps its current spelling — see [Column Name Case](#known-limitations).
 
 ### Removing a Fact Node
 
@@ -1361,8 +1361,8 @@ Converting an existing YAML (`.yml`) node to a SQL (`.sql`) node, or vice versa,
 
 * **Column Name Case**:  
 BigQuery column names keep the case they were created with, but are **case-insensitive**: backticks only quote an identifier (for reserved words or special characters) — they do not make it case-sensitive, unlike double quotes in Snowflake. So `n_Name` and `N_NAME` are the same column: a table cannot hold both ("Duplicate column name"), and any casing in a query reads the same column. As a result:
-  * a **case-only column rename** (e.g. `N_NAME` → `n_Name`) currently fails the alter with *"Column already exists"* — BigQuery rejects `RENAME COLUMN N_NAME TO n_Name` and `ADD COLUMN n_Name` because the name already exists ignoring case. The failure happens on the internal copy, so the live table is untouched; to apply the new case, rename through a temporary name in two deployments, or recreate the table;
-  * a **case-only change in a partition or cluster column** drops and recreates the table (losing its data), although BigQuery treats it as the same column;
+  * a **case-only column change** (e.g. `N_NAME` → `n_Name`) is ignored on redeploy — the alter compares column names (and ids) ignoring case, so no Rename / Delete / Add Column stage runs and the column **keeps the spelling it was created with** in BigQuery. To change the stored spelling, rename through a temporary name in two deployments, or recreate the table;
+  * a **case-only change in a partition, cluster or primary key column** is no change either — the partition, clustering and key are compared ignoring case, so the table is not recreated and the key is not dropped and re-added;
   * BigQuery stores the clustering with the column's own case (`CLUSTER BY n_name` on a column `N_NAME` is stored as `CLUSTER BY N_NAME`).
 
 * **Partition, Cluster Key or Dataset Changes Recreate the Table**:  

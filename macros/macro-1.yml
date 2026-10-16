@@ -82,12 +82,14 @@ macroString: |-
         (a column without @id has its name as id, so renaming it drops and re-adds it) #}
     {%- if currentState is defined and currentState and desiredState is defined and desiredState -%}
       {%- for curCol in currentState.columns -%}
-        {%- set idStillDesired = desiredState.columns | default([]) | selectattr('id', 'equalto', curCol.id) | list -%}
+        {%- set idMatch = namespace(items=[]) -%}
+        {{- match_columns_by_id(desiredState.columns, curCol.id, idMatch) -}}
+        {%- set idStillDesired = idMatch.items -%}
         {%- if not idStillDesired -%}
           {%- set nsNodeVariables.droppedColumns = nsNodeVariables.droppedColumns + ['`' ~ curCol.name ~ '`'] -%}
         {%- endif -%}
-        {#- Same id, new name: the column is renamed (old name recorded) #}
-        {%- if idStillDesired and (idStillDesired | first).name != curCol.name -%}
+        {#- Same id, new name: the column is renamed (old name recorded); a case-only change is not a rename #}
+        {%- if idStillDesired and ((idStillDesired | first).name | lower) != (curCol.name | lower) -%}
           {%- set nsNodeVariables.renamedColumns = nsNodeVariables.renamedColumns + ['`' ~ curCol.name ~ '`'] -%}
         {%- endif -%}
       {%- endfor -%}
@@ -1320,6 +1322,20 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
+    match_columns_by_id(cols, colId, out): fills out.items (pass a namespace(items=[])) with the
+    columns of cols whose id equals colId, ignoring case. BigQuery column names are
+    case-insensitive and a column without @id has its name as id, so N_NAME and n_name are the
+    same column — a case-only change must not look like a dropped and added column.
+  ===========================================================================#}
+  {%- macro match_columns_by_id(cols, colId, out) -%}
+      {%- set ns = namespace(items=[]) -%}
+      {%- for c in cols | default([]) if (c.id | string | lower) == (colId | string | lower) -%}
+          {%- set ns.items = ns.items + [c] -%}
+      {%- endfor -%}
+      {%- set out.items = ns.items -%}
+  {%- endmacro -%}
+
+  {#===========================================================================
     alter_column_warnings_sql(): non-failing "Warning: NOT NULL Not Applied" when a column
     becomes NOT NULL, or a NOT NULL column is added — BigQuery cannot SET NOT NULL or add a
     REQUIRED column to an existing table. The column stays NULLABLE until the table is
@@ -1328,7 +1344,9 @@ macroString: |-
   {%- macro alter_column_warnings_sql() -%}
       {%- set ns = namespace(items=[]) -%}
       {%- for desCol in columns if desCol.nullable == false -%}
-          {%- set curMatch = currentState.columns | default([]) | selectattr('id', 'equalto', desCol.id) | list -%}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(currentState.columns, desCol.id, idMatch) -}}
+          {%- set curMatch = idMatch.items -%}
           {%- if not curMatch -%}
               {%- set ns.items = ns.items + [desCol.name ~ ' (new column)'] -%}
           {%- elif (curMatch | first).nullable != false -%}
@@ -1355,7 +1373,9 @@ macroString: |-
   {%- macro alter_modify_columns_sql() -%}
       {%- set ns = namespace(typeActions=[], actions=[]) -%}
       {%- for curCol in currentState.columns -%}
-          {%- set matchingCols = columns | default([]) | selectattr('id', 'equalto', curCol.id) | list -%}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(columns, curCol.id, idMatch) -}}
+          {%- set matchingCols = idMatch.items -%}
 
           {%- if matchingCols -%}
               {%- set desCol = matchingCols | first -%}
@@ -1407,7 +1427,9 @@ macroString: |-
   {%- macro alter_add_columns_sql() -%}
       {%- set ns = namespace(items=[]) -%}
       {%- for desCol in columns -%}
-          {%- set idAlreadyCurrent = currentState.columns | default([]) | selectattr('id', 'equalto', desCol.id) | list -%}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(currentState.columns, desCol.id, idMatch) -}}
+          {%- set idAlreadyCurrent = idMatch.items -%}
           {%- if not idAlreadyCurrent -%}
               {%- set ns.items = ns.items + [desCol] -%}
           {%- endif -%}
@@ -1434,11 +1456,15 @@ macroString: |-
   {#===========================================================================
     alter_rename_columns_sql(): "Rename Column" per column whose id is kept but name
     changed. A column without @id has its name as id, so renaming it drops and re-adds it.
+    Names are compared ignoring case: BigQuery column names are case-insensitive, so a case-only
+    change (n_name -> N_NAME) is no rename — the column keeps its current spelling in BigQuery.
   ===========================================================================#}
   {%- macro alter_rename_columns_sql() -%}
       {%- for curCol in currentState.columns -%}
-          {%- set idMatches = columns | default([]) | selectattr('id', 'equalto', curCol.id) | list -%}
-          {%- if idMatches and (idMatches | first).name != curCol.name %}
+          {%- set idMatch = namespace(items=[]) -%}
+          {{- match_columns_by_id(columns, curCol.id, idMatch) -}}
+          {%- set idMatches = idMatch.items -%}
+          {%- if idMatches and ((idMatches | first).name | lower) != (curCol.name | lower) %}
               {{ stage('Rename Column') }}
               ALTER TABLE {{ nsNodeVariables.alterObjectNameFullPath }}
               RENAME COLUMN `{{ curCol.name }}` TO `{{ (idMatches | first).name }}`
@@ -1547,7 +1573,8 @@ macroString: |-
       {%- set pathChanged = currentPath != desiredPath -%}
       {%- set currentPrimaryKey = get_primary_key_sql(currentState.columns) | trim -%}
       {%- set desiredPrimaryKey = get_primary_key_sql(columns) | trim -%}
-      {%- set primaryKeyChanged = currentPrimaryKey != desiredPrimaryKey -%}
+      {#- Column names are case-insensitive: a case-only change to a key column is no key change #}
+      {%- set primaryKeyChanged = (currentPrimaryKey | lower) != (desiredPrimaryKey | lower) -%}
 
       {%- if alterSql | trim | length > 0 or pathChanged or primaryKeyChanged %}
           {{ stage('Clone Table') }}
