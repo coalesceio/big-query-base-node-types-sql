@@ -139,11 +139,14 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 
             {%- endset %}
 
-            {# Clone Table -> alters -> Replace Table (clone copied back over the table) -> Delete Clone #}
+            {# Clone Table -> alters -> Replace Table (clone copied back over the table) #}
             {{ alter_clone_swap_sql(alterSql) }}
 
             {# Edit Table Options on the table: changed options, or re-applied after Replace Table (COPY drops the expiration) #}
             {{ alter_table_options_sql() }}
+
+            {# Delete Clone: last stage, once the table is replaced and its options are set #}
+            {{ alter_delete_clone_sql() }}
 
             {# Nothing above altered the table: record a metadata-only change #}
             {{ alter_metadata_sql() }}
