@@ -890,8 +890,40 @@ Sets when BigQuery deletes the target table or view.
 | **A number of days** — `"30"` | ❌ Not supported — stops the deploy with **Invalid configuration: tableExpiration**. Write the expression above instead |
 
 * A date / datetime is a **fixed** expiry: it does not move on redeploy.
-* An expression is **evaluated each time the table is created or replaced** — on the first create, on a recreate (partition / cluster change), and on every alter, which rebuilds the table through a copy and re-applies the expiration. An expression on `CURRENT_TIMESTAMP()` therefore **moves the expiry forward on every such redeploy**; a redeploy that changes nothing on the table leaves it as it is.
 * Applies to tables and views.
+
+**A number of days — e.g. `@tableExpiration("3")`**
+
+A whole number is not read as "3 days from now". Every deployment of the node — the first one and every redeploy, table or view — runs the check **Invalid configuration: tableExpiration** first, and it fails:
+
+* The node stops **before any DDL**: nothing is created, altered or dropped. On a redeploy the existing table or view stays exactly as it was, including its current expiration.
+* The deployment shows the node as failed. The stage's SQL carries the reason as a comment:
+  ```sql
+  -- @tableExpiration("3") is a number of days, which is not supported.
+  -- Give a fixed date or datetime instead, e.g. @tableExpiration("2026-12-31") ...
+  ```
+  (the Monitor error itself reads *division by zero: 1 / 0* — that is how the check stops the deployment).
+* To fix it, give a date / datetime, or write the day count as an expression (next section).
+
+**A SQL expression — e.g. `@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")`**
+
+Anything that is neither a whole number nor a date / datetime is pasted into the SQL as-is: `OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))`. The deployment continues, with the non-failing **Warning: tableExpiration Expression** each time the node is deployed.
+
+BigQuery evaluates the expression **at the moment the statement runs** and stores the resulting fixed timestamp — it does not keep the expression. So the expiry is recalculated only when the expression is sent again:
+
+| **Redeploy** | **Expression sent again?** | **Expiry afterwards** (deployed on day 0, redeployed on day 10) |
+|--------------|---------------------------|----------------------------------|
+| First deployment (create) | Yes | day 0 + 30 = **day 30** |
+| Nothing changed on the node | No | day 30 — unchanged |
+| Only other options changed (tags, description, rounding mode) — table **Edit Table Options** / view **Edit View Options** | No — only the changed options are sent | day 30 — unchanged |
+| The expression itself changed (e.g. `INTERVAL 60 DAY`) | Yes | day 10 + 60 = **day 70** |
+| Column change (add, drop, rename, type, PK) — the table is rebuilt through the clone and **Edit Table Options** re-applies the expiration | Yes | day 10 + 30 = **day 40** — moved forward |
+| Recreate (partition / cluster change, dataset move, table ↔ view) | Yes | day 10 + 30 = **day 40** — moved forward |
+| View definition changed (**Create View**) | Yes | day 10 + 30 = **day 40** — moved forward |
+
+* In short: the table expires 30 days after the **last deployment that rebuilt it**, not 30 days after it was first created. A table that is redeployed with column changes more often than every 30 days never expires.
+* The expression must return a `TIMESTAMP`; a SQL error in it fails the create or alter with BigQuery's message.
+* Use a fixed date / datetime when the expiry must not move.
 
 **Example:**
 
