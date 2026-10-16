@@ -2,7 +2,7 @@
 @nodeType("SQLFact")
 @materializationType("view")
 @description("Fact 6 - order revenue view joining FCT_ORDERS, FCT_LINEITEM and DIM_CUSTOMER, with a table expiration and tags")
-@tableExpiration("90")
+@tableExpiration("2027-01-14")
 @tag("env", "dev")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `O_ORDERKEY` HAVING COUNT(*) > 1", false)
 WITH ORDER_LINES AS (
