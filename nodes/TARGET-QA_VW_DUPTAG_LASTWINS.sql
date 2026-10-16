@@ -2,10 +2,9 @@
 @nodeType("SQLWork")
 @materializationType("view")
 @description("QA duplicate tags on a view - env applied 3 times (short, qualified, short): warning only, last value 'prod' applied; cost_center once")
-@tag("env", "dev")
-@tag("cls-dev-bigquery/env", "test")
-@tag("cost_center", "finance")
 @tag("env", "prod")
+@tag("cost_center", "finance")
+@tag("cls-dev-bigquery/env", "dev")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`,
     `F`.`n_Name`                             AS `n_Name`
