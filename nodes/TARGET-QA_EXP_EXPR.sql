@@ -5,6 +5,5 @@
 @tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("ex3a1"),
-    `F`.`n_Name`                             AS `n_Name`              @id("ex3a2"),
-    `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("ex3a3")
+    `F`.`n_Name`                             AS `n_Name`              @id("ex3a2")
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`
