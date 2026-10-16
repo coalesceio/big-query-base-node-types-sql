@@ -29,6 +29,21 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
+    match_columns_by_id(cols, colId, out): fills out.items (pass a namespace(items=[])) with the
+    columns of cols whose id equals colId, ignoring case. BigQuery column names are
+    case-insensitive and a column without @id has its name as id, so N_NAME and n_name are the
+    same column — a case-only change must not look like a dropped and added column.
+    Kept here because initialize_node_variables() uses it.
+  ===========================================================================#}
+  {%- macro match_columns_by_id(cols, colId, out) -%}
+      {%- set ns = namespace(items=[]) -%}
+      {%- for c in cols | default([]) if (c.id | string | lower) == (colId | string | lower) -%}
+          {%- set ns.items = ns.items + [c] -%}
+      {%- endfor -%}
+      {%- set out.items = ns.items -%}
+  {%- endmacro -%}
+
+  {#===========================================================================
     initialize_node_variables(nsNodeVariables): fills nsNodeVariables from
     desiredState / currentState. Called once, right below.
   ===========================================================================#}
@@ -1163,22 +1178,35 @@ macroString: |-
   {#===========================================================================
     get_expiration_kind(exprnValue): how a @tableExpiration value is read —
       'days'       a whole number (e.g. 30) — not supported, validate_table_expiration() stops the create
-      'datetime'   starts with a YYYY-MM-DD date, alone or followed by a time (e.g. 2026-12-31, 2026-12-31 23:59:59)
-      'expression' anything else, used as a SQL expression as-is (e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))
+      'datetime'   a valid YYYY-MM-DD date, alone or followed by a valid HH:MM[:SS[.ffffff]] time
+                   (e.g. 2026-12-31, 2026-12-31 23:59:59, 2026-12-31T23:59:59)
+      'expression' a SQL expression — anything else that contains a function call "(", used as-is
+                   (e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))
+      'invalid'    anything else (e.g. abc, 2026-13-45, 2026-12-31 25:00) — validate_table_expiration() stops the create
     '' when the value is empty.
   ===========================================================================#}
   {%- macro get_expiration_kind(exprnValue) -%}
       {%- set v = exprnValue | default('', true) | string | trim -%}
-      {%- set isDate = v | length >= 10 and v[4:5] == '-' and v[7:8] == '-'
-                       and (v[0:4] | int(-1)) >= 0 and (v[5:7] | int(-1)) >= 1 and (v[8:10] | int(-1)) >= 1
-                       and (v | length == 10 or v[10:11] in (' ', 'T')) -%}
+      {%- set looksLikeDate = v | length >= 10 and v[4:5] == '-' and v[7:8] == '-' and (v[0:4] | int(-1)) >= 0 -%}
+      {%- set validDate = looksLikeDate
+                          and (v[5:7] | int(-1)) >= 1 and (v[5:7] | int(-1)) <= 12
+                          and (v[8:10] | int(-1)) >= 1 and (v[8:10] | int(-1)) <= 31 -%}
+      {%- set hasTime = v | length > 10 -%}
+      {%- set validTime = hasTime and v[10:11] in (' ', 'T') and v[13:14] == ':'
+                          and (v[11:13] | int(-1)) >= 0 and (v[11:13] | int(-1)) <= 23
+                          and (v[14:16] | int(-1)) >= 0 and (v[14:16] | int(-1)) <= 59
+                          and (v | length == 16
+                               or (v[16:17] == ':' and (v[17:19] | int(-1)) >= 0 and (v[17:19] | int(-1)) <= 59
+                                   and (v | length == 19 or (v[19:20] == '.' and (v[20:] | int(-1)) >= 0)))) -%}
       {%- if v | length == 0 -%}
       {%- elif (v | int(-1)) >= 0 and (v | int(-1)) | string == v -%}
           days
-      {%- elif isDate -%}
+      {%- elif validDate and (not hasTime or validTime) -%}
           datetime
-      {%- else -%}
+      {%- elif not looksLikeDate and '(' in v -%}
           expression
+      {%- else -%}
+          invalid
       {%- endif -%}
   {%- endmacro -%}
 
@@ -1199,18 +1227,27 @@ macroString: |-
 
   {#===========================================================================
     validate_table_expiration(hardFail): failing "Invalid configuration: tableExpiration" when
-    @tableExpiration is a number of days, which is not supported; non-failing
-    "Warning: tableExpiration Expression" when it is an expression rather than a fixed date / datetime.
-    Applies to tables and views. Call at the start of create, before any DDL.
+    @tableExpiration is a number of days (not supported) or not a valid date, datetime or SQL
+    expression (e.g. abc, 2026-13-45); the reason is raised with ERROR() so it shows in the run
+    results. Non-failing "Warning: tableExpiration Expression" when it is an expression rather than
+    a fixed date / datetime. Applies to tables and views. Call at the start of create, before any DDL.
   ===========================================================================#}
   {%- macro validate_table_expiration(hardFail=true) -%}
       {%- set exprnValue = get_expiration_value(config) | trim -%}
       {%- set kind = get_expiration_kind(exprnValue) | trim -%}
-      {%- if kind == 'days' %}
+      {%- if kind in ('days', 'invalid') %}
+          {%- if kind == 'days' -%}
+              {%- set reason = '@tableExpiration("' ~ exprnValue ~ '") on ' ~ node.name ~ ' is a number of days, which is not supported. Give a date (2026-12-31), a datetime (2026-12-31 23:59:59) or a SQL expression such as TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ' ~ exprnValue ~ ' DAY).' -%}
+          {%- else -%}
+              {%- set reason = '@tableExpiration("' ~ exprnValue ~ '") on ' ~ node.name ~ ' is not a valid table expiration. Give a date (2026-12-31), a datetime (2026-12-31 23:59:59) or a SQL expression returning a TIMESTAMP, e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY).' -%}
+          {%- endif %}
           {{ test_stage('Invalid configuration: tableExpiration', false) }}
-          -- @tableExpiration("{{ exprnValue }}") is a number of days, which is not supported.
-          -- Give a fixed date or datetime instead, e.g. @tableExpiration("2026-12-31") (expires at 23:59:59 that day) or @tableExpiration("2026-12-31 23:59:59").
-          {{ fail_sql(hardFail) }}
+          -- {{ reason }}
+          {%- if hardFail %}
+          SELECT 1 FROM UNNEST([1]) AS u WHERE CAST(ERROR('{{ reason | replace("\\", "\\\\") | replace("'", "\\'") }}') AS INT64) = u
+          {%- else %}
+          SELECT 1
+          {%- endif %}
       {%- elif kind == 'expression' %}
           {{ test_stage('Warning: tableExpiration Expression', true) }}
           -- @tableExpiration("{{ exprnValue }}") is not a fixed date / datetime, so it is used as a SQL expression as-is.
@@ -1319,20 +1356,6 @@ macroString: |-
               {%- set nsNodeVariables.metaDataChanged = true -%}
           {%- endif %}
       {%- endif -%}
-  {%- endmacro -%}
-
-  {#===========================================================================
-    match_columns_by_id(cols, colId, out): fills out.items (pass a namespace(items=[])) with the
-    columns of cols whose id equals colId, ignoring case. BigQuery column names are
-    case-insensitive and a column without @id has its name as id, so N_NAME and n_name are the
-    same column — a case-only change must not look like a dropped and added column.
-  ===========================================================================#}
-  {%- macro match_columns_by_id(cols, colId, out) -%}
-      {%- set ns = namespace(items=[]) -%}
-      {%- for c in cols | default([]) if (c.id | string | lower) == (colId | string | lower) -%}
-          {%- set ns.items = ns.items + [c] -%}
-      {%- endfor -%}
-      {%- set out.items = ns.items -%}
   {%- endmacro -%}
 
   {#===========================================================================

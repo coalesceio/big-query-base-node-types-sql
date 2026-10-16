@@ -142,7 +142,7 @@ Every deployment of a Work node first runs these checks before any change in Big
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` (BigQuery has no transient table) |
 | **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; a BigQuery table or view holds one value per tag key, so the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
-| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days (not supported) or not a valid date, datetime or expression (e.g. `"abc"`) — stops the deployment with the reason as the error message |
 | **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — more than one partition, an invalid column-level `@partitionBy`, partition expiration without any partition, more than 4 cluster columns or a cluster expression. See [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
@@ -521,7 +521,7 @@ Every deployment of a Dimension Node first runs these checks before any change i
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
 | **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
-| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days (not supported) or not a valid date, datetime or expression (e.g. `"abc"`) — stops the deployment with the reason as the error message |
 | **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Missing Business Key \| Invalid configuration: … \| Missing Required System Columns \| Surrogate Key Not Set/Using Custom Surrogate Key Logic \| Invalid configuration: Surrogate Key \| Warning: Surrogate Key Default \| Warning: Zero Key Value Too Long \| Warning: Invalid configuration: mergeStrategy** | Dimension validation checks (table only), rendered only when the annotations have a problem — see [Dimension Load](#dimension-load). A required problem stops the deployment; a recommendation or a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (e.g. `@isChangeTracking` / `@lastModifiedTracking` under `upsert`) — it is ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
@@ -725,7 +725,7 @@ Every deployment of a Fact Node first runs these checks before any change in Big
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
 | **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
-| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days (not supported) or not a valid date, datetime or expression (e.g. `"abc"`) — stops the deployment with the reason as the error message |
 | **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Invalid configuration: No Business Key \| Invalid configuration: … \| Missing Required System Columns \| Warning: Invalid configuration: mergeStrategy \| Warning: Invalid configuration: No Business Key** | Fact validation checks (table only), rendered only when the annotations have a problem. A required problem stops the deployment; a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (`@isBusinessKey` under `allColumnMatch`, `@lastModifiedTracking` under `changeTracking` / `upsert` / `allColumnMatch`); **Warning: Invalid configuration: No Business Key** flags `@lastModifiedTracking` on a plain-insert node. Both are ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
@@ -888,13 +888,15 @@ Sets when BigQuery deletes the target table or view.
 | **A datetime** — `"2999-12-31 00:00:00"` | Expires at that fixed point → `TIMESTAMP "2999-12-31 00:00:00"` |
 | **A SQL expression** — `"TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)"` | Used as-is, with the non-failing **Warning: tableExpiration Expression** (see below) |
 | **A number of days** — `"30"` | ❌ Not supported — stops the deploy with **Invalid configuration: tableExpiration**. Write the expression above instead |
+| **Anything else** — `"abc"`, `"2026-13-45"`, `"2026-12-31 25:00"` | ❌ Not a valid table expiration — stops the deploy with **Invalid configuration: tableExpiration** |
 
-* A date / datetime is a **fixed** expiry: it does not move on redeploy.
+* A date / datetime is a **fixed** expiry: it does not move on redeploy. It must be a real date (`YYYY-MM-DD`, month 01–12, day 01–31), optionally followed by a space or `T` and a time `HH:MM`, `HH:MM:SS` or `HH:MM:SS.ffffff`.
+* An expression is recognised by its function call — it must contain `(`. A value that is neither a whole number, a valid date / datetime nor an expression (e.g. `"abc"`) is rejected.
 * Applies to tables and views.
 
-**A number of days — e.g. `@tableExpiration("3")`**
+**A number of days — e.g. `@tableExpiration("3")` — or an invalid value — e.g. `@tableExpiration("abc")`**
 
-A whole number is not read as "3 days from now". Every deployment of the node — the first one and every redeploy, table or view — runs the check **Invalid configuration: tableExpiration** first, and it fails:
+A whole number is not read as "3 days from now", and a value like `abc` is not guessed at. Every deployment of the node — the first one and every redeploy, table or view — runs the check **Invalid configuration: tableExpiration** first, and it fails:
 
 * The node stops **before any DDL**: nothing is created, altered or dropped. On a redeploy the existing table or view stays exactly as it was, including its current expiration.
 * The deployment shows the node as failed. The stage's SQL carries the reason as a comment:
@@ -902,7 +904,7 @@ A whole number is not read as "3 days from now". Every deployment of the node �
   -- @tableExpiration("3") is a number of days, which is not supported.
   -- Give a fixed date or datetime instead, e.g. @tableExpiration("2026-12-31") ...
   ```
-  (the Monitor error itself reads *division by zero: 1 / 0* — that is how the check stops the deployment).
+  The same sentence is raised as the error, so it is what the Monitor shows for the failed node.
 * To fix it, give a date / datetime, or write the day count as an expression (next section).
 
 **A SQL expression — e.g. `@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")`**
