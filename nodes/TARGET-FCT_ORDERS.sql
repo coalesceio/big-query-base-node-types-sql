@@ -4,6 +4,7 @@
 @description("Fact 1 - orders from WRK_ORDERS and DIM_CUSTOMER: changeTracking SCD1 on the order key, column partition, clustering, tags")
 @mergeStrategy("changeTracking")
 @writeMode("append")
+@partitionExpirationDays("18250")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")

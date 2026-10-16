@@ -4,6 +4,7 @@
 @description("Work 5 - lineitem staged from SRC: node-level monthly partition, composite primary key, hash key, rounding mode, postSQL")
 @writeMode("truncateInsert")
 @partitionBy("DATE_TRUNC(L_SHIPDATE, MONTH)")
+@partitionExpirationDays("18250")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
 @tag("env", "dev")
 @tag("cost_center", "finance")

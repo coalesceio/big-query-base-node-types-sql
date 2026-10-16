@@ -3,6 +3,7 @@
 @materializationType("table")
 @description("Work 4 - orders staged from SRC: column-level DATE partition, clustering, table tags")
 @writeMode("truncateInsert")
+@partitionExpirationDays("18250")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `O_ORDERKEY` HAVING COUNT(*) > 1", false)

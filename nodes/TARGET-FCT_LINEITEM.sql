@@ -5,6 +5,7 @@
 @mergeStrategy("upsert")
 @writeMode("truncateInsert")
 @partitionBy("DATE_TRUNC(L_SHIPDATE, MONTH)")
+@partitionExpirationDays("18250")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
 @tag("env", "dev")
 @tag("cost_center", "finance")

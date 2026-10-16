@@ -5,6 +5,7 @@
 @mergeStrategy("changeTracking")
 @writeMode("append")
 @zeroKey("'0'", "'UNKNOWN'", "1900-01-01 00:00:00", "true")
+@partitionExpirationDays("3650")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")

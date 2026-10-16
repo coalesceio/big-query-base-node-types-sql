@@ -5,6 +5,7 @@
 @mergeStrategy("changeTracking")
 @writeMode("append")
 @partitionBy("TIMESTAMP_TRUNC(SYSTEM_CREATE_DATE, MONTH)")
+@partitionExpirationDays("3650")
 @tableExpiration("2031-12-31")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
 @tag("env", "dev")

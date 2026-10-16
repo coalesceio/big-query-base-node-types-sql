@@ -5,6 +5,7 @@
 @mergeStrategy("allColumnMatch")
 @writeMode("append")
 @partitionBy("DATE_TRUNC(SHIP_DATE, MONTH)")
+@partitionExpirationDays("18250")
 @tag("env", "dev")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `O_ORDERKEY`, `L_LINENUMBER`, `C_CUSTKEY`, `SHIP_MODE_ID`, `ORDER_DATE`, `SHIP_DATE`, `RECEIPT_DATE` HAVING COUNT(*) > 1", false, "After")
 SELECT DISTINCT
