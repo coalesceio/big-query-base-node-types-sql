@@ -4,6 +4,8 @@
 @description("Fact 5 - daily shipment snapshot from FCT_LINEITEM and DIM_SHIP_MODE: plain insert (no merge strategy, no business key), append with preSQL to keep reruns idempotent")
 @writeMode("append")
 @partitionBy("SNAPSHOT_DATE")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @preSQL("DELETE FROM {{ this }} WHERE `SNAPSHOT_DATE` = CURRENT_DATE()")
 @tests("SELECT 1 FROM {{ this }} WHERE `SNAPSHOT_DATE` = CURRENT_DATE() GROUP BY `L_SHIPDATE`, `SHIP_MODE_GROUP` HAVING COUNT(*) > 1", false)
 SELECT

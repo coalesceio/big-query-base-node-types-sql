@@ -3,6 +3,8 @@
 @materializationType("table")
 @description("Work 3 - customer staged from SRC: append mode with preSQL cleanup, hash key and hash diff, column tests")
 @writeMode("append")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @preSQL("DELETE FROM {{ this }} WHERE `LOAD_TS` < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)")
 @tests("SELECT 1 FROM {{ this }} WHERE `C_ACCTBAL` IS NULL", true)
 SELECT

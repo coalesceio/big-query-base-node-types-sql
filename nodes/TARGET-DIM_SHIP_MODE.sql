@@ -4,6 +4,8 @@
 @description("Dimension 4 - ship mode / instruction combinations from WRK_LINEITEM: upsert merge with truncateInsert, CTE de-duplication")
 @mergeStrategy("upsert")
 @writeMode("truncateInsert")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @postSQL("DELETE FROM {{ this }} WHERE `SHIP_MODE` IS NULL")
 WITH SHIP_MODES AS (
     SELECT

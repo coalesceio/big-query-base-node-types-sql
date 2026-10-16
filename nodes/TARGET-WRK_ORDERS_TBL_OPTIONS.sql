@@ -1,7 +1,7 @@
 @id("be845087-cd75-4543-ab2f-3e4c0fbb4fc8")
 @nodeType("SQLWork")
 @materializationType("table")
-@description("Work - orders from SRC with every table option: column partition + partition expiration, clustering, composite primary key, fixed table expiration, rounding mode, tags")
+@description("Work - orders staged from SRC with table options: daily partition with 365-day partition expiration, clustered on order and customer key, composite primary key, fixed table expiration, rounding mode, tags")
 @writeMode("truncateInsert")
 @partitionExpirationDays("365")
 @tableExpiration("2030-06-30 18:00:00")
@@ -16,6 +16,6 @@ SELECT
     CAST(`O_TOTALPRICE` AS NUMERIC)               AS `O_TOTALPRICE`     @id("be8404") @min_value("0") @description("Order total price"),
     CAST(`O_TOTALPRICE` / 3 AS NUMERIC)           AS `O_PRICE_THIRD`    @id("be8405") @description("A third of the total price, rounded with the table default_rounding_mode"),
     `O_ORDERDATE`                                 AS `O_ORDERDATE`      @id("be8406") @partitionBy @notNull @not_null @description("Order date - partition column"),
-    `O_ORDERPRIORITY`                             AS `O_ORDERPRIORITY`  @id("be8407") @description("Order priority"),
+    `O_ORDERPRIORITY`                             AS `O_ORDER_PRIORITY` @id("be8407") @description("Order priority"),
     `O_COMMENT`                                   AS `O_COMMENT`        @id("be8408") @defaultValue("'NA'") @description("Free-text comment")
 FROM {{ ref('SRC', 'orders') }} `orders`

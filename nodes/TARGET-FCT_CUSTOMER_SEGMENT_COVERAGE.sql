@@ -4,6 +4,8 @@
 @description("Fact 4 - factless coverage of customer x nation x market segment from DIM_CUSTOMER and DIM_NATION_V: allColumnMatch")
 @mergeStrategy("allColumnMatch")
 @writeMode("append")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 SELECT DISTINCT
     `dc`.`C_CUSTKEY`                     AS `C_CUSTKEY`          @id("b54501") @not_null @description("Customer key"),
     `dn`.`DIM_NATION_KEY`                AS `DIM_NATION_KEY`     @id("b54502") @description("Nation surrogate key"),

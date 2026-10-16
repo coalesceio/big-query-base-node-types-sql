@@ -3,6 +3,8 @@
 @materializationType("table")
 @description("Work 1 - region staged from SRC: truncateInsert, primary key, node-level tests///")
 @writeMode("truncateInsert")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `R_REGIONKEY` HAVING COUNT(*) > 1", false, "After")
 @tests("SELECT 1 FROM {{ this }} WHERE `R_NAME` IS NULL")
 SELECT

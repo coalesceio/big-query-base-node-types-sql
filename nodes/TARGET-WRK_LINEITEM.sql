@@ -5,6 +5,8 @@
 @writeMode("truncateInsert")
 @partitionBy("DATE_TRUNC(L_SHIPDATE, MONTH)")
 @defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `L_ORDERKEY`, `L_LINENUMBER` HAVING COUNT(*) > 1", false, "After")
 @postSQL("UPDATE {{ this }} SET `L_COMMENT` = TRIM(`L_COMMENT`) WHERE `L_COMMENT` IS NOT NULL")
 SELECT

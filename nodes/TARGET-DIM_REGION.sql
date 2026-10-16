@@ -5,6 +5,8 @@
 @mergeStrategy("changeTracking")
 @writeMode("append")
 @zeroKey("'0'", "'UNKNOWN'", "1900-01-01 00:00:00", "true")
+@tag("env", "dev")
+@tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ ref('TARGET', 'WRK_REGION') }} GROUP BY `R_REGIONKEY` HAVING COUNT(*) > 1 OR `R_REGIONKEY` IS NULL", false, "Before")
 SELECT
     CAST("0" AS STRING)                  AS `DIM_REGION_KEY`     @id("46dd01") @isSurrogateKey @defaultValue("GENERATE_UUID()") @description("Surrogate key"),

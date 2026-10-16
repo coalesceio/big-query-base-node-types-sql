@@ -1,7 +1,7 @@
 @id("9d68d682-5d05-413b-8086-9b4898c45e05")
 @nodeType("SQLFact")
 @materializationType("view")
-@description("Fact 6 - order revenue view joining FCT_ORDERS, FCT_LINEITEM and DIM_CUSTOMER, with a table expiration and tags")
+@description("Fact 6 - order revenue view per order with line count, net and gross revenue and customer region, from FCT_ORDERS, FCT_LINEITEM and DIM_CUSTOMER")
 @tableExpiration("2027-03-31 23:59:59")
 @tag("env", "dev")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `O_ORDERKEY` HAVING COUNT(*) > 1", false)
@@ -20,7 +20,7 @@ SELECT
     `o`.`O_ORDERSTATUS`    AS `O_ORDERSTATUS`    @id("9d6803") @description("Order status"),
     `dc`.`C_CUSTKEY`       AS `C_CUSTKEY`        @id("9d6804") @description("Customer key"),
     `dc`.`C_NAME`          AS `C_NAME`           @id("9d6805") @description("Customer name"),
-    `dc`.`R_NAME`          AS `R_NAME`           @id("9d6806") @description("Customer region"),
+    `dc`.`R_NAME`          AS `CUSTOMER_REGION`  @id("9d6806") @description("Customer region"),
     `ol`.`LINE_COUNT`      AS `LINE_COUNT`       @id("9d6807") @min_value("1") @description("Lineitems on the order"),
     CAST(`ol`.`NET_REVENUE` AS NUMERIC)   AS `NET_REVENUE`   @id("9d6808") @min_value("0") @description("Net revenue"),
     CAST(`ol`.`GROSS_REVENUE` AS NUMERIC) AS `GROSS_REVENUE` @id("9d6809") @min_value("0") @description("Gross revenue"),
