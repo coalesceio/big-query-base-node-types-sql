@@ -11,6 +11,7 @@
 @postSQL("SELECT 1")
 @tableExpiration("30")
 @tag("env", "dev")
+@tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ this }} WHERE `QA_VW_DIM_IGNORED_KEY` IS NOT NULL OR `SYSTEM_CREATE_DATE` IS NOT NULL")
 SELECT
     CAST('0' AS STRING)                      AS `QA_VW_DIM_IGNORED_KEY` @id("v2a000") @isSurrogateKey @defaultValue("GENERATE_UUID()"),

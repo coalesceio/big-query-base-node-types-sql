@@ -2,7 +2,7 @@
 @nodeType("SQLFact")
 @materializationType("view")
 @description("QA view - options-only changes: deploy 2 changes expiration only, deploy 3 removes the description")
-@tableExpiration("2027-06-30 12:00:00")
+@tableExpiration("2027-09-30 12:00:00")
 @tag("env", "dev")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("v3a001") @not_null,

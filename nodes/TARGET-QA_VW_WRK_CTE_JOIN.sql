@@ -14,7 +14,7 @@ WITH `REGION_COUNTS` AS (
 )
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`     @uniqueness,
-    UPPER(`F`.`n_Name`)                      AS `Nation_Label`    @not_null,
+    LOWER(`F`.`n_Name`)                      AS `Nation_Label`    @not_null,
     CAST(`R`.`NATION_COUNT` AS NUMERIC)      AS `Region_Nations`  @min_value("1")
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`
 INNER JOIN `REGION_COUNTS` `R`

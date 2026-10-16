@@ -4,5 +4,5 @@
 @description("QA view - deploy 2 changes a column description only")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`     @description("Nation key"),
-    `F`.`n_Name`                             AS `n_Name`          @description("Nation name")
+    `F`.`n_Name`                             AS `n_Name`          @description("Nation name - description changed in deploy 2")
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`
