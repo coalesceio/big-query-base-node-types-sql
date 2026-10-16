@@ -2,7 +2,7 @@
 @nodeType("SQLWork")
 @materializationType("table")
 @description("QA tableExpiration - date only: expires 2999-12-31 23:59:59, fixed")
-@tableExpiration("2999-12-31")
+@tableExpiration("2998-12-31")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("ex1a1"),
     `F`.`n_Name`                             AS `n_Name`              @id("ex1a2"),
