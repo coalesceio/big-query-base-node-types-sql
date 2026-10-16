@@ -67,20 +67,18 @@ metadata:
               example: 30
 
         - name: tableExpiration
-          description: |-
-            • Sets when BigQuery deletes the target table or view.
-            • Give a fixed date or datetime, e.g. 2999-12-31 or 2999-12-31 00:00:00 — a date alone expires at 23:59:59 that day.
-            • A number of days (e.g. 30) is not supported — it stops the deploy.
-            • Any other value is used as a SQL expression as-is, e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY), and raises a warning:
-              it is evaluated each time the table is created or replaced, so an expression on CURRENT_TIMESTAMP() moves the expiry forward on every such redeploy.
-            • Applies to views as well as tables — on a view only the expiration, tags and description are set.
+          description: |-            
+            • Sets the fixed date and time when BigQuery deletes the target table or view.
+            • Takes a date or datetime
+              Ex. 2026-12-31 A date alone expires at 23:59:59 that day
+              Ex. 2026-12-31 23:59:59
           isRequired: false
-          parameters:
+          parameters:            
             - name: value
               type: string
-              description: • A date / datetime, or a SQL expression returning a TIMESTAMP.
+              description: • A fixed date or datetime (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).
               isRequired: true
-              example: "2999-12-31 00:00:00"
+              example: "2026-12-31"
 
         - name: defaultRoundingMode
           description: |-
