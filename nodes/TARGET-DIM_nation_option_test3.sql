@@ -1,7 +1,9 @@
 @id("fbda9be1-c665-4726-bc08-df8df4254b25")
 @nodeType("SQLDimension")
+@description("Alter table options test")
 @partitionBy("DATE_TRUNC(last_modified, MONTH)")
 @partitionExpirationDays(2)
+@defaultRoundingMode("ROUND_HALF_EVEN")
 @tableExpiration("30")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_nation_KEY`      @id("3f6a04") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
