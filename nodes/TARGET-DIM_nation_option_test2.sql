@@ -2,7 +2,8 @@
 @nodeType("SQLDimension")
 @partitionBy("DATE_TRUNC(last_modified, MONTH)")
 @partitionExpirationDays(2)
-@tableExpiration("30")
+@tableExpiration("2026-10-18")
+@tag("cost_center", "finance")
 SELECT
     CAST("0" AS STRING)                      AS `DIM_nation_KEY`      @id("3f6a04") @isSurrogateKey @defaultValue("GENERATE_UUID()"),
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @id("276d07") @isBusinessKey,
