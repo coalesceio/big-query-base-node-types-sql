@@ -140,7 +140,7 @@ Every deployment of a Work node first runs these checks before any change in Big
 | **Stage** | **Description** |
 |-----------|----------------|
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` (BigQuery has no transient table) |
-| **Duplicate Tags Found: \<node\>** | The same tag key applied more than once on the node — a BigQuery table or view holds one value per tag key |
+| **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; a BigQuery table or view holds one value per tag key, so the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — more than one partition, an invalid column-level `@partitionBy`, partition expiration without any partition, more than 4 cluster columns or a cluster expression. See [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
@@ -517,7 +517,7 @@ Every deployment of a Dimension Node first runs these checks before any change i
 | **Stage** | **Description** |
 |-----------|----------------|
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
-| **Duplicate Tags Found: \<node\>** | The same tag key applied twice on the node — stops the deployment |
+| **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Missing Business Key \| Invalid configuration: … \| Missing Required System Columns \| Surrogate Key Not Set/Using Custom Surrogate Key Logic \| Invalid configuration: Surrogate Key \| Warning: Surrogate Key Default \| Warning: Zero Key Value Too Long \| Warning: Invalid configuration: mergeStrategy** | Dimension validation checks (table only), rendered only when the annotations have a problem — see [Dimension Load](#dimension-load). A required problem stops the deployment; a recommendation or a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (e.g. `@isChangeTracking` / `@lastModifiedTracking` under `upsert`) — it is ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
@@ -719,7 +719,7 @@ Every deployment of a Fact Node first runs these checks before any change in Big
 | **Stage** | **Description** |
 |-----------|----------------|
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
-| **Duplicate Tags Found: \<node\>** | The same tag key applied twice on the node — stops the deployment |
+| **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Invalid configuration: No Business Key \| Invalid configuration: … \| Missing Required System Columns \| Warning: Invalid configuration: mergeStrategy \| Warning: Invalid configuration: No Business Key** | Fact validation checks (table only), rendered only when the annotations have a problem. A required problem stops the deployment; a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (`@isBusinessKey` under `allColumnMatch`, `@lastModifiedTracking` under `changeTracking` / `upsert` / `allColumnMatch`); **Warning: Invalid configuration: No Business Key** flags `@lastModifiedTracking` on a plain-insert node. Both are ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
@@ -915,7 +915,7 @@ Sets the table's `default_rounding_mode`, used when values are written to NUMERI
 | **tagValue** | Short name of an existing value of that tag key. |
 
 * **Prerequisite:** the tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
-* A table or view holds **one value per tag key**. The same key twice — even with different values, or written once as `env` and once as `<project>/env` — stops the deploy with **Duplicate Tags Found**.
+* A table or view holds **one value per tag key**. When the same key is applied more than once — even with different values, or written once as `env` and once as `<project>/env` — the **last** `@tag` for that key is applied, the earlier ones are ignored, and the non-failing **Warning: Duplicate Tags Found** lists each repeated key with the value applied. The deployment continues.
 * BigQuery has **no column-level tags** — a `@tag` on a column is not applied and raises the non-failing **Warning: Column Tags Ignored**; the deployment continues. Move the tag to the node to tag the whole table (column-level access control in BigQuery uses Data Catalog policy tags instead).
 * On a table, tag changes are applied with **Edit Table Options**; on a view, with **Edit View Options** (only the changed options are sent).
 

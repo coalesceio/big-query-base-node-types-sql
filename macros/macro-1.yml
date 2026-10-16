@@ -790,35 +790,45 @@ macroString: |-
   {%- endmacro -%}
 
   {#===========================================================================
-    find_duplicate_tag_names(tagList): tag names whose fully-qualified key is used more than once,
-    comma-separated; '' when none. Used by tag_check_duplicates().
+    get_unique_tags(tagList, out): fills out.entries (pass a namespace(entries=[])) with the @tag list,
+    one entry per fully-qualified tag key — when a key is applied more than once the LAST @tag wins
+    (e.g. "env" and "cls-dev-bigquery/env" on a node in that project are the same key). Each entry is
+    {key, name, value, count}, count = times the key was applied. Used by get_tags_sql() and
+    tag_check_duplicates().
   ===========================================================================#}
-  {%- macro find_duplicate_tag_names(tagList) -%}
-      {%- set ns = namespace(entries=[], dupes=[]) -%}
+  {%- macro get_unique_tags(tagList, out) -%}
+      {%- set ns = namespace(entries=[]) -%}
       {%- for t in tagList | default([]) -%}
-          {%- set ns.entries = ns.entries + [{"key": get_tag_full_name(t.parameters[0]), "name": t.parameters[0]}] -%}
+          {%- set tagKey = get_tag_full_name(t.parameters[0]) -%}
+          {%- set previous = ns.entries | selectattr('key', 'equalto', tagKey) | list -%}
+          {%- set ns.entries = (ns.entries | rejectattr('key', 'equalto', tagKey) | list) + [{
+              "key": tagKey,
+              "name": t.parameters[0] | string | trim,
+              "value": t.parameters[1] | string | trim,
+              "count": (previous[0].count + 1) if previous | length > 0 else 1
+          }] -%}
       {%- endfor -%}
-      {%- for e in ns.entries -%}
-          {%- if (ns.entries | selectattr('key', 'equalto', e.key) | list | length) > 1 and e.name not in ns.dupes -%}
-              {%- set ns.dupes = ns.dupes + [e.name] -%}
-          {%- endif -%}
-      {%- endfor -%}
-      {{- ns.dupes | join(', ') -}}
+      {%- set out.entries = ns.entries -%}
   {%- endmacro -%}
 
   {#===========================================================================
-    tag_check_duplicates(hardFail): failing "Duplicate Tags Found: <node>" check when the same tag key
-    is applied more than once — a BigQuery table can hold only one value per tag key, so any
-    repeat of the same fully-qualified key is a duplicate, even with different values
-    (e.g. "env" and "cls-dev-bigquery/env" on a node in that project). BigQuery has no
-    column-level tags, so a column @tag only warns ("Warning: Column Tags Ignored") and is not applied. Call at the start of create, before any DDL.
+    tag_check_duplicates(): non-blocking "Warning: Duplicate Tags Found: <node>" check when the same tag
+    key is applied more than once — a BigQuery table or view holds one value per tag key, so the last
+    @tag for that key is the one applied (get_tags_sql drops the earlier ones). BigQuery has no
+    column-level tags, so a column @tag only warns ("Warning: Column Tags Ignored") and is not applied.
+    Call at the start of create, before any DDL.
   ===========================================================================#}
-  {%- macro tag_check_duplicates(hardFail=true) -%}
-      {%- set nodeDupeTags = find_duplicate_tag_names(config.tag) | trim -%}
-      {%- if nodeDupeTags | length > 0 %}
-          {{ test_stage('Duplicate Tags Found: ' + node.name, false) }}
-          -- {{ nodeDupeTags }} is applied multiple times on {{ node.name }}. A BigQuery table or view can carry only one value per tag key.
-          {{ fail_sql(hardFail) }}
+  {%- macro tag_check_duplicates() -%}
+      {%- set uniqueTags = namespace(entries=[]) -%}
+      {{- get_unique_tags(config.tag, uniqueTags) -}}
+      {%- set dupeTags = uniqueTags.entries | selectattr('count', 'gt', 1) | list -%}
+      {%- if dupeTags | length > 0 %}
+          {{ test_stage('Warning: Duplicate Tags Found: ' + node.name, true) }}
+          -- A BigQuery table or view holds one value per tag key, so the last @tag for each key below is applied and the earlier ones are ignored:
+          {%- for t in dupeTags %}
+          --   {{ t.key }} applied {{ t.count }} times; applied value: '{{ t.value }}'
+          {%- endfor %}
+          SELECT 1
       {%- endif -%}
 
       {%- set taggedColumns = columns | selectattr('tag', 'defined') | selectattr('tag') | map(attribute='name') | list -%}
@@ -947,8 +957,9 @@ macroString: |-
 
     Description:
       Generates the tags table option for a set of repeatable @tag(<tagName>, <tagValue>)
-      annotations — pass config.tag. BigQuery takes tags inside the table's single OPTIONS(...) clause,
-      so get_object_options_sql adds this entry there.
+      annotations — pass config.tag. A tag key applied more than once keeps only its last @tag.
+      BigQuery takes tags inside the table's single OPTIONS(...) clause, so get_object_options_sql
+      adds this entry there.
 
     Output:
       tags = [('cls-dev-bigquery/cost_center', 'finance'), ('cls-dev-bigquery/env', 'prod')]
@@ -956,8 +967,10 @@ macroString: |-
   ####################################################################################################################################}
   {%- macro get_tags_sql(tagList) -%}
       {%- set ns = namespace(items=[]) -%}
-      {%- for t in tagList | default([]) -%}
-          {%- set ns.items = ns.items + ["('" ~ (get_tag_full_name(t.parameters[0]) | replace("'", "\\'")) ~ "', '" ~ (t.parameters[1] | string | trim | replace("'", "\\'")) ~ "')"] -%}
+      {%- set uniqueTags = namespace(entries=[]) -%}
+      {{- get_unique_tags(tagList, uniqueTags) -}}
+      {%- for t in uniqueTags.entries -%}
+          {%- set ns.items = ns.items + ["('" ~ (t.key | replace("'", "\\'")) ~ "', '" ~ (t.value | replace("'", "\\'")) ~ "')"] -%}
       {%- endfor -%}
       {%- if ns.items | length > 0 -%}
           tags = [{{ ns.items | join(', ') }}]
