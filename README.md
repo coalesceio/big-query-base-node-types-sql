@@ -142,6 +142,8 @@ Every deployment of a Work node first runs these checks before any change in Big
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` (BigQuery has no transient table) |
 | **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; a BigQuery table or view holds one value per tag key, so the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — more than one partition, an invalid column-level `@partitionBy`, partition expiration without any partition, more than 4 cluster columns or a cluster expression. See [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
 
@@ -188,7 +190,7 @@ The following stages are executed, in this order (each one only when needed):
 | **Alter Column Data Type** | Changes data types (BigQuery runs SET DATA TYPE on its own) |
 | **Alter Column** | Drops NOT NULL, sets or drops defaults and changes column descriptions, in one statement |
 | **Add Column** | Adds new columns, with their descriptions |
-| **Set Default: \<column\> \| Backfill Default: \<column\>** | BigQuery cannot add a column with a DEFAULT: the default is set after the add and the existing rows are filled with it |
+| **Set Default: \<column\>** | BigQuery cannot add a column with a DEFAULT: the default is set after the add. Existing rows are not backfilled — they keep NULL |
 | **Rename Column** | Renames a column whose `@id` is unchanged |
 | **Delete Column** | Drops removed columns |
 | **Add Primary Key** | Adds the new primary key on the clone |
@@ -519,6 +521,8 @@ Every deployment of a Dimension Node first runs these checks before any change i
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
 | **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Missing Business Key \| Invalid configuration: … \| Missing Required System Columns \| Surrogate Key Not Set/Using Custom Surrogate Key Logic \| Invalid configuration: Surrogate Key \| Warning: Surrogate Key Default \| Warning: Zero Key Value Too Long \| Warning: Invalid configuration: mergeStrategy** | Dimension validation checks (table only), rendered only when the annotations have a problem — see [Dimension Load](#dimension-load). A required problem stops the deployment; a recommendation or a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (e.g. `@isChangeTracking` / `@lastModifiedTracking` under `upsert`) — it is ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
@@ -721,6 +725,8 @@ Every deployment of a Fact Node first runs these checks before any change in Big
 | **Unsupported Materialization Type: \<node\>** | `@materializationType` is not `table` or `view` — stops the deployment and the run |
 | **Warning: Duplicate Tags Found: \<node\>** | Non-failing — the same tag key applied more than once on the node; the last `@tag` for that key is applied |
 | **Warning: Column Tags Ignored: \<node\>** | Non-failing — a `@tag` on a column is not applied, because BigQuery has no column-level tags |
+| **Invalid configuration: tableExpiration** | `@tableExpiration` is a number of days, which is not supported — stops the deployment. Use a date / datetime (or an expression) |
+| **Warning: tableExpiration Expression** | Non-failing — `@tableExpiration` is a SQL expression, not a fixed date / datetime: it is evaluated on every create or alter, so an expression on `CURRENT_TIMESTAMP()` moves the expiry forward each time |
 | **Duplicate Column Names \| Duplicate Column IDs \| Missing Column IDs \| Invalid configuration: No Business Key \| Invalid configuration: … \| Missing Required System Columns \| Warning: Invalid configuration: mergeStrategy \| Warning: Invalid configuration: No Business Key** | Fact validation checks (table only), rendered only when the annotations have a problem. A required problem stops the deployment; a stage starting with **Warning:** does not. **Warning: Invalid configuration: mergeStrategy** flags an annotation the chosen strategy never reads (`@isBusinessKey` under `allColumnMatch`, `@lastModifiedTracking` under `changeTracking` / `upsert` / `allColumnMatch`); **Warning: Invalid configuration: No Business Key** flags `@lastModifiedTracking` on a plain-insert node. Both are ignored and the load continues. |
 | **Invalid configuration: partitionBy \| partitionExpirationDays \| clusterKey** | Table only — see [Partitioning](#partitionby) and [Clustering](#clusterkey). |
 | **Warning: partitionExpirationDays Ignored** | Non-failing, table only — `@partitionExpirationDays` on an integer-range (`RANGE_BUCKET`) partition is not applied |
@@ -874,19 +880,25 @@ Number of days to keep each partition before BigQuery deletes it.
 
 `@tableExpiration("<value>")`
 
-Sets when BigQuery deletes the target table or view. Accepts either:
+Sets when BigQuery deletes the target table or view.
 
-* **A whole number** — expires it that many days after it is created, e.g. `"30"` → `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)`.
-* **A date or datetime** — expires it at that fixed point, e.g. `"2026-12-31"` or `"2026-12-31 23:59:59"`. A date alone expires at 23:59:59 that day.
+| **Value** | **Result** |
+|-----------|------------|
+| **A date** — `"2999-12-31"` | Expires at 23:59:59 that day → `TIMESTAMP "2999-12-31 23:59:59"` |
+| **A datetime** — `"2999-12-31 00:00:00"` | Expires at that fixed point → `TIMESTAMP "2999-12-31 00:00:00"` |
+| **A SQL expression** — `"TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)"` | Used as-is, with the non-failing **Warning: tableExpiration Expression** (see below) |
+| **A number of days** — `"30"` | ❌ Not supported — stops the deploy with **Invalid configuration: tableExpiration**. Write the expression above instead |
 
-* A day count restarts on every create, and on every redeploy that rebuilds or alters the table.
+* A date / datetime is a **fixed** expiry: it does not move on redeploy.
+* An expression is **evaluated each time the table is created or replaced** — on the first create, on a recreate (partition / cluster change), and on every alter, which rebuilds the table through a copy and re-applies the expiration. An expression on `CURRENT_TIMESTAMP()` therefore **moves the expiry forward on every such redeploy**; a redeploy that changes nothing on the table leaves it as it is.
 * Applies to tables and views.
 
 **Example:**
 
 ```sql
-@tableExpiration("30")
-@tableExpiration("2026-12-31 23:59:59")
+@tableExpiration("2999-12-31")
+@tableExpiration("2999-12-31 00:00:00")
+@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")   -- warns: moves forward on every create / alter
 ```
 
 ##### `@defaultRoundingMode`
@@ -1071,7 +1083,7 @@ Adds a column DEFAULT.
 
 * Quote to match the column's data type — number: `@defaultValue("<num>")`, string: `@defaultValue("'<string>'")`, function: `@defaultValue("GENERATE_UUID()")`.
 * A BigQuery default **cannot reference other columns** — the create fails with "Default value expressions cannot reference columns".
-* A column added on redeploy gets its default afterwards (**Set Default**) and existing rows are filled with it (**Backfill Default**).
+* A column added on redeploy gets its default afterwards (**Set Default**). **Existing rows are not backfilled** — they keep NULL in the new column; the default applies to rows inserted from then on. Fill them yourself if needed (e.g. a one-off `@postSQL` UPDATE, or a reload with `@writeMode("truncateInsert")`).
 * **Note:** Ignored on Views.
 
 **Example:**
@@ -1368,7 +1380,7 @@ A BigQuery column DEFAULT can only use constants and functions such as `GENERATE
 * **Tags and Table Expiration After an Alter**:  
 An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels, rounding mode and partition expiration are kept), so every alter ends with an extra **Edit Table Options** stage that re-attaches them:
   * a **fixed** expiration (`@tableExpiration("2026-12-31")`) is set to the same timestamp again, so it does not change;
-  * a **relative** expiration (`@tableExpiration("30")`) is recomputed from the time of the alter as `TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)` — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
+  * an **expression** expiration (`@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")`) is evaluated again at the time of the alter — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
   * a table rename goes through the same copy, so the renamed table gets its tags and expiration back the same way.
 
 * **Changing `@nodeType` on a Deployed Node**:  
@@ -1439,7 +1451,7 @@ Common ways to use the SQL nodes. The SQL patterns under Work Examples (CTEs, wi
 @description("Table description")
 @preSQL("DELETE FROM {{ this }} WHERE N_LOAD_DATE < DATE_SUB(CURRENT_DATE(), INTERVAL 90 DAY)")
 @postSQL("INSERT INTO {{ ref('AUDIT', 'LOAD_LOG') }} (TABLE_NAME, LOAD_TS) VALUES ('WRK_NATION', CURRENT_TIMESTAMP())")
-@tableExpiration("90")
+@tableExpiration("2999-12-31")
 @tag("env", "dev")
 SELECT
     `N_NATIONKEY`                            AS `N_NATIONKEY`         @not_null @uniqueness @min_value(0) @max_value(100) @accepted_values("1, 2, 3") @inHash("GH_COL1", 2) @clusterKey(1),
@@ -1784,7 +1796,7 @@ No business key or system columns needed; nothing is merged. The view carries a 
 ```sql
 @materializationType("view")
 @tag("env", "dev")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 SELECT
     `CUSTOMER_ID`                            AS `CUSTOMER_ID`         @id("0a0001") @description("Customer id"),
     `NAME`                                   AS `NAME`                @id("0a0002")
@@ -1932,7 +1944,7 @@ Every BigQuery table option in one node — they work the same on Work, Dimensio
 @materializationType("table")
 @description("Nation table with every table option")
 @partitionExpirationDays("365")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")

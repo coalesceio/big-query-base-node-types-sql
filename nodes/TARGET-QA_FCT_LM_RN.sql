@@ -4,7 +4,7 @@
 @description("QA Fact - lastModified SCD1, node-level TIMESTAMP_TRUNC partition, relative table expiration, tags (phase 2: renamed from QA_FCT_LM - expiration and tags must carry over)")
 @mergeStrategy("lastModified")
 @partitionBy("TIMESTAMP_TRUNC(last_Modified, DAY)")
-@tableExpiration("90")
+@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 @tests("SELECT COUNT(*) AS `N` FROM {{ this }} HAVING COUNT(*) <> 1 + (SELECT COUNT(*) FROM {{ ref('TARGET', 'QA_WRK_FEED') }})")
