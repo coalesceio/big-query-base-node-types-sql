@@ -1,5 +1,11 @@
 fileVersion: 1
 id: "956"
-mappingDefinitions: {}
+mappingDefinitions:
+  SRC:
+    database: cls-dev-bigquery
+    schema: DE_SRC
+  TARGET:
+    database: cls-dev-bigquery
+    schema: DE_TGT_AN
 name: gbq_tst_fnl
 type: Environment
