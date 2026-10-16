@@ -14,8 +14,8 @@
 SELECT
     `C_CUSTKEY`                              AS `C_CUSTKEY`           @id("4c1901") @isBusinessKey @notNull @primaryKey(1) @clusterKey(1) @not_null @uniqueness @description("Customer key - business key"),
     `C_NAME`                                 AS `C_NAME`              @id("4c1902"),
-    `C_NATIONKEY`                            AS `C_NATIONKEY`         @id("4c1903") @clusterKey(2) @description("Nation key"),
-    `C_MKTSEGMENT`                           AS `C_MKTSEGMENT`        @id("4c1904") @clusterKey(3) @description("Market segment"),
+    `C_NATIONKEY`                            AS `C_NATIONKEY`         @id("4c1903") @clusterKey(2) @description("Nation key12"),
+    `C_MKTSEGMENT`                           AS `C_mktsegment`        @id("4c1904") @clusterKey(3) @description("Market segment"),
     CAST(`C_ACCTBAL` AS NUMERIC)             AS `C_ACCTBAL`           @id("4c1905") @description("Account balance"),
     CAST(`C_ACCTBAL` / 12 AS NUMERIC)        AS `C_MONTHLY_ACCTBAL`   @id("4c1906") @description("Balance per month, rounded with the table default_rounding_mode"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP)     AS `SYSTEM_CREATE_DATE`  @id("4c1907") @isSystemCreateDate @notNull @description("Row create time - partition column"),
