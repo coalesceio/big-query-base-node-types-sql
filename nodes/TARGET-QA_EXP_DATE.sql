@@ -5,5 +5,6 @@
 @tableExpiration("2999-12-31")
 SELECT
     `F`.`n_NationKey`                        AS `n_NationKey`         @id("ex1a1"),
-    `F`.`n_Name`                             AS `n_Name`              @id("ex1a2")
+    `F`.`n_Name`                             AS `n_Name`              @id("ex1a2"),
+    `F`.`n_RegionKey`                        AS `n_RegionKey`         @id("ex1a3")
 FROM {{ ref('TARGET', 'QA_WRK_FEED') }} `F`

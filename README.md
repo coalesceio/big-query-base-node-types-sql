@@ -178,7 +178,7 @@ After the Work Node has been deployed for the first time into a target Environme
 
 #### Altering the Work Tables
 
-Changes to columns, the primary key or the table name alter the Work Table, whether made individually or all together. BigQuery cannot swap tables, so the changes are made on an internal clone, which is then copied back over the live table (the pattern the BigQuery YAML node types use) — a failure leaves the live table untouched.
+Changes to columns, the primary key, the table name or the table options (description, expirations, rounding mode, tags) alter the Work Table, whether made individually or all together. BigQuery cannot swap tables, so the changes are made on an internal clone, which is then copied back over the live table (the pattern the BigQuery YAML node types use) — a failure leaves the live table untouched.
 
 The following stages are executed, in this order (each one only when needed):
 
@@ -194,9 +194,10 @@ The following stages are executed, in this order (each one only when needed):
 | **Rename Column** | Renames a column whose `@id` is unchanged |
 | **Delete Column** | Drops removed columns |
 | **Add Primary Key** | Adds the new primary key on the clone |
+| **Alter Table Options** | One `SET OPTIONS(...)` on the clone with only the table options that changed (description, table / partition expiration, rounding mode, tags); a removed one is reset (NULL, tags to `[]`) |
 | **Replace Table** | Copies the altered clone back over the live table (`CREATE OR REPLACE TABLE … COPY`) — or to the new name when the table is renamed |
 | **Delete Table** | Drops the old table after a rename |
-| **Edit Table Options** | One `SET OPTIONS(...)` on the table with only the options that changed (description, expirations, rounding mode, tags); a removed one is reset (NULL, tags to `[]`). After **Replace Table** the table expiration and tags are always re-attached, because the copied table loses them. |
+| **Edit Table Options** | One `SET OPTIONS(...)` on the live table with only the **table expiration** and the **tags** set on the node — the copy in **Replace Table** drops those two, so they are re-attached here. Every other option was set on the clone and carried over by the copy. |
 | **Delete Clone** | Last stage — drops the internal clone once the table is replaced and its options are set |
 
 > **Note:** Work columns have no `@id`, so a column's name is its id: renaming a column drops it and adds a new one, which loses its data.
@@ -917,7 +918,8 @@ BigQuery evaluates the expression **at the moment the statement runs** and store
 |--------------|---------------------------|----------------------------------|
 | First deployment (create) | Yes | day 0 + 30 = **day 30** |
 | Nothing changed on the node | No | day 30 — unchanged |
-| Only other options changed (tags, description, rounding mode) — table **Edit Table Options** / view **Edit View Options** | No — only the changed options are sent | day 30 — unchanged |
+| View: only other options changed (tags, description) — **Edit View Options** | No — only the changed options are sent | day 30 — unchanged |
+| Table: only other options changed (tags, description, rounding mode) — the table is rebuilt through the clone and **Edit Table Options** re-attaches the expiration | Yes | day 10 + 30 = **day 40** — moved forward |
 | The expression itself changed (e.g. `INTERVAL 60 DAY`) | Yes | day 10 + 60 = **day 70** |
 | Column change (add, drop, rename, type, PK) — the table is rebuilt through the clone and **Edit Table Options** re-applies the expiration | Yes | day 10 + 30 = **day 40** — moved forward |
 | Recreate (partition / cluster change, dataset move, table ↔ view) | Yes | day 10 + 30 = **day 40** — moved forward |
@@ -963,7 +965,7 @@ Sets the table's `default_rounding_mode`, used when values are written to NUMERI
 * **Prerequisite:** the tag key and value must already exist in GCP, and the deploying account needs permission to bind them.
 * A table or view holds **one value per tag key**. When the same key is applied more than once — even with different values, or written once as `env` and once as `<project>/env` — the **last** `@tag` for that key is applied, the earlier ones are ignored, and the non-failing **Warning: Duplicate Tags Found** lists each repeated key with the value applied. The deployment continues.
 * BigQuery has **no column-level tags** — a `@tag` on a column is not applied and raises the non-failing **Warning: Column Tags Ignored**; the deployment continues. Move the tag to the node to tag the whole table (column-level access control in BigQuery uses Data Catalog policy tags instead).
-* On a table, tag changes are applied with **Edit Table Options**; on a view, with **Edit View Options** (only the changed options are sent).
+* On a table, a tag change is made on the clone (**Alter Table Options**) and the tags are re-attached after the copy (**Edit Table Options**); on a view, it is applied with **Edit View Options** (only the changed options are sent).
 
 **Example:**
 
@@ -1412,7 +1414,7 @@ BigQuery cannot set NOT NULL on an existing column or add a REQUIRED column to a
 A BigQuery column DEFAULT can only use constants and functions such as `GENERATE_UUID()` or `CURRENT_TIMESTAMP()` — a default built from other columns (for example a hash of the business key) fails at create. This is why the Dimension surrogate key uses `GENERATE_UUID()`.
 
 * **Tags and Table Expiration After an Alter**:  
-An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels, rounding mode and partition expiration are kept), so every alter ends with an extra **Edit Table Options** stage that re-attaches them:
+An alter rebuilds the table with `CREATE OR REPLACE TABLE … COPY` (**Clone Table**, then **Replace Table**). A table replaced by a copy loses its **tags** and its **table expiration** (the description, labels, rounding mode and partition expiration are kept), so every alter ends with an extra **Edit Table Options** stage on the live table that re-attaches those two (every other option change is made on the clone, in **Alter Table Options**, and carried over by the copy):
   * a **fixed** expiration (`@tableExpiration("2026-12-31")`) is set to the same timestamp again, so it does not change;
   * an **expression** expiration (`@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")`) is evaluated again at the time of the alter — the table now expires 30 days after the alter (the swap), not 30 days after it was first created;
   * a table rename goes through the same copy, so the renamed table gets its tags and expiration back the same way.
@@ -2018,7 +2020,7 @@ OPTIONS(
 * `LOAD_DATE` carries the column-level `@partitionBy` — a DATE column is used as-is. The partition could equally be set on the node, e.g. `@partitionBy("LOAD_DATE")` — but not both.
 * The tag names have no `/`, so they are qualified with the project of the node's location.
 * A NOT NULL column whose source can hold NULLs fails the load ("Required field … cannot be null") — `COALESCE` it, as `N_REGIONKEY` does here.
-* On a later deployment, a tag, expiration or description change runs only **Edit Table Options**; a partition or cluster key change recreates the table — see [Altering the Work Tables](#altering-the-work-tables).
+* On a later deployment, a tag, expiration or description change goes through the clone (**Alter Table Options**, then **Edit Table Options** re-attaches the expiration and tags after the copy); a partition or cluster key change recreates the table — see [Altering the Work Tables](#altering-the-work-tables).
 
 ---
 
