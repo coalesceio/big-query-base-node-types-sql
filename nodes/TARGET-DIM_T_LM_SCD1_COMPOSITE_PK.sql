@@ -2,7 +2,7 @@
 @nodeType("SQLDimension")
 @description("Test - lastModified SCD Type 1; composite primaryKey ordered by position, tableExpiration in days")
 @mergeStrategy("lastModified")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 SELECT
     0                                    AS `DIM_T_LM_SCD1_COMPOSITE_PK_KEY` @id("b30001") @isSurrogateKey,
     `N_NATIONKEY`                        AS `N_NATIONKEY`                    @id("b30002") @isBusinessKey @not_null @uniqueness @primaryKey(2),

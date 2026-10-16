@@ -3,7 +3,7 @@
 @materializationType("table")
 @description("Create test - Work table with every create option: column partition + expiration, clustering, composite primary key, NOT NULL, default, descriptions, tags, table expiration, rounding mode")
 @partitionExpirationDays("365")
-@tableExpiration("30")
+@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")

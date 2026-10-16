@@ -3,7 +3,7 @@
 @description("Test - partitionBy DATE_TRUNC on a DATE column, monthly partitions; lastModified SCD Type 2")
 @mergeStrategy("lastModified")
 @partitionBy("DATE_TRUNC(LOAD_DATE, MONTH)")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 SELECT
     0                                        AS `DIM_T_PART_DATE_MONTH_KEY` @id("c30001") @isSurrogateKey,
     `N_NATIONKEY`                            AS `N_NATIONKEY`               @id("c30002") @isBusinessKey @not_null @uniqueness,

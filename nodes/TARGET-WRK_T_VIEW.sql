@@ -3,7 +3,7 @@
 @description("Work test - view; table-only annotations below must be ignored")
 @materializationType("view")
 @partitionBy("DATE(last_modified)")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 @tag("env", "dev")
 SELECT
     `N_NATIONKEY`   AS `N_NATIONKEY`   @primaryKey(1),

@@ -3,7 +3,7 @@
 @description("Test - view materialization; table-only annotations below must be ignored")
 @materializationType("view")
 @partitionBy("DATE(last_modified)")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 SELECT

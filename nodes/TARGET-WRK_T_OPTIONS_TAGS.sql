@@ -1,7 +1,7 @@
 @id("518bf292-e432-40f4-94ff-435477e764ac")
 @nodeType("SQLWork")
 @description("Work test - tableExpiration in days, defaultRoundingMode, tags")
-@tableExpiration("30")
+@tableExpiration("2999-12-31")
 @defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")

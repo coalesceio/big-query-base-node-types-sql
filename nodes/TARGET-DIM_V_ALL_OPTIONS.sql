@@ -2,7 +2,7 @@
 @nodeType("SQLDimension")
 @materializationType("view")
 @description("Create test - view with description, tags and table expiration; every column has a description")
-@tableExpiration("30")
+@tableExpiration("TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 SELECT
