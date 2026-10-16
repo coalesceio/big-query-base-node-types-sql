@@ -30,7 +30,7 @@ SELECT
     `l`.`L_RECEIPTDATE`                  AS `L_RECEIPTDATE`      @id("130110") @description("Receipt date"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_CREATE_DATE` @id("130111") @isSystemCreateDate @description("Row create time"),
     CAST(CURRENT_TIMESTAMP AS TIMESTAMP) AS `SYSTEM_UPDATE_DATE` @id("130112") @isSystemUpdateDate @description("Row update time")
-FROM {{ ref('TARGET', 'WRK_LINEITEM') }} `l`
+FROM {{ ref('TARGET', 'WRK_LINEITEM_TXT') }} `l`
 LEFT JOIN {{ ref('TARGET', 'FCT_ORDERS') }} `o` ON `o`.`O_ORDERKEY` = `l`.`L_ORDERKEY`
 LEFT JOIN {{ ref('TARGET', 'DIM_SHIP_MODE') }} `sm`
     ON `sm`.`SHIP_MODE` = `l`.`L_SHIPMODE`

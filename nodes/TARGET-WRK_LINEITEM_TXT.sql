@@ -5,7 +5,7 @@
 @writeMode("truncateInsert")
 @partitionBy("DATE_TRUNC(L_SHIPDATE, MONTH)")
 @partitionExpirationDays("18250")
-@defaultRoundingMode("ROUND_HALF_AWAY_FROM_ZERO")
+@defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 @tests("SELECT 1 FROM {{ this }} GROUP BY `L_ORDERKEY`, `L_LINENUMBER` HAVING COUNT(*) > 1", false, "After")

@@ -14,7 +14,7 @@ WITH SHIP_MODES AS (
         COUNT(*)            AS `LINE_COUNT`,
         MIN(`l`.`L_SHIPDATE`) AS `FIRST_SHIP_DATE`,
         MAX(`l`.`L_SHIPDATE`) AS `LAST_SHIP_DATE`
-    FROM {{ ref('TARGET', 'WRK_LINEITEM') }} `l`
+    FROM {{ ref('TARGET', 'WRK_LINEITEM_TXT') }} `l`
     GROUP BY `l`.`L_SHIPMODE`, `l`.`L_SHIPINSTRUCT`
 )
 SELECT
