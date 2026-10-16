@@ -82,8 +82,8 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
         {# BigQuery cannot alter these on an existing table: a dataset move, or a partition / cluster change recreates it #}
         {%- if currentState is defined and currentMatType == desiredMatType
                 and (nsNodeVariables.currentProjectDataset != nsNodeVariables.desiredProjectDataset
-                or get_partition_by_sql(currentState.config, currentState.columns) | trim != nsConfigVariables.partitionBy
-                or get_clusterby_sql(currentState.columns) | trim != nsConfigVariables.clusterBy) %}
+                or (get_partition_by_sql(currentState.config, currentState.columns) | trim | lower) != (nsConfigVariables.partitionBy | lower)
+                or (get_clusterby_sql(currentState.columns) | trim | lower) != (nsConfigVariables.clusterBy | lower)) %}
             {%- set nsConfigVariables.createTable = true %}
         {%- endif %}
 
