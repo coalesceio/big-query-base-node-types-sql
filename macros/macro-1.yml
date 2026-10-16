@@ -1386,8 +1386,9 @@ macroString: |2-
 
     {#===========================================================================
       alter_add_columns_sql(): "Add Column" — one ALTER for columns with a new id, with their
-      description. BigQuery cannot add a column with a DEFAULT, so for each new column with a
-      default: "Set Default: <col>" then "Backfill Default: <col>" fills the existing rows.
+      description. BigQuery cannot add a column with a DEFAULT, so each new column with a default
+      gets "Set Default: <col>" after the add. Existing rows are not backfilled — they keep NULL
+      in the new column; the default applies to rows inserted afterwards.
     ===========================================================================#}
     {%- macro alter_add_columns_sql() -%}
         {%- set ns = namespace(items=[]) -%}
@@ -1412,11 +1413,6 @@ macroString: |2-
                 {{ stage('Set Default: ' + desCol.name) }}
                 ALTER TABLE {{ nsNodeVariables.alterObjectNameFullPath }}
                 ALTER COLUMN `{{ desCol.name }}` SET DEFAULT {{ desCol.defaultValue }}
-
-                {{ stage('Backfill Default: ' + desCol.name) }}
-                UPDATE {{ nsNodeVariables.alterObjectNameFullPath }}
-                SET `{{ desCol.name }}` = {{ desCol.defaultValue }}
-                WHERE TRUE
             {%- endfor %}
         {%- endif %}
     {%- endmacro -%}

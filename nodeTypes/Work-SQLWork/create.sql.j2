@@ -126,7 +126,7 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
                 {# Alter Column: data type, nullability, description, default (old column names) #}
                 {{ alter_modify_columns_sql() }}
 
-                {# Add Column (default set and backfilled after the add) #}
+                {# Add Column (default set after the add) #}
                 {{ alter_add_columns_sql() }}
 
                 {# Rename Column (matched by @id) #}
