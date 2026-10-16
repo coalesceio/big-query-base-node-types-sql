@@ -1,5 +1,5 @@
 fileVersion: 2
-id: "SQLFact"
+id: SQLFact
 isDisabled: false
 metadata:
   defaultStorageLocation: null
@@ -26,10 +26,8 @@ metadata:
               type: string
               isRequired: true
               default: table
-              example: transient table
               options:
                 - table
-                - transient table
                 - view
 
         - name: writeMode

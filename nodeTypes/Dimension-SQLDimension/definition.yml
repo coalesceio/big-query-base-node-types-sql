@@ -134,8 +134,8 @@ metadata:
               type: string
               description: • Whether to 𝗧𝗥𝗨𝗡𝗖𝗔𝗧𝗘 the target table before inserting, or 𝗔𝗣𝗣𝗘𝗡𝗗 to it.
               isRequired: true
-              default: truncateInsert
-              example: append
+              default: append
+              example: truncateInsert
               options:
                 - truncateInsert
                 - append
@@ -175,35 +175,35 @@ metadata:
         - name: zeroKey
           description: |-
             • Inserts a default "zero key" record into the target — a placeholder row used to catch unresolved foreign key lookups.
-            • Numeric columns (integer, decimal, float) always get 0 — 𝘀𝘂𝗿𝗿𝗼𝗴𝗮𝘁𝗲𝗞𝗲𝘆𝗩𝗮𝗹𝘂𝗲 applies to the surrogate key column only. Override any column with a column-level zeroKey.
+            • 𝗦𝘂𝗿𝗿𝗼𝗴𝗮𝘁𝗲 𝗸𝗲𝘆 𝗶𝘀 𝗦𝗧𝗥𝗜𝗡𝗚 — 𝘀𝘂𝗿𝗿𝗼𝗴𝗮𝘁𝗲𝗞𝗲𝘆𝗩𝗮𝗹𝘂𝗲 is pasted into the SQL exactly as written (e.g. "'0'").
             • Ignored on views.
           isRequired: false
           parameters:
-            - name: surrogateKeyValue
-              type: number
-              description: • Value used for the zero record's surrogate key column.
-              isRequired: true
-              example: 0
+          - name: surrogateKeyValue
+            type: string
+            description: • STRING value used for the zero record's surrogate key column, pasted into the SQL verbatim — include your own quotes.
+            isRequired: true
+            example: "'0'"
 
-            - name: stringValue
-              type: string
-              description: • Default value used for the zero record's string/varchar columns, pasted into the SQL verbatim — include your own quotes.
-              isRequired: false
-              default: "'UNKNOWN'"
-              example: "'UNKNOWN'"
+          - name: stringValue
+            type: string
+            description: • Default value used for the zero record's string/varchar columns, pasted into the SQL verbatim — include your own quotes.
+            isRequired: false
+            default: "'UNKNOWN'"
+            example: "'UNKNOWN'"
 
-            - name: timestampValue
-              type: string
-              description: • Default value used for the zero record's date/time/timestamp columns.
-              isRequired: false
-              default: "1900-01-01 00:00:00"
-              example: "1900-01-01 00:00:00"
+          - name: timestampValue
+            type: string
+            description: • Default value used for the zero record's date/time/timestamp columns.
+            isRequired: false
+            default: "1900-01-01 00:00:00"
+            example: "1900-01-01 00:00:00"
 
-            - name: booleanValue
-              type: boolean
-              description: • Default value used for the zero record's boolean columns.
-              isRequired: false
-              default: true
+          - name: booleanValue
+            type: boolean
+            description: • Default value used for the zero record's boolean columns.
+            isRequired: false
+            default: true
 
         - name: disableTests
           type: boolean
@@ -379,10 +379,10 @@ metadata:
           parameters:
             - name: value
               type: string
-              description: • Custom zero key value for this column, pasted into the SQL verbatim — supply your own quotes/casts as needed.
+              description: Custom zero key value for this column, pasted into the SQL verbatim — supply your own quotes/casts as needed.
               isRequired: true
               example: "'N/A'"
-
+                  
         - name: isSurrogateKey
           description: |-
             ⚙ This is a system column.
