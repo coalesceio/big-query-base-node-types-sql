@@ -23,6 +23,9 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
     {# Validate: the same tag key applied twice to the node, or a @tag on a column, is not allowed #}
     {{ tag_check_duplicates() }}
 
+    {# Validate: @tableExpiration must be a date / datetime (a number of days stops the create; an expression only warns) #}
+    {{ validate_table_expiration() }}
+
     {%- if desiredMatType == 'view' %}
 
         {# Drop the current object if it was another type, or the view was renamed/moved #}
@@ -138,9 +141,6 @@ Coalesce permits you to copy and modify this script for the purposes of using wi
 
             {# Clone Table -> alters -> Replace Table (clone copied back over the table) -> Delete Clone #}
             {{ alter_clone_swap_sql(alterSql) }}
-
-            {# Edit Table Options on the table: changed options, or re-applied after Replace Table (COPY drops the expiration) #}
-            {{ alter_table_options_sql() }}
 
             {# Nothing above altered the table: record a metadata-only change #}
             {{ alter_metadata_sql() }}

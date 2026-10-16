@@ -104,7 +104,6 @@ macroString: |2-
         cloneObjectNameFullPath               <current name>_COALESCE_INTERNAL_TABLE
         alterObjectNameFullPath               what alter_ macros change: clone (table) / view
         droppedColumns / renamedColumns       backtick-quoted current column names
-        tableReplaced                         set by alter_clone_swap_sql() once the clone replaced the table
         metaDataChanged                       set by the redeploy macros
     ===========================================================================#}
     {%- set nsNodeVariables = namespace(desiredMatType = "",
@@ -117,7 +116,6 @@ macroString: |2-
                                         alterObjectNameFullPath = "",
                                         droppedColumns = [],
                                         renamedColumns = [],
-                                        tableReplaced = false,
                                         metaDataChanged = false) -%}
     {{- initialize_node_variables(nsNodeVariables) -}}
 
@@ -831,6 +829,29 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===========================================================================
+      validate_table_expiration(hardFail): failing "Invalid configuration: tableExpiration" when
+      @tableExpiration is a number of days, which is no longer supported; non-failing
+      "Warning: tableExpiration Expression" when it is an expression rather than a fixed date / datetime.
+      Applies to tables and views. Call at the start of create, before any DDL.
+    ===========================================================================#}
+    {%- macro validate_table_expiration(hardFail=true) -%}
+        {%- set exprnValue = get_expiration_value(config) | trim -%}
+        {%- set kind = get_expiration_kind(exprnValue) | trim -%}
+        {%- if kind == 'days' %}
+            {{ test_stage('Invalid configuration: tableExpiration', false) }}
+            -- @tableExpiration("{{ exprnValue }}") is a number of days, which is no longer supported.
+            -- Give a fixed date or datetime instead, e.g. @tableExpiration("2026-12-31") (expires at 23:59:59 that day) or @tableExpiration("2026-12-31 23:59:59").
+            {{ fail_sql(hardFail) }}
+        {%- elif kind == 'expression' %}
+            {{ test_stage('Warning: tableExpiration Expression', true) }}
+            -- @tableExpiration("{{ exprnValue }}") is not a fixed date / datetime, so it is used as a SQL expression as-is.
+            -- It is evaluated each time the table is created or replaced, so an expression on CURRENT_TIMESTAMP() (e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))
+            -- moves the expiry forward on every such redeploy. Use a fixed date / datetime, e.g. @tableExpiration("2026-12-31 23:59:59"), for an expiry that does not move.
+            SELECT 1
+        {%- endif -%}
+    {%- endmacro -%}
+
+    {#===========================================================================
       validate_partition_cluster(hardFail): failing "Invalid configuration: partitionBy / partitionExpirationDays /
       clusterKey" checks — a BigQuery table has a single partition (node and column @partitionBy count together;
       column-level is a bare flag on DATE / TIMESTAMP / DATETIME), partition expiration needs a partition (only warns on RANGE_BUCKET),
@@ -1137,20 +1158,48 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===========================================================================
+      get_expiration_value(nodeConfig): the trimmed @tableExpiration value; '' when not set.
+    ===========================================================================#}
+    {%- macro get_expiration_value(nodeConfig) -%}
+        {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 0 -%}
+            {{- nodeConfig.tableExpiration.parameters[0] | default('', true) | string | trim -}}
+        {%- endif -%}
+    {%- endmacro -%}
+
+    {#===========================================================================
+      get_expiration_kind(exprnValue): how a @tableExpiration value is read —
+        'days'       a whole number (e.g. 30) — no longer supported, validate_table_expiration() stops the create
+        'datetime'   starts with a YYYY-MM-DD date, alone or followed by a time (e.g. 2026-12-31, 2026-12-31 23:59:59)
+        'expression' anything else, used as a SQL expression as-is (e.g. TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY))
+      '' when the value is empty.
+    ===========================================================================#}
+    {%- macro get_expiration_kind(exprnValue) -%}
+        {%- set v = exprnValue | default('', true) | string | trim -%}
+        {%- set isDate = v | length >= 10 and v[4:5] == '-' and v[7:8] == '-'
+                         and (v[0:4] | int(-1)) >= 0 and (v[5:7] | int(-1)) >= 1 and (v[8:10] | int(-1)) >= 1
+                         and (v | length == 10 or v[10:11] in (' ', 'T')) -%}
+        {%- if v | length == 0 -%}
+        {%- elif (v | int(-1)) >= 0 and (v | int(-1)) | string == v -%}
+            days
+        {%- elif isDate -%}
+            datetime
+        {%- else -%}
+            expression
+        {%- endif -%}
+    {%- endmacro -%}
+
+    {#===========================================================================
       get_expiration_timestamp_sql(nodeConfig): the expiration_timestamp value from @tableExpiration —
-      a whole number is a day count (TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL <n> DAY)), anything else a
-      date / datetime (a date alone expires at 23:59:59); '' when not set.
+      a date / datetime becomes a TIMESTAMP literal (a date alone expires at 23:59:59 that day), an
+      expression is used as-is; '' when not set, or for a day count (rejected by validate_table_expiration()).
     ===========================================================================#}
     {%- macro get_expiration_timestamp_sql(nodeConfig) -%}
-        {%- if nodeConfig.tableExpiration is defined and nodeConfig.tableExpiration.parameters is defined and nodeConfig.tableExpiration.parameters | length > 0 -%}
-            {%- set exprnValue = nodeConfig.tableExpiration.parameters[0] | default('', true) | string | trim -%}
-            {%- if exprnValue | length > 0 -%}
-                {%- if (exprnValue | int(-1)) >= 0 and (exprnValue | int(-1)) | string == exprnValue -%}
-                    TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL {{ exprnValue }} DAY)
-                {%- else -%}
-                    TIMESTAMP "{{ exprnValue }}{{ '"' if exprnValue | length > 11 else ' 23:59:59"' }}
-                {%- endif -%}
-            {%- endif -%}
+        {%- set exprnValue = get_expiration_value(nodeConfig) | trim -%}
+        {%- set kind = get_expiration_kind(exprnValue) | trim -%}
+        {%- if kind == 'datetime' -%}
+            TIMESTAMP "{{ exprnValue }}{{ '"' if exprnValue | length > 10 else ' 23:59:59"' }}
+        {%- elif kind == 'expression' -%}
+            {{ exprnValue }}
         {%- endif -%}
     {%- endmacro -%}
 
@@ -1225,7 +1274,8 @@ macroString: |2-
       A table is recreated (drop + create) when what BigQuery cannot alter changes: the
       materialization type, the dataset, the partitioning or the clustering. Any other change
       is applied to a clone: Clone Table -> alters -> Replace Table (the clone is copied back over
-      the table) -> Delete Clone -> Edit Table Options (COPY drops the table expiration).
+      the table) -> Delete Clone. COPY drops the table expiration and the tags, so the Replace Table
+      copy sets them in its own OPTIONS(...).
       Views are recreated when their definition changes.
     ===========================================================================#}
 
@@ -1403,81 +1453,98 @@ macroString: |2-
     {%- endmacro -%}
 
     {#===========================================================================
-          alter_table_options_sql(): "Edit Table Options" — one SET OPTIONS(...) on the table with only
-          the table options that changed between currentState and the node (partition expiration, table
-          expiration, rounding mode, tags, description); a removed one is reset (NULL, tags = []).
-          Options left out keep their value, so e.g. a rounding mode change does not restart a relative
-          @tableExpiration. When the clone replaced the table, the table expiration and tags set on the
-          node are re-applied even if unchanged: CREATE OR REPLACE ... COPY keeps the description,
-          rounding mode and partition expiration, but drops those two. Nothing when no option needs
-          setting. Call after alter_clone_swap_sql().
-      ===========================================================================#}
-        {%- macro alter_table_options_sql() -%}
-            {%- set ns = namespace(items=[]) -%}
-            {%- set tableReplaced = nsNodeVariables.tableReplaced -%}
+      alter_clone_options_sql(): "Alter Table Options" — one SET OPTIONS(...) on the clone with only
+      the options CREATE OR REPLACE ... COPY carries over and that changed between currentState and
+      the node: partition expiration, rounding mode, description. A removed one is reset to NULL.
+      '' when none changed. Called by alter_clone_swap_sql(), after the column alters.
+    ===========================================================================#}
+    {%- macro alter_clone_options_sql() -%}
+        {%- set ns = namespace(items=[]) -%}
 
-            {# partition_expiration_days only applies to time-partitioned tables; the partition itself is unchanged here (a partition change recreates the table) #}
-            {%- set partitionSql = get_partition_by_sql(config, columns) | trim -%}
-            {%- if partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
-                {%- set ped = namespace(current='', desired='') -%}
-                {%- if currentState.config.partitionExpirationDays is defined and currentState.config.partitionExpirationDays.parameters is defined and currentState.config.partitionExpirationDays.parameters | length > 0 -%}
-                    {%- set ped.current = currentState.config.partitionExpirationDays.parameters[0] | string | trim -%}
-                {%- endif -%}
-                {%- if config.partitionExpirationDays is defined and config.partitionExpirationDays.parameters is defined and config.partitionExpirationDays.parameters | length > 0 -%}
-                    {%- set ped.desired = config.partitionExpirationDays.parameters[0] | string | trim -%}
-                {%- endif -%}
-                {%- if ped.current != ped.desired -%}
-                    {%- set ns.items = ns.items + ['partition_expiration_days = ' ~ (ped.desired if ped.desired | length > 0 else 'NULL')] -%}
-                {%- endif -%}
+        {# partition_expiration_days only applies to time-partitioned tables; the partition itself is unchanged here (a partition change recreates the table) #}
+        {%- set partitionSql = get_partition_by_sql(config, columns) | trim -%}
+        {%- if partitionSql | length > 0 and 'RANGE_BUCKET' not in (partitionSql | upper) -%}
+            {%- set ped = namespace(current='', desired='') -%}
+            {%- if currentState.config.partitionExpirationDays is defined and currentState.config.partitionExpirationDays.parameters is defined and currentState.config.partitionExpirationDays.parameters | length > 0 -%}
+                {%- set ped.current = currentState.config.partitionExpirationDays.parameters[0] | string | trim -%}
             {%- endif -%}
+            {%- if config.partitionExpirationDays is defined and config.partitionExpirationDays.parameters is defined and config.partitionExpirationDays.parameters | length > 0 -%}
+                {%- set ped.desired = config.partitionExpirationDays.parameters[0] | string | trim -%}
+            {%- endif -%}
+            {%- if ped.current != ped.desired -%}
+                {%- set ns.items = ns.items + ['partition_expiration_days = ' ~ (ped.desired if ped.desired | length > 0 else 'NULL')] -%}
+            {%- endif -%}
+        {%- endif -%}
 
-            {# expiration_timestamp: also re-applied after the clone replaced the table (COPY drops it) #}
-            {%- set currentExpiration = get_expiration_timestamp_sql(currentState.config) | trim -%}
-            {%- set desiredExpiration = get_expiration_timestamp_sql(config) | trim -%}
-            {%- if currentExpiration != desiredExpiration or (tableReplaced and desiredExpiration | length > 0) -%}
-                {%- set ns.items = ns.items + ['expiration_timestamp = ' ~ (desiredExpiration if desiredExpiration | length > 0 else 'NULL')] -%}
-            {%- endif -%}
+        {%- set rm = namespace(current='', desired='') -%}
+        {%- if currentState.config.defaultRoundingMode is defined and currentState.config.defaultRoundingMode.parameters is defined and currentState.config.defaultRoundingMode.parameters | length > 0 -%}
+            {%- set rm.current = currentState.config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
+        {%- endif -%}
+        {%- if config.defaultRoundingMode is defined and config.defaultRoundingMode.parameters is defined and config.defaultRoundingMode.parameters | length > 0 -%}
+            {%- set rm.desired = config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
+        {%- endif -%}
+        {%- if rm.current != rm.desired -%}
+            {%- set ns.items = ns.items + [("default_rounding_mode = '" ~ rm.desired ~ "'") if rm.desired | length > 0 else 'default_rounding_mode = NULL'] -%}
+        {%- endif -%}
 
-            {%- set rm = namespace(current='', desired='') -%}
-            {%- if currentState.config.defaultRoundingMode is defined and currentState.config.defaultRoundingMode.parameters is defined and currentState.config.defaultRoundingMode.parameters | length > 0 -%}
-                {%- set rm.current = currentState.config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
-            {%- endif -%}
-            {%- if config.defaultRoundingMode is defined and config.defaultRoundingMode.parameters is defined and config.defaultRoundingMode.parameters | length > 0 -%}
-                {%- set rm.desired = config.defaultRoundingMode.parameters[0] | default('', true) | string | trim -%}
-            {%- endif -%}
-            {%- if rm.current != rm.desired -%}
-                {%- set ns.items = ns.items + [("default_rounding_mode = '" ~ rm.desired ~ "'") if rm.desired | length > 0 else 'default_rounding_mode = NULL'] -%}
-            {%- endif -%}
+        {%- set currentDescription = currentState.node.description | default('', true) | trim -%}
+        {%- set desiredDescription = node.description | default('', true) | trim -%}
+        {%- if currentDescription != desiredDescription -%}
+            {%- set ns.items = ns.items + [("description = '" ~ (node.description | escape) ~ "'") if desiredDescription | length > 0 else 'description = NULL'] -%}
+        {%- endif -%}
 
-            {# tags: also re-applied after the clone replaced the table (COPY drops them) #}
-            {%- set currentTags = get_tags_sql(currentState.config.tag) | trim -%}
-            {%- set desiredTags = get_tags_sql(config.tag) | trim -%}
-            {%- if currentTags != desiredTags or (tableReplaced and desiredTags | length > 0) -%}
-                {%- set ns.items = ns.items + [desiredTags if desiredTags | length > 0 else 'tags = []'] -%}
-            {%- endif -%}
-
-            {%- set currentDescription = currentState.node.description | default('', true) | trim -%}
-            {%- set desiredDescription = node.description | default('', true) | trim -%}
-            {%- if currentDescription != desiredDescription -%}
-                {%- set ns.items = ns.items + [("description = '" ~ (node.description | escape) ~ "'") if desiredDescription | length > 0 else 'description = NULL'] -%}
-            {%- endif -%}
-
-            {%- if ns.items | length > 0 %}
-                {{ stage('Edit Table Options') }}
-                ALTER TABLE {{ nsNodeVariables.desObjectNameFullPath }}
-                SET OPTIONS({{ ns.items | join(', ') }})
-                {%- set nsNodeVariables.metaDataChanged = true -%}
-            {%- endif %}
-        {%- endmacro -%}
+        {%- if ns.items | length > 0 %}
+            {{ stage('Alter Table Options') }}
+            ALTER TABLE {{ nsNodeVariables.cloneObjectNameFullPath }}
+            SET OPTIONS({{ ns.items | join(', ') }})
+        {%- endif %}
+    {%- endmacro -%}
 
     {#===========================================================================
-      alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Replace
-      Table -> Delete Clone, the pattern the BigQuery YAML node types use: the clone is copied
-      back over the table (CREATE OR REPLACE ... COPY), so the table never disappears.
+      table_options_dropped_by_copy_changed(): 'true' when the table expiration or the tags changed
+      between currentState and the node — the two options COPY drops, so they are never altered on
+      the clone; a change to them still sends the redeploy through the clone. '' otherwise.
+    ===========================================================================#}
+    {%- macro table_options_dropped_by_copy_changed() -%}
+        {%- if get_expiration_timestamp_sql(currentState.config) | trim != get_expiration_timestamp_sql(config) | trim
+                or get_tags_sql(currentState.config.tag) | trim != get_tags_sql(config.tag) | trim -%}
+            true
+        {%- endif -%}
+    {%- endmacro -%}
+
+    {#===========================================================================
+      get_copy_options_sql(): OPTIONS(...) for the Replace Table CREATE OR REPLACE ... COPY, with the table expiration
+      and the tags set on the node — COPY keeps every other option but drops these two, so they are
+      given on the copy itself. One removed from the node needs nothing, COPY already drops it.
+      '' when the node sets neither.
+    ===========================================================================#}
+    {%- macro get_copy_options_sql() -%}
+        {%- set ns = namespace(items=[]) -%}
+        {%- set expiration = get_expiration_timestamp_sql(config) | trim -%}
+        {%- if expiration | length > 0 -%}
+            {%- set ns.items = ns.items + ['expiration_timestamp = ' ~ expiration] -%}
+        {%- endif -%}
+        {%- set tagsOption = get_tags_sql(config.tag) | trim -%}
+        {%- if tagsOption | length > 0 -%}
+            {%- set ns.items = ns.items + [tagsOption] -%}
+        {%- endif -%}
+        {%- if ns.items | length > 0 -%}
+            OPTIONS({{ ns.items | join(', ') }})
+        {%- endif -%}
+    {%- endmacro -%}
+
+    {#===========================================================================
+      alter_clone_swap_sql(alterSql): wraps the alters in Clone Table -> alterSql -> Alter Table
+      Options -> Replace Table -> Delete Clone, the pattern the BigQuery YAML node types use: the
+      clone is copied back over the table (CREATE OR REPLACE ... COPY), so the table never disappears.
+      A table option change goes through the clone as well (see alter_clone_options_sql() and
+      table_options_dropped_by_copy_changed()). COPY drops the table expiration and the tags, so the
+      Replace Table copy sets them in its own OPTIONS(...) (get_copy_options_sql()); the clone is
+      deleted afterwards, so it needs neither.
       COPY keeps the primary key, so it is only dropped / re-added on the clone when the key
       itself changes (a key column renamed or dropped is a key change). When the node was
       renamed the clone is copied to the new name and the old table deleted.
-      '' when there is nothing to alter, the name is unchanged and the primary key is unchanged.
+      '' when there is nothing to alter, no table option changed, the name is unchanged and the primary key is unchanged.
     ===========================================================================#}
     {%- macro alter_clone_swap_sql(alterSql) -%}
         {%- set clonePath = nsNodeVariables.cloneObjectNameFullPath -%}
@@ -1487,8 +1554,11 @@ macroString: |2-
         {%- set currentPrimaryKey = get_primary_key_sql(currentState.columns) | trim -%}
         {%- set desiredPrimaryKey = get_primary_key_sql(columns) | trim -%}
         {%- set primaryKeyChanged = currentPrimaryKey != desiredPrimaryKey -%}
+        {%- set cloneOptionsSql = alter_clone_options_sql() | trim -%}
+        {%- set copyDroppedOptionsChanged = table_options_dropped_by_copy_changed() | trim | length > 0 -%}
+        {%- set copyOptionsSql = get_copy_options_sql() | trim -%}
 
-        {%- if alterSql | trim | length > 0 or pathChanged or primaryKeyChanged %}
+        {%- if alterSql | trim | length > 0 or cloneOptionsSql | length > 0 or copyDroppedOptionsChanged or pathChanged or primaryKeyChanged %}
             {{ stage('Clone Table') }}
             CREATE OR REPLACE TABLE {{ clonePath }}
             COPY {{ currentPath }}
@@ -1501,6 +1571,9 @@ macroString: |2-
 
             {{ alterSql }}
 
+            {# Alter Table Options: changed options COPY carries over, set on the clone #}
+            {{ cloneOptionsSql }}
+
             {%- if primaryKeyChanged and desiredPrimaryKey | length > 0 %}
                 {{ stage('Add Primary Key') }}
                 ALTER TABLE {{ clonePath }}
@@ -1510,6 +1583,7 @@ macroString: |2-
             {{ stage('Replace Table') }}
             CREATE OR REPLACE TABLE {{ desiredPath }}
             COPY {{ clonePath }}
+            {{ copyOptionsSql }}
 
             {%- if pathChanged %}
                 {{ stage('Delete Table') }}
@@ -1518,7 +1592,6 @@ macroString: |2-
 
             {{ stage('Delete Clone') }}
             DROP TABLE IF EXISTS {{ clonePath }}
-            {%- set nsNodeVariables.tableReplaced = true -%}
             {%- set nsNodeVariables.metaDataChanged = true -%}
         {%- endif %}
     {%- endmacro -%}
