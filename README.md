@@ -363,15 +363,15 @@ Inserts a default "zero key" record into the target — a placeholder row used t
 * Requires an `@isSurrogateKey` column — the zero record is matched against the target by its surrogate key value. With the recommended `@defaultValue("GENERATE_UUID()")` key, quote the value (`@zeroKey("'-1'")`): real rows get a UUID and the zero record keeps `'-1'`.
 * Numeric columns always get `0`; override any column with a column-level `@zeroKey(value)`.
 * A value longer than its `STRING(n)` / `BYTES(n)` column raises a non-failing **Warning: Zero Key Value Too Long** test stage that lists each such column; BigQuery then rejects the value and the **Zero Key Record** stage fails. Set a shorter value on the column with `@zeroKey("'<value>'")`, or widen the column. Plain `STRING` has no length limit.
-* Quote every parameter (`@zeroKey("0")`) — an unquoted value is dropped by the loader.
+* A number or boolean can be written without quotes (`@zeroKey(-1)`, `@zeroKey(false)`). A string, date or timestamp value must be quoted, with SQL quotes inside for a string (`@zeroKey("'N/A'")`).
 * *Not specified in the SQL editor → the zero record is not inserted.*
 * **Note:** Ignored on Views.
 
 **Example:**
 
 ```sql
-@zeroKey("'-1'", "'UNKNOWN'", "1900-01-01 00:00:00", "true")   -- STRING (UUID) surrogate key
-@zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", "true")     -- INT64 surrogate key
+@zeroKey("'-1'", "'UNKNOWN'", "1900-01-01 00:00:00", true)     -- STRING (UUID) surrogate key
+@zeroKey(-1, "'UNKNOWN'", "1900-01-01 00:00:00", true)         -- INT64 surrogate key
 ```
 
 ##### `@isChangeTracking` (Dimension)
@@ -409,11 +409,11 @@ Adds a custom zero key value (ghost record) to this column, overriding the node-
 
 ```sql
 @zeroKey("'N/A'")                                          -- string: quotes inside the annotation
-@zeroKey("-1")                                             -- number
+@zeroKey(-1)                                               -- number
 @zeroKey("0.00")                                           -- decimal
 @zeroKey("DATE '1900-01-01'")                              -- date
 @zeroKey("TIMESTAMP '1900-01-01 00:00:00'")                -- timestamp
-@zeroKey("false")                                          -- boolean
+@zeroKey(false)                                            -- boolean
 @zeroKey("JSON 'null'")                                    -- json
 ```
 
@@ -1327,7 +1327,7 @@ Raw SQL pasted into `@tests`, `@preSQL` and `@postSQL` is wrapped in the annotat
 
 * Use backticks for identifiers (`` `N_NAME` ``) and single quotes for string literals (`'F'`), exactly as in BigQuery SQL.
 * BigQuery column names are case-insensitive, so the column's case does not have to match.
-* Quote every annotation argument — an unquoted value (e.g. `@partitionExpirationDays(30)`) is dropped by the loader.
+* A number or boolean argument can be written with or without quotes (`@partitionExpirationDays(30)` is the same as `@partitionExpirationDays("30")`); text and SQL must be quoted.
 
 ```text
 @tests("SELECT 1 FROM {{ this }} WHERE `N_NAME` = 'UNKNOWN'", false, "After")
@@ -1826,7 +1826,7 @@ SELECT
 FROM {{ ref('SRC', 'CUSTOMER') }} `CUSTOMER`
 ```
 
-* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use an unquoted number, e.g. `@zeroKey("-1")`.
+* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use an unquoted number, e.g. `@zeroKey(-1)`.
 
 ##### Dimension as a View
 
@@ -2013,7 +2013,7 @@ PARTITION BY `LOAD_DATE`
 CLUSTER BY `N_NATIONKEY`, `N_NAME`, `N_REGIONKEY`
 OPTIONS(
     partition_expiration_days = 365,
-    expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 30 DAY),
+    expiration_timestamp = TIMESTAMP "2999-12-31 23:59:59",
     default_rounding_mode = 'ROUND_HALF_EVEN',
     tags = [('<PROJECT>/env', 'dev'), ('<PROJECT>/cost_center', 'finance')],
     description = 'Nation table with every table option'
