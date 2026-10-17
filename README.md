@@ -363,7 +363,7 @@ Inserts a default "zero key" record into the target — a placeholder row used t
 * Requires an `@isSurrogateKey` column — the zero record is matched against the target by its surrogate key value. With the recommended `@defaultValue("GENERATE_UUID()")` key, quote the value (`@zeroKey("'-1'")`): real rows get a UUID and the zero record keeps `'-1'`.
 * Numeric columns always get `0`; override any column with a column-level `@zeroKey(value)`.
 * A value longer than its `STRING(n)` / `BYTES(n)` column raises a non-failing **Warning: Zero Key Value Too Long** test stage that lists each such column; BigQuery then rejects the value and the **Zero Key Record** stage fails. Set a shorter value on the column with `@zeroKey("'<value>'")`, or widen the column. Plain `STRING` has no length limit.
-* A number or boolean can be written without quotes (`@zeroKey(-1)`, `@zeroKey(false)`). A string, date or timestamp value must be quoted, with SQL quotes inside for a string (`@zeroKey("'N/A'")`).
+* A positive number or a boolean can be written without quotes (`@zeroKey(0)`, `@zeroKey(false)`). A negative number must be quoted (`@zeroKey("-1")`): an unquoted minus sign breaks the parse of every annotation on the node. A string, date or timestamp value must be quoted, with SQL quotes inside for a string (`@zeroKey("'N/A'")`).
 * *Not specified in the SQL editor → the zero record is not inserted.*
 * **Note:** Ignored on Views.
 
@@ -371,7 +371,7 @@ Inserts a default "zero key" record into the target — a placeholder row used t
 
 ```sql
 @zeroKey("'-1'", "'UNKNOWN'", "1900-01-01 00:00:00", true)     -- STRING (UUID) surrogate key
-@zeroKey(-1, "'UNKNOWN'", "1900-01-01 00:00:00", true)         -- INT64 surrogate key
+@zeroKey("-1", "'UNKNOWN'", "1900-01-01 00:00:00", true)       -- INT64 surrogate key
 ```
 
 ##### `@isChangeTracking` (Dimension)
@@ -409,7 +409,7 @@ Adds a custom zero key value (ghost record) to this column, overriding the node-
 
 ```sql
 @zeroKey("'N/A'")                                          -- string: quotes inside the annotation
-@zeroKey(-1)                                               -- number
+@zeroKey("-1")                                             -- negative number: always quoted
 @zeroKey("0.00")                                           -- decimal
 @zeroKey("DATE '1900-01-01'")                              -- date
 @zeroKey("TIMESTAMP '1900-01-01 00:00:00'")                -- timestamp
@@ -1327,7 +1327,7 @@ Raw SQL pasted into `@tests`, `@preSQL` and `@postSQL` is wrapped in the annotat
 
 * Use backticks for identifiers (`` `N_NAME` ``) and single quotes for string literals (`'F'`), exactly as in BigQuery SQL.
 * BigQuery column names are case-insensitive, so the column's case does not have to match.
-* A number or boolean argument can be written with or without quotes (`@partitionExpirationDays(30)` is the same as `@partitionExpirationDays("30")`); text and SQL must be quoted.
+* A positive number or a boolean argument can be written with or without quotes (`@partitionExpirationDays(30)` is the same as `@partitionExpirationDays("30")`). A negative number, text and SQL must be quoted. An unquoted negative number (`@zeroKey(-1)`) breaks the parse of every annotation on the node.
 
 ```text
 @tests("SELECT 1 FROM {{ this }} WHERE `N_NAME` = 'UNKNOWN'", false, "After")
@@ -1826,7 +1826,7 @@ SELECT
 FROM {{ ref('SRC', 'CUSTOMER') }} `CUSTOMER`
 ```
 
-* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use an unquoted number, e.g. `@zeroKey(-1)`.
+* The surrogate key is a STRING filled with `GENERATE_UUID()`, so the zero value is quoted (`'-1'`); every real row gets its own UUID. With an INT64 key use a number without SQL quotes, e.g. `@zeroKey("-1")` (a negative number is still wrapped in the annotation's double quotes).
 
 ##### Dimension as a View
 
