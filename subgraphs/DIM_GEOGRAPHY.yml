@@ -1,0 +1,9 @@
+fileVersion: 1
+id: c00f5b0d-5b60-46e0-817b-9f262182ebed
+name: DIM_GEOGRAPHY
+steps:
+  - 73a433aa-9c24-4098-91dc-4d91d65f9672 # SRC.nation
+  - e3495b90-0b3e-4bf6-9ec7-dbaa3deb38eb # SRC.region
+  - e889f228-a619-4e17-af90-1afc6f5eea4c # WRK_GEOGRAPHY
+  - 62a8bcf8-d952-48ec-a1b2-8abef7e3784e # DIM_GEOGRAPHY
+type: Subgraph

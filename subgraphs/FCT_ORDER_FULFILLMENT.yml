@@ -1,0 +1,10 @@
+fileVersion: 1
+id: d62a93dd-42b6-4ab4-9aff-90564dee05cd
+name: FCT_ORDER_FULFILLMENT
+steps:
+  - 3fe46f64-032f-4051-b392-807f9ee19ff6 # SRC.lineitem
+  - 2385da2b-1218-411d-aff7-187fb9dd4b2c # WRK_LINEITEM_AGG
+  - 475912e1-6b54-4601-a968-034bce5325bf # SRC.orders
+  - e3f401a5-29f5-46e2-8a0d-62b5e564a8f2 # WRK_ORDERS
+  - 1d251d2f-94f5-466e-a91b-50e33a887985 # FCT_ORDER_FULFILLMENT
+type: Subgraph

@@ -1,0 +1,14 @@
+fileVersion: 1
+id: f92f76fc-421a-439e-b0b6-0fe5739f5293
+name: FCT_CUSTOMER_MONTHLY
+steps:
+  - 73a433aa-9c24-4098-91dc-4d91d65f9672 # SRC.nation
+  - e3495b90-0b3e-4bf6-9ec7-dbaa3deb38eb # SRC.region
+  - e889f228-a619-4e17-af90-1afc6f5eea4c # WRK_GEOGRAPHY
+  - 042f2e60-a6da-4093-8a7b-2caef4ec7a7d # SRC.customer
+  - 40b1acbd-668a-44db-b584-7f458d067693 # WRK_CUSTOMER
+  - 561d575c-1fec-45ed-9bb6-122e8903d557 # DIM_CUSTOMER
+  - 475912e1-6b54-4601-a968-034bce5325bf # SRC.orders
+  - e3f401a5-29f5-46e2-8a0d-62b5e564a8f2 # WRK_ORDERS
+  - 5caaef82-9ee1-4f32-8ac9-e05a00158708 # FCT_CUSTOMER_MONTHLY
+type: Subgraph

@@ -1,0 +1,13 @@
+fileVersion: 1
+id: 6fbeac65-16fd-44fe-a064-24a7013ea484
+name: WRK_V_CUSTOMER_REVENUE
+steps:
+  - 73a433aa-9c24-4098-91dc-4d91d65f9672 # SRC.nation
+  - e3495b90-0b3e-4bf6-9ec7-dbaa3deb38eb # SRC.region
+  - e889f228-a619-4e17-af90-1afc6f5eea4c # WRK_GEOGRAPHY
+  - 042f2e60-a6da-4093-8a7b-2caef4ec7a7d # SRC.customer
+  - 40b1acbd-668a-44db-b584-7f458d067693 # WRK_CUSTOMER
+  - 475912e1-6b54-4601-a968-034bce5325bf # SRC.orders
+  - e3f401a5-29f5-46e2-8a0d-62b5e564a8f2 # WRK_ORDERS
+  - 1e8b9a71-810e-4c00-a4c9-ede591ed6c28 # WRK_V_CUSTOMER_REVENUE
+type: Subgraph
