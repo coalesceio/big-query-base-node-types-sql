@@ -1,0 +1,11 @@
+@id("b989e33e-d021-4634-94a7-94fceeae057b")
+@nodeType("SQLWork")
+@description("Work test - column @primaryKey(1) on O_ORDERKEY (NOT ENFORCED)")
+SELECT
+    `O_ORDERKEY`                    AS `O_ORDERKEY`      @primaryKey(1),
+    `O_CUSTKEY`                     AS `O_CUSTKEY`,
+    `O_ORDERSTATUS`                 AS `O_ORDERSTATUS`,
+    CAST(`O_TOTALPRICE` AS NUMERIC) AS `O_TOTALPRICE`,
+    `O_ORDERDATE`                   AS `O_ORDERDATE`,
+    `O_ORDERPRIORITY`               AS `O_ORDERPRIORITY`
+FROM {{ ref('SRC', 'orders') }} `orders`
