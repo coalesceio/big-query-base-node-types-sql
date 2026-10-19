@@ -1,0 +1,9 @@
+fileVersion: 1
+id: b2615e45-885c-44f6-ba11-a4145b3b9c4b
+name: Dimension_Run_Annotation_Tests
+steps:
+  # Source
+  - 475912e1-6b54-4601-a968-034bce5325bf # SRC.orders
+  # writeMode, mergeStrategy, zeroKey, disableTests, tests, preSQL, postSQL and all column tests
+  - 55f5a4d3-7788-4bba-89ce-f57a1c481f6f # DIM_ALL_RUN_ANNOTATIONS
+type: Subgraph

@@ -1,0 +1,29 @@
+fileVersion: 1
+id: 52a7d741-f745-4397-bb6d-f58db0144d66
+name: Sales_Pipeline
+steps:
+  # Sources
+  - 73a433aa-9c24-4098-91dc-4d91d65f9672 # SRC.nation
+  - e3495b90-0b3e-4bf6-9ec7-dbaa3deb38eb # SRC.region
+  - 042f2e60-a6da-4093-8a7b-2caef4ec7a7d # SRC.customer
+  - 475912e1-6b54-4601-a968-034bce5325bf # SRC.orders
+  - 3fe46f64-032f-4051-b392-807f9ee19ff6 # SRC.lineitem
+  # Work
+  - e889f228-a619-4e17-af90-1afc6f5eea4c # WRK_GEOGRAPHY
+  - 40b1acbd-668a-44db-b584-7f458d067693 # WRK_CUSTOMER
+  - e3f401a5-29f5-46e2-8a0d-62b5e564a8f2 # WRK_ORDERS
+  - 2385da2b-1218-411d-aff7-187fb9dd4b2c # WRK_LINEITEM_AGG
+  - 592fdb32-85ff-4133-b3fe-8abc75db4b9c # WRK_ORDER_EVENTS
+  - 8fc62be0-3544-450d-be20-7f7e34f0dfdc # WRK_LOAD_AUDIT
+  - 1e8b9a71-810e-4c00-a4c9-ede591ed6c28 # WRK_V_CUSTOMER_REVENUE
+  # Dimension
+  - 62a8bcf8-d952-48ec-a1b2-8abef7e3784e # DIM_GEOGRAPHY
+  - 561d575c-1fec-45ed-9bb6-122e8903d557 # DIM_CUSTOMER
+  - 0996a393-09ce-41ab-ae22-f7fbdc614f8d # DIM_ORDER_STATUS
+  - 1c42740c-9133-4555-810f-9966c7e4abbd # DIM_DATE
+  # Fact
+  - 09af93a6-8b9b-4269-8082-b625a9db9d1f # FCT_ORDERS
+  - 6ce7bf5d-1cf6-4fa1-b8e4-282ae81e2471 # FCT_ORDER_EVENTS
+  - 5caaef82-9ee1-4f32-8ac9-e05a00158708 # FCT_CUSTOMER_MONTHLY
+  - 1d251d2f-94f5-466e-a91b-50e33a887985 # FCT_ORDER_FULFILLMENT
+type: Subgraph
