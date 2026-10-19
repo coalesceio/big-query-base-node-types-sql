@@ -1,5 +1,5 @@
 fileVersion: 1
-id: ed23b371-c958-4570-8a4c-24589c42218a
+id: 475912e1-6b54-4601-a968-034bce5325bf
 name: orders
 operation:
   database: ""
@@ -13,8 +13,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 32a7e28c-694a-4194-aafa-b81f02e0b60c
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 8be3fc7b-c026-454e-b3d4-60a7e2c418ef
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: INT64
         defaultValue: ""
@@ -30,8 +30,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 55e9ec27-9d89-49d3-99a9-95436bed502f
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 4e499c08-4d9a-4cf0-b3d9-8f787ba92216
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: INT64
         defaultValue: ""
@@ -47,8 +47,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 6614a37b-85c8-4537-9109-24ed5288823a
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: b0ff0c4b-3749-4228-8657-627ce6bc8b90
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: STRING
         defaultValue: ""
@@ -64,10 +64,10 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 535007fd-05f6-4be5-b333-37a573e78430
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 9abd067a-658f-4f3d-86b8-ac02a013ad83
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
-        dataType: FLOAT64
+        dataType: NUMERIC
         defaultValue: ""
         description: ""
         name: O_TOTALPRICE
@@ -81,8 +81,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 569f55e5-8793-4895-ad90-1fd701f4db4a
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 14e3144c-48e3-46fa-a8d1-8661ca1db318
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: DATE
         defaultValue: ""
@@ -98,8 +98,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: ec191381-1e00-4349-bdcf-78bae6c73343
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 7ae5e12a-c4ef-4c5f-a0ab-1ddea7951129
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: STRING
         defaultValue: ""
@@ -115,8 +115,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 7fcf7c80-6c75-4bce-989d-2987f7f5046b
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 46c9731d-2dd8-4e05-bde9-289e632f9bb6
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: STRING
         defaultValue: ""
@@ -132,8 +132,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 54992d40-03a0-4894-87c8-a3bff065b0cc
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 931aace2-b422-4b45-b9ad-f1d2e83c8880
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: INT64
         defaultValue: ""
@@ -149,8 +149,8 @@ operation:
           values: []
         appliedColumnTests: {}
         columnReference:
-          columnCounter: 87cd0004-60e2-4007-ba3b-cc09c95e49fd
-          stepCounter: ed23b371-c958-4570-8a4c-24589c42218a
+          columnCounter: 882866b2-6503-48bc-8abe-6a78289a29ad
+          stepCounter: 475912e1-6b54-4601-a968-034bce5325bf
         config: {}
         dataType: STRING
         defaultValue: ""
