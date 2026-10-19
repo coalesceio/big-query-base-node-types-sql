@@ -4,7 +4,7 @@
 SELECT
     `O_ORDERKEY`                    AS `O_ORDERKEY`,
     `O_CUSTKEY`                     AS `O_CUSTKEY`       @clusterKey(1),
-    `O_ORDERSTATUS`                 AS `O_ORDERSTATUS`   @clusterKey(2),
+    `O_ORDERSTATUS`                 AS `O_ORDERSTATUS`,
     CAST(`O_TOTALPRICE` AS NUMERIC) AS `O_TOTALPRICE`,
     `O_ORDERDATE`                   AS `O_ORDERDATE`,
     `O_ORDERPRIORITY`               AS `O_ORDERPRIORITY`

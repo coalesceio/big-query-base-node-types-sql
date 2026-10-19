@@ -3,7 +3,7 @@
 @description("Work test - multiple primary keys")
 SELECT
     `O_ORDERKEY`                    AS `O_ORDERKEY`      @primaryKey(1),
-    `O_CUSTKEY`                     AS `O_CUSTKEY`       @primaryKey(2),      
+    `O_CUSTKEY`                     AS `O_CUSTKEY`,      
     `O_ORDERSTATUS`                 AS `O_ORDERSTATUS`,
     CAST(`O_TOTALPRICE` AS NUMERIC) AS `O_TOTALPRICE`,
     `O_ORDERDATE`                   AS `O_ORDERDATE`,

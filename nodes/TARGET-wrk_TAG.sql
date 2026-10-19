@@ -1,6 +1,7 @@
 @id("802b3088-1c4f-43de-add2-a76c30c7e059")
 @nodeType("SQLWork")
 @description("Work test - repeatable @tag: env = dev and cost_center = finance")
+@defaultRoundingMode("ROUND_HALF_EVEN")
 @tag("env", "dev")
 @tag("cost_center", "finance")
 SELECT
